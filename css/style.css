@@ -493,11 +493,26 @@ aside.sidebar.collapsed .sidebar-content {
 }
 
 /* Stat color classes (background only, text uses standard color) */
-.stat-card.stat-red        { background: #ff8585 !important; }
-.stat-card.stat-orange     { background: #fbc37a !important; }
-.stat-card.stat-yellow     { background: #fcea8f !important; }
-.stat-card.stat-lightgreen { background: #adf073 !important; }
-.stat-card.stat-darkgreen  { background: #46e27c !important; }
+.stat-card.stat-red        { background: #ff8585 !important; }      /* strong red */
+.stat-card.stat-orange     { background: #fbc37a !important; }      /* strong orange */
+.stat-card.stat-yellow     { background: #fcea8f !important; }      /* strong yellow */
+.stat-card.stat-lightgreen { background: #adf073 !important; }      /* strong light green */
+.stat-card.stat-darkgreen  { background: #46e27c !important; }      /* strong dark green */
+
+/* NEW: Stat colors for table cells (dimmed/pastel) */
+td.stat-red        { background-color: #ffd6d6; }
+td.stat-orange     { background-color: #ffe7c2; }
+td.stat-yellow     { background-color: #fff9d6; }
+td.stat-lightgreen { background-color: #e6f9d6; }
+td.stat-darkgreen  { background-color: #d6f9e6; }
+
+td.stat-red,
+td.stat-orange,
+td.stat-yellow,
+td.stat-lightgreen,
+td.stat-darkgreen {
+    color: var(--text);
+}
 
 .stat-card:hover {
     transform: translateY(-5px);
@@ -1389,4 +1404,20 @@ main.content-area.collapsed .content-section-content { /* MODIFIED: Was .content
 .filter-popup .btn {
     margin-right: 5px;
     margin-top: 5px;
+}
+
+/* NEW: On row hover, increase opacity of stat color cells */
+tr:hover td.stat-red        { background-color: #ffb3b3; }
+tr:hover td.stat-orange     { background-color: #ffd699; }
+tr:hover td.stat-yellow     { background-color: #fff6b3; }
+tr:hover td.stat-lightgreen { background-color: #c8f7b3; }
+tr:hover td.stat-darkgreen  { background-color: #b3f7d1; }
+
+/* Keep text color readable */
+tr:hover td.stat-red,
+tr:hover td.stat-orange,
+tr:hover td.stat-yellow,
+tr:hover td.stat-lightgreen,
+tr:hover td.stat-darkgreen {
+    color: var(--text);
 }

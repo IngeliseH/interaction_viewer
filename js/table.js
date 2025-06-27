@@ -12,6 +12,63 @@ export let rowsPerPage = 25;
 export let proteinNameToAccessionMap = {};
 export let proteinNameToCategoryMap = {}; // New state variable for mapping protein names to categories
 
+// --- Color coding functions for stats ---
+function iptmColor(val) {
+    val = parseFloat(val);
+    if (isNaN(val)) return '';
+    if (val < 0.3) return 'stat-red';
+    if (val < 0.55) return 'stat-orange';
+    if (val < 0.7) return 'stat-lightgreen';
+    return 'stat-darkgreen';
+}
+function minpaeColor(val) {
+    val = parseFloat(val);
+    if (isNaN(val)) return '';
+    if (val >= 7 && val <= 30) return 'stat-red';
+    if (val >= 5 && val < 7) return 'stat-orange';
+    if (val >= 3 && val < 5) return 'stat-yellow';
+    if (val >= 2 && val < 3) return 'stat-lightgreen';
+    if (val >= 0 && val < 2) return 'stat-darkgreen';
+    return '';
+}
+function avgpaeColor(val) {
+    val = parseFloat(val);
+    if (isNaN(val)) return '';
+    if (val >= 20 && val <= 30) return 'stat-red';
+    if (val >= 15 && val < 20) return 'stat-orange';
+    if (val >= 10 && val < 15) return 'stat-yellow';
+    if (val >= 5 && val < 10) return 'stat-lightgreen';
+    if (val >= 0 && val < 5) return 'stat-darkgreen';
+    return '';
+}
+function pdockqColor(val) {
+    val = parseFloat(val);
+    if (isNaN(val)) return '';
+    if (val < 0.1) return 'stat-red';
+    if (val < 0.23) return 'stat-orange';
+    if (val < 0.5) return 'stat-yellow';
+    if (val < 0.7) return 'stat-lightgreen';
+    return 'stat-darkgreen';
+}
+function ropColor(val) {
+    val = parseInt(val);
+    if (isNaN(val)) return '';
+    if (val === 0) return 'stat-red';
+    if (val === 1) return 'stat-orange';
+    if (val === 2) return 'stat-yellow';
+    if (val === 3) return 'stat-lightgreen';
+    if (val >= 4) return 'stat-darkgreen';
+    return '';
+}
+
+const statColorFunctions = {
+    'iptm': iptmColor,
+    'min_pae': minpaeColor,
+    'avg_pae': avgpaeColor,
+    'pdockq': pdockqColor,
+    'rop': ropColor,
+};
+
 // UI update hooks (to be set by the main page, e.g. index.html)
 export let updatePaginationUI = null;
 export let updateStatsUI = null;
@@ -1023,6 +1080,15 @@ export function renderTable() {
                     }
                     const td = document.createElement('td');
                     td.innerHTML = cellHtml;
+
+                    // Add color coding class
+                    if (statColorFunctions[col]) {
+                        const colorClass = statColorFunctions[col](row[col]);
+                        if (colorClass) {
+                            td.classList.add(colorClass);
+                        }
+                    }
+
                     tr.appendChild(td);
                 });
                 tableBody.appendChild(tr);
