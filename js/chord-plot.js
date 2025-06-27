@@ -656,6 +656,136 @@ export async function drawChordByPosition(data, containerSelector, opts = {}) {
     // Store for hover
     chordElements.push(path);
 
+    // --- BEGIN: Make chord clickable to interaction page ---
+    // Helper: Convert array of indices to compact range string (e.g., 1-4, 6)
+    function indicesToRanges(indices) {
+      if (!Array.isArray(indices) || indices.length === 0) return '';
+      const sorted = Array.from(new Set(indices)).map(Number).filter(n => !isNaN(n)).sort((a, b) => a - b);
+      let result = [];
+      let start = sorted[0], end = sorted[0];
+      for (let i = 1; i <= sorted.length; i++) {
+        if (sorted[i] === end + 1) {
+          end = sorted[i];
+        } else {
+          if (start === end) {
+            result.push(`${start}`);
+          } else {
+            result.push(`${start}-${end}`);
+          }
+          start = sorted[i];
+          end = sorted[i];
+        }
+      }
+      return result.join(', ');
+    }
+
+    // Find domain IDs for protein1 and protein2 if available in data
+    // Try to find the row in the original data that matches this iface
+    let row = data.find(r => {
+      const p1 = r.Protein1 || r.protein1;
+      const p2 = r.Protein2 || r.protein2;
+      // Compare protein names and residue ranges
+      let absLoc = {};
+      if (r.absolute_location && typeof r.absolute_location === 'string') {
+        try {
+          absLoc = JSON.parse(r.absolute_location.replace(/'/g, '"'));
+        } catch {}
+      }
+      const absKeys = Object.keys(absLoc).reduce((acc, k) => { acc[k.toLowerCase()] = absLoc[k]; return acc; }, {});
+      const arr1 = absKeys['protein1'] || absKeys['chaina'] || absKeys['chain a'] || [];
+      const arr2 = absKeys['protein2'] || absKeys['chainb'] || absKeys['chain b'] || [];
+      const r1 = (Array.isArray(arr1) && arr1.length > 0) ? [Math.min(...arr1), Math.max(...arr1)] : [];
+      const r2 = (Array.isArray(arr2) && arr2.length > 0) ? [Math.min(...arr2), Math.max(...arr2)] : [];
+      return (
+        p1 === protein1 && p2 === protein2 &&
+        r1.length && r2.length &&
+        r1[0] === res1[0] && r1[1] === res1[1] &&
+        r2[0] === res2[0] && r2[1] === res2[1]
+      );
+    }) || {};
+
+    // Get domain IDs
+    const protein1Domain = row.Protein1_Domain || "";
+    const protein2Domain = row.Protein2_Domain || "";
+    const p1Base = protein1;
+    const p2Base = protein2;
+    const p1DomainParts = protein1Domain.split('_F');
+    const f1Id = p1DomainParts.length > 1 ? `F${p1DomainParts[1]}` : '';
+    const p2DomainParts = protein2Domain.split('_F');
+    const f2Id = p2DomainParts.length > 1 ? `F${p2DomainParts[1]}` : '';
+
+    // Get absolute location ranges for each protein
+    let absLoc = {};
+    if (row.absolute_location && typeof row.absolute_location === 'string') {
+      try {
+        absLoc = JSON.parse(row.absolute_location.replace(/'/g, '"'));
+      } catch {}
+    }
+    const absKeys = Object.keys(absLoc).reduce((acc, k) => { acc[k.toLowerCase()] = absLoc[k]; return acc; }, {});
+    let f1Loc = '';
+    let f2Loc = '';
+    if (absKeys['protein1']) {
+      f1Loc = indicesToRanges(absKeys['protein1']);
+    } else if (absKeys['chaina']) {
+      f1Loc = indicesToRanges(absKeys['chaina']);
+    } else if (absKeys['chain a']) {
+      f1Loc = indicesToRanges(absKeys['chain a']);
+    }
+    if (absKeys['protein2']) {
+      f2Loc = indicesToRanges(absKeys['protein2']);
+    } else if (absKeys['chainb']) {
+      f2Loc = indicesToRanges(absKeys['chainb']);
+    } else if (absKeys['chain b']) {
+      f2Loc = indicesToRanges(absKeys['chain b']);
+    }
+
+    // Round pdockq, iptm, min_pae, avg_pae to 2dp for the link
+    function round2(val) {
+      const num = Number(val);
+      return isNaN(num) ? '' : num.toFixed(2);
+    }
+    const pdockq2 = round2(row.pdockq);
+    const iptm2 = round2(row.iptm);
+    const min_pae2 = round2(row.min_pae);
+    const avg_pae2 = round2(row.avg_pae);
+
+    // Compute shifts if possible
+    let relLoc = {};
+    if (row.location && typeof row.location === 'string') {
+      try {
+        relLoc = JSON.parse(row.location.replace(/'/g, '"'));
+      } catch {}
+    }
+    const relKeys = Object.keys(relLoc).reduce((acc, k) => { acc[k.toLowerCase()] = relLoc[k]; return acc; }, {});
+    function getFirstVal(val) {
+      if (Array.isArray(val) && val.length > 0) return Number(val[0]);
+      if (typeof val === 'string') {
+        const match = val.match(/^(\d+)/);
+        if (match) return Number(match[1]);
+      }
+      return undefined;
+    }
+    let absF1 = getFirstVal(absKeys['protein1'] || absKeys['chaina'] || absKeys['chain a']);
+    let absF2 = getFirstVal(absKeys['protein2'] || absKeys['chainb'] || absKeys['chain b']);
+    let relF1 = getFirstVal(relKeys['protein1'] || relKeys['chaina'] || relKeys['chain a']);
+    let relF2 = getFirstVal(relKeys['protein2'] || relKeys['chainb'] || relKeys['chain b']);
+    let f1_shift = '', f2_shift = '';
+    if (typeof absF1 === 'number' && typeof relF1 === 'number') {
+      f1_shift = absF1 - relF1;
+    }
+    if (typeof absF2 === 'number' && typeof relF2 === 'number') {
+      f2_shift = absF2 - relF2;
+    }
+
+    // Compose the interaction link (same as table)
+    const interactionLink = `interaction.html?&p1=${encodeURIComponent(p1Base)}&p2=${encodeURIComponent(p2Base)}&f1_id=${encodeURIComponent(f1Id)}&f2_id=${encodeURIComponent(f2Id)}&f1_loc=${encodeURIComponent(f1Loc)}&f2_loc=${encodeURIComponent(f2Loc)}&iptm=${encodeURIComponent(iptm2)}&min_pae=${encodeURIComponent(min_pae2)}&avg_pae=${encodeURIComponent(avg_pae2)}&rop=${encodeURIComponent(row.rop)}&pdockq=${encodeURIComponent(pdockq2)}&f1_shift=${encodeURIComponent(f1_shift)}&f2_shift=${encodeURIComponent(f2_shift)}`;
+
+    path.style.cursor = "pointer";
+    path.addEventListener('click', () => {
+      window.location.href = interactionLink;
+    });
+    // --- END: Make chord clickable ---
+
     // Prepare hover label elements (hidden by default)
     const labelElems = [];
 
