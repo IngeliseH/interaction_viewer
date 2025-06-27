@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="logo.png" type="image/png">
+    <title>Centrosome Explorer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+    <script src="https://3dmol.org/build/3Dmol-min.js"></script>
+    <script src="js/domain-fragment-plot.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="header-placeholder"></div>
+    <div class="container">
+        <div class="main-content">
+            <h1 class="page-main-heading">Centrosome Predicted Interaction Data Explorer</h1>
+            <div class="grid">
+                <aside class="sidebar">
+                    <div class="sidebar-section">
+                        <div class="sidebar-title">
+                            <h2><i class="fas fa-list-ul"></i> <span>Page Sections</span></h2>
+                            <i class="fas fa-chevron-up"></i>
+                        </div>
+                        <div class="sidebar-content">
+                            <ul>
+                                <li><a href="#domains-fragments">Domains and Fragments</a></li>
+                                <li><a href="#ppi-table">PPI table</a></li>
+                                <li><a href="#chord-plot">Chord Plot</a></li>
+                                <li><a href="#structure-section">Structure</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </aside>
+                    
+                <div class="content-column">
+                    <main class="content-area">
+                        <div class="content-section" id="domains-fragments">
+                            <div class="content-section-title">
+                                <h2>Domains and Fragments</h2>
+                                <i class="fas fa-chevron-up"></i>
+                            </div>
+                            <div class="content-section-content">
+                                <!-- Global controls for domain/fragment plots -->
+                                <div class="control-bar global-domain-fragment-plot-controls" style="margin-bottom: 20px;">
+                                    <div class="control-button-group">
+                                        <button type="button" class="global-uniprotDomainsBtn control-button" title="Toggle UniProt Domains">
+                                            <i class="fas fa-layer-group"></i> Domains
+                                        </button>
+                                        <button type="button" class="global-alphafoldDomainsBtn control-button" title="Toggle AlphaFold Domains">
+                                            <i class="fas fa-brain"></i> AlphaFold Domains
+                                        </button>
+                                        <button type="button" class="global-fragmentsBtn control-button" title="Toggle Fragments">
+                                            <i class="fas fa-puzzle-piece"></i> Fragments
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Protein 1 Plot Section -->
+                                <div id="domain-fragment-plot-p1-section">
+                                    <h3 id="protein1-name-subheading-df" class="page-subtitle">Loading Protein 1...</h3>
+                                    <div class="domainFragmentPlotContainerP1">
+                                        <!-- Domain/Fragment Plot for P1 will be rendered here -->
+                                    </div>
+                                    <!-- Collapsible table for P1 will be generated here by JS -->
+                                </div>
+
+                                <!-- Protein 2 Plot Section -->
+                                <div id="domain-fragment-plot-p2-section" style="margin-top: 30px; display: none;"> <!-- Initially hidden -->
+                                    <h3 id="protein2-name-subheading-df" class="page-subtitle">Loading Protein 2...</h3>
+                                    <div class="domainFragmentPlotContainerP2">
+                                        <!-- Domain/Fragment Plot for P2 will be rendered here -->
+                                    </div>
+                                    <!-- Collapsible table for P2 will be generated here by JS -->
+                                </div>
+                                <p id="fragments-fallback-message-df" style="text-align:center; display:none; margin-top: 15px;">
+                                    Information about domains and fragments will be shown here if available.
+                                </p>
+                            </div>
+                        </div>
+                    </main>
+                    <main class="content-area">
+                        <div class="content-section" id="ppi-table">
+                            <div class="content-section-title">
+                                <h2>PPI table</h2>
+                                <i class="fas fa-chevron-up"></i>
+                            </div>
+                            <div class="content-section-content">
+                                <div class="active-filters">
+                                    <h3>Active Filters:</h3>
+                                    <div class="filter-tags" id="activeFilters"></div>
+                                </div>
+                                <div class="table-container">
+                                    <table id="dataTable">
+                                        <thead>
+                                            <tr>
+                                                <th data-column="location">Location</th>
+                                                <th data-column="min_pae">
+                                                    <span class="header-main-text">min_pae</span> 
+                                                    <span class="filter-icon">
+                                                        <i class="fas fa-filter"></i>
+                                                    </span>
+                                                </th>
+                                                <th data-column="avg_pae">
+                                                    <span class="header-main-text">avg_pae</span> 
+                                                    <span class="filter-icon">
+                                                        <i class="fas fa-filter"></i>
+                                                    </span>
+                                                </th>
+                                                <th data-column="iptm">
+                                                    <span class="header-main-text">ipTM</span> 
+                                                    <span class="filter-icon">
+                                                        <i class="fas fa-filter"></i>
+                                                    </span>
+                                                </th>
+                                                <th data-column="pdockq">
+                                                    <span class="header-main-text">pDockQ</span> 
+                                                    <span class="filter-icon">
+                                                        <i class="fas fa-filter"></i>
+                                                    </span>
+                                                </th>
+                                                <th data-column="max_promiscuity">
+                                                    <span class="header-main-text">Max Promiscuity</span> 
+                                                    <span class="filter-icon">
+                                                        <i class="fas fa-filter"></i>
+                                                    </span>
+                                                </th>
+                                                <th data-column="rop">
+                                                    <span class="header-main-text">ROP</span> 
+                                                    <span class="filter-icon">
+                                                        <i class="fas fa-filter"></i>
+                                                    </span>
+                                                </th>
+                                                <th data-column="size">
+                                                    <span class="header-main-text">Size</span> 
+                                                    <span class="filter-icon">
+                                                        <i class="fas fa-filter"></i>
+                                                    </span>
+                                                </th>
+                                                <th data-column="evenness">
+                                                    <span class="header-main-text">Evenness</span> 
+                                                    <span class="filter-icon">
+                                                        <i class="fas fa-filter"></i>
+                                                    </span>
+                                                </th>
+                                                <th data-column="relative_location">Relative Location</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tableBody">
+                                            <!-- Data will be populated by JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="pagination" id="pagination">
+                                    <!-- Pagination will be generated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                    <main class="content-area">
+                        <div class="content-section" id="chord-plot">
+                            <div class="content-section-title">
+                                <h2>Chord Plot</h2>
+                                <i class="fas fa-chevron-up"></i>
+                            </div>
+                            <div class="content-section-content">
+                                <div class="control-bar" id="chord-plot-controls" style="margin-bottom: 15px;">
+                                    <div class="control-button-group">
+                                        <button type="button" id="chord-domains-btn" class="control-button active" title="Toggle Domains on Arcs">
+                                            <i class="fas fa-layer-group"></i> Domains
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="chord-plot-container" style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+                                    <!-- Chord plot will be rendered here -->
+                            </div>
+                        </div>
+                    </main>
+                    <!-- Structure Section Start -->
+                    <main class="content-area">
+                        <div class="content-section" id="structure-section">
+                            <div class="content-section-title">
+                                <h2>Structure</h2>
+                                <i class="fas fa-chevron-up"></i>
+                            </div>
+                            <div class="content-section-content" style="position: relative;">
+                                <!-- Div for the structure grid -->
+                                <div id="structure-grid-container">
+                                    <!-- Grid will be populated here by JavaScript -->
+                                </div>
+                                <!-- Structure viewer controls -->
+                                <div id="structure-controls-pair-page" class="structure-controls">
+                                    <div class="control-bar">
+                                        <div class="control-button-group">
+                                            <button type="button" class="resetViewBtn control-button" title="Reset View">
+                                                <i class="fas fa-undo"></i> Reset
+                                            </button>
+                                            <button type="button" class="atomsBtn control-button" title="Atoms">
+                                                <i class="fas fa-grip-lines"></i> Atoms
+                                            </button>
+                                            <button type="button" class="surfaceBtn control-button" title="Surface">
+                                                <i class="fas fa-layer-group"></i> Surface
+                                            </button>
+                                            <button type="button" class="colorModeBtn control-button" title="Toggle Color Mode">
+                                                <i class="fas fa-stream"></i> By Chain
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="structure-viewer-pair-page" class="structure-viewer"
+                                     data-pdb=""> <!-- PDB path will be set dynamically -->
+                                    <p id="structure-viewer-fallback" style="text-align:center; padding-top:50px; color:grey;">Select fragments from the grid to view structure.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                    <!-- Structure Section End -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="footer-placeholder"></div>
+
+    <script src="js/interaction-structure-viewer.js"></script>
+    <script type="module">
+        import * as table from './js/table.js';
+        import { drawChordByPosition } from './js/chord-plot.js';
+
+        // --- GLOBAL ACTIVE FILTERS OBJECT ---
+        // This object holds all active filters for the page and can be passed to modules/plots.
+        window.activeFilters = {};
+
+        let chordPlotShowDomains = true; // Default to true
+
+        // Function to load HTML includes
+        async function loadHTMLIncludes() {
+            const headerPlaceholder = document.getElementById('header-placeholder');
+            const footerPlaceholder = document.getElementById('footer-placeholder');
+
+            if (headerPlaceholder) {
+                try {
+                    const response = await fetch('_header.html');
+                    if (response.ok) {
+                        headerPlaceholder.innerHTML = await response.text();
+                        // Set active nav link for protein_pair.html
+                        document.querySelectorAll('nav a').forEach(link => link.classList.remove('active'));
+                        const navProteinPairs = document.getElementById('navProteinPairs');
+                        if (navProteinPairs) {
+                            navProteinPairs.classList.add('active');
+                        }
+                    } else {
+                        console.error('Failed to load header:', response.statusText);
+                        headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
+                    }
+                } catch (error) {
+                    console.error('Error fetching header:', error);
+                    headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
+                }
+            }
+
+            if (footerPlaceholder) {
+                try {
+                    const response = await fetch('_footer.html');
+                    if (response.ok) {
+                        footerPlaceholder.innerHTML = await response.text();
+                    } else {
+                        console.error('Failed to load footer:', response.statusText);
+                        footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
+                    }
+                } catch (error) {
+                    console.error('Error fetching footer:', error);
+                    footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
+                }
+            }
+        }
+
+        // Function to update page title and H1 based on URL parameters
+        function updatePageTitleWithProteinPair() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const p1 = decodeURIComponent(urlParams.get('p1') || ''); 
+            const p2 = decodeURIComponent(urlParams.get('p2') || '');
+            const f1_id = decodeURIComponent(urlParams.get('f1_id') || '');
+            const f2_id = decodeURIComponent(urlParams.get('f2_id') || '');
+            // const f1_loc = decodeURIComponent(urlParams.get('f1_loc') || ''); // Not used for title yet
+            // const f2_loc = decodeURIComponent(urlParams.get('f2_loc') || ''); // Not used for title yet
+
+            const pageTitleElement = document.querySelector('.page-main-heading');
+            const protein1DFSubheading = document.getElementById('protein1-name-subheading-df');
+            const protein2DFSubheading = document.getElementById('protein2-name-subheading-df');
+
+            if (p1 && p2) {
+                const p1Display = f1_id ? `${p1} (Fragments: ${f1_id.replace(/,/g, ', ')})` : p1;
+                const p2Display = f2_id ? `${p2} (Fragments: ${f2_id.replace(/,/g, ', ')})` : p2;
+                const title = `${p1Display} + ${p2Display}`;
+                
+                document.title = title;
+                if (pageTitleElement) {
+                    pageTitleElement.textContent = title;
+                }
+                if (protein1DFSubheading) protein1DFSubheading.textContent = `Protein 1: ${p1}`;
+                if (protein2DFSubheading) protein2DFSubheading.textContent = `Protein 2: ${p2}`;
+
+                // Domain/fragment plot initialization is now handled by domain-fragment-plot.js
+                // It will also manage showing/hiding the P2 plot section.
+
+                // Remove old fragment image display logic as it's replaced by plots
+                const oldFragmentImagesContainer = document.getElementById('fragment-images-container');
+                if (oldFragmentImagesContainer) oldFragmentImagesContainer.style.display = 'none';
+                const oldFallbackMessage = document.getElementById('fragments-fallback-message'); // Old ID
+                if (oldFallbackMessage) oldFallbackMessage.style.display = 'none';
+
+
+            } else {
+                console.warn("Proteins parameter format is incorrect or p1/p2 not provided.");
+                document.title = "Centrosome Predicted Interaction Data Explorer";
+                if (pageTitleElement) {
+                    pageTitleElement.textContent = "Centrosome Predicted Interaction Data Explorer";
+                }
+                if (protein1DFSubheading) protein1DFSubheading.textContent = 'Protein 1 not specified';
+                if (protein2DFSubheading) protein2DFSubheading.style.display = 'none';
+                
+                const fallbackMessageDF = document.getElementById('fragments-fallback-message-df');
+                if(fallbackMessageDF) {
+                    fallbackMessageDF.textContent = 'Protein parameters not provided to display domain/fragment plots.';
+                    fallbackMessageDF.style.display = 'block';
+                }
+            }
+        }
+        
+        // Helper function to format numbers
+        function formatNumber(value, isInt = false) {
+            const num = parseFloat(value);
+            if (isNaN(num)) return 'N/A';
+            if (isInt) return Math.round(num);
+            return num.toFixed(2);
+        }
+
+        // Helper function to parse location string for display
+        function parseLocationDisplay(locationString, p1FragName, p2FragName) {
+            if (!locationString || typeof locationString !== 'string') {
+                return `${p1FragName}: N/A<br>${p2FragName}: N/A`;
+            }
+            try {
+                const parsableLocationString = locationString.replace(/'/g, '"');
+                const locationData = JSON.parse(parsableLocationString);
+                const keys = Object.keys(locationData).reduce((acc, k) => {
+                    acc[k.toLowerCase()] = locationData[k];
+                    return acc;
+                }, {});
+
+                const loc1 = keys['protein1'] || keys['chaina'] || keys['chain a'] || 'N/A';
+                const loc2 = keys['protein2'] || keys['chainb'] || keys['chain b'] || 'N/A';
+                
+                // In protein_pair.html, p1FragName and p2FragName are from the CSV row (row.Protein1_Domain, row.Protein2_Domain)
+                return `${p1FragName}: ${loc1}<br>${p2FragName}: ${loc2}`;
+            } catch (e) {
+                console.warn('Failed to parse location string:', locationString, e);
+                return `${p1FragName}: Error<br>${p2FragName}: Error`;
+            }
+        }
+
+        // --- Chord Plot ---
+        async function initializeChordPlot(data, protein1Name, protein2Name) {
+            const containerSelector = '#chord-plot-container';
+            const containerEl = document.querySelector(containerSelector);
+            if (!containerEl) return;
+
+            const proteins = [protein1Name, protein2Name].filter(Boolean);
+            if (proteins.length === 0) {
+                containerEl.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">No proteins specified for chord plot.</p>`;
+                return;
+            }
+
+            // --- Ensure correct fields for chord plot ---
+            const mappedData = data.map(row => {
+                // Try to map location/absolute_location fields
+                let absolute_location = row.absolute_location;
+                if (!absolute_location && row.location) {
+                    absolute_location = row.location;
+                }
+                return {
+                    ...row,
+                    Protein1: row.Protein1 || row.protein1,
+                    Protein2: row.Protein2 || row.protein2,
+                    absolute_location
+                };
+            });
+
+            // --- DOMAIN COLOR MAP & RANGES (from domain/fragment plot) ---
+            let showDomainsOnArcs = chordPlotShowDomains;
+            let domainColorMap = null;
+            let domainRanges = null;
+
+            // Wait for domain plot globals to be available before drawing chord plot
+            async function tryDrawChordPlotWithDomains(attempt = 0) {
+                // These are set by domain-fragment-plot.js
+                if (
+                    window.domainPlot_domainBaseIdToColor &&
+                    window.domainPlotInstancesData &&
+                    Object.keys(window.domainPlot_domainBaseIdToColor).length > 0 &&
+                    Object.keys(window.domainPlotInstancesData).length > 0
+                ) {
+                    // Build color map (baseId -> color)
+                    domainColorMap = { ...window.domainPlot_domainBaseIdToColor };
+                    // Build domainRanges: { proteinName: [ {id, start, end, baseId} ] }
+                    domainRanges = {};
+                    proteins.forEach(pname => {
+                        // Find instance for this protein (main, p1, p2)
+                        let instance = null;
+                        for (const k of Object.keys(window.domainPlotInstancesData)) {
+                            const inst = window.domainPlotInstancesData[k];
+                            if (inst && inst.proteinName === pname) {
+                                instance = inst;
+                                break;
+                            }
+                        }
+                        if (instance) {
+                            const otherD = (instance.otherDomains || []).map(d => ({...d, type: 'other'}));
+                            const afD = (instance.alphafoldDomains || []).map(d => ({...d, type: 'alphafold'}));
+                            const allD = [...otherD, ...afD];
+
+                            if (allD.length > 0) {
+                                domainRanges[pname] = allD.map(domain => {
+                                    let baseId = domain.id;
+                                    if (domain.type === 'other') {
+                                        const underscoreIndex = baseId.lastIndexOf('_');
+                                        if (underscoreIndex > -1 && /^\d+$/.test(baseId.substring(underscoreIndex + 1))) {
+                                            baseId = baseId.substring(0, underscoreIndex);
+                                        }
+                                        baseId = baseId.replace(/_/g, ' ');
+                                    }
+                                    return {
+                                        ...domain,
+                                        baseId
+                                    };
+                                });
+                            }
+                        }
+                    });
+                    try {
+                        await drawChordByPosition(mappedData, containerSelector, {
+                            size: 500,
+                            proteinNamesForEmptyMessage: proteins.join(' & '),
+                            coloringMode: 'varied',
+                            showDomainsOnArcs,
+                            domainColorMap,
+                            domainRanges,
+                            arcColoringMode: 'distinct'
+                        });
+                    } catch (error) {
+                        console.error('Error initializing chord plot:', error);
+                        containerEl.innerHTML = `<p style="text-align:center; color:red; padding-top: 20px;">Could not load chord plot: ${error.message}</p>`;
+                    }
+                } else if (attempt < 10) {
+                    // Try again after a short delay (wait for domain plot globals to be set)
+                    setTimeout(() => tryDrawChordPlotWithDomains(attempt + 1), 100);
+                } else {
+                    // Fallback: draw without domains
+                    showDomainsOnArcs = false;
+                    domainColorMap = null;
+                    domainRanges = null;
+                    await drawChordByPosition(mappedData, containerSelector, {
+                        size: 500,
+                        proteinNamesForEmptyMessage: proteins.join(' & '),
+                        coloringMode: 'varied',
+                        showDomainsOnArcs,
+                        domainColorMap,
+                        domainRanges,
+                        arcColoringMode: 'distinct'
+                    });
+                }
+            }
+
+            await tryDrawChordPlotWithDomains();
+        }
+
+        // --- Table column descriptions for info tooltips ---
+        table.setColumnDescriptions({
+            "location": "Location of the regions involved in this predicted interaction in each full length protein. This is not necessarily every interacting region between these proteins or these fragments.",
+            "min_pae": "Minimum PAE value for the interface. PAE gives the predicted error in the relative positioning of 2 residues, with lower values indicating more confident relative positioning. This is the best (lowest) PAE for any pair of residues from different proteins in this interface.",
+            "avg_pae": "Average PAE across the interface. PAE gives the predicted error in the relative positioning of 2 residues, with lower values indicating more confident relative positioning. This is the average PAE for all pairs of residues from different proteins in this interface.",
+            "iptm": "Interface predicted TM-score (ipTM). Higher values indicate higher model quality (0-1). Values above 0.55 indicate an interaction. Scores are typically lower on coiled coil predictions and predictions with larger input, especially when multiple regions of the predicted structure are within interaction distance with varying confidences. ",
+            "pdockq": "pDockQ score estimates the goodness of fit of the modeled interaction interface (0-1). It is based on the actual structure rather than prediction confidence. Scores above 0.23 indicate a plausible interaction. Can be biased towards coiled-coil structures.",
+            "max_promiscuity": "The higher of the two partners' promiscuity scores. Represents the number of other interactions predicted for the same interface region. A high score may indicate a non-specific binding site, or completion bias.",
+            "rop": "Repeatability of Prediction. How many times (out of 4) the same interface was predicted in repeat runs. A score of 4 indicates high consistency.",
+            "size": "The number of residue pairs within interaction distance at the interface.",
+            "evenness": "How evenly balanced the interaction confidence is in each direction (Protein 1 -> Protein 2 vs. Protein 2 -> Protein 1).",
+            "relative_location": "The interacting residue ranges within the protein fragments used for prediction. Useful for mapping to the predicted structure."
+        });
+
+        // --- Table initialization and filtering ---
+        async function initializePPITableForProtein(p1, p2) {
+            await table.loadData();
+            table.setSelectedProteins([p1, p2]);
+            table.setSearchMode("pair-exact"); // Use the new mode for exact protein pairs
+            table.setCurrentPage(1);
+            table.setUpdatePaginationUI(table.updatePaginationControls);
+            table.setUpdateStatsUI(null); // No stats summary for this view
+            table.initTable();
+            table.updateActiveFilterDisplay(); // Ensure active filters (including initial ones) are displayed
+            table.renderTable();
+            // After rendering, update chord plot with filtered data
+            const filteredData = table.getFilteredData();
+            await initializeChordPlot(filteredData, p1, p2);
+        }
+
+        /* async function populateProteinPairInteractionsTable(protein1Name, protein2Name) {
+            const tableBody = document.getElementById('dataBody');
+            if (!tableBody) {
+                console.error("PPI table body not found.");
+                return;
+            }
+            tableBody.innerHTML = `<tr><td colspan="10" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading interaction data...</td></tr>`;
+
+            // --- Get fragment lists from URL ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const f1_id_param = decodeURIComponent(urlParams.get('f1_id') || '');
+            const f2_id_param = decodeURIComponent(urlParams.get('f2_id') || '');
+            // Parse as arrays of numbers (as strings for comparison)
+            const f1Fragments = f1_id_param ? f1_id_param.split(',').map(f => f.trim()).filter(f => f) : [];
+            const f2Fragments = f2_id_param ? f2_id_param.split(',').map(f => f.trim()).filter(f => f) : [];
+
+            if (!protein1Name || !protein2Name) {
+                tableBody.innerHTML = `<tr><td colspan="10" style="text-align:center;">Protein names not specified.</td></tr>`;
+                return;
+            }
+
+            try {
+                const response = await fetch('all_interface_analysis_2025.06.05.csv');
+                if (!response.ok) {
+                    throw new Error(`Failed to load interaction CSV: ${response.statusText}`);
+                }
+                const csvText = await response.text();
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    dynamicTyping: true,
+                    complete: function(results) {
+                        const interactionData = results.data;
+                        let foundInteractions = false;
+                        tableBody.innerHTML = ''; // Clear loading message
+
+                        interactionData.forEach(row => {
+                            // --- Filtering logic ---
+                            // Accept if (Protein1, Protein2) match (p1, p2) or (p2, p1)
+                            // AND fragment part matches one of the included fragments for each protein
+                            // Protein1_Domain is like "GCP5_F1", so split on "_F" to get base and fragment number
+                            let match = false;
+                            let p1Dom = row.Protein1_Domain || '';
+                            let p2Dom = row.Protein2_Domain || '';
+                            let [p1Base, f1] = p1Dom.split('_F');
+                            let [p2Base, f2] = p2Dom.split('_F');
+                            // f1 and f2 are now just the number as string (e.g. "1")
+                            // Compare to f1Fragments and f2Fragments which are also strings
+
+                            // Check both directions
+                            if (
+                                row.Protein1 === protein1Name && row.Protein2 === protein2Name &&
+                                f1Fragments.includes(f1) && f2Fragments.includes(f2)
+                            ) {
+                                match = true;
+                            } else if (
+                                row.Protein1 === protein2Name && row.Protein2 === protein1Name &&
+                                f2Fragments.includes(f1) && f1Fragments.includes(f2)
+                            ) {
+                                match = true;
+                            }
+
+                            if (match) {
+                                foundInteractions = true;
+                                const tr = document.createElement('tr');
+                                const fragmentsDisplay = `${row.Protein1_Domain || 'N/A'} + ${row.Protein2_Domain || 'N/A'}`;
+
+                                // --- Location cell formatting as in index.html ---
+                                let p1Frag = row.Protein1_Domain || 'Protein 1';
+                                let p2Frag = row.Protein2_Domain || 'Protein 2';
+                                let p1Loc = 'N/A';
+                                let p2Loc = 'N/A';
+                                if (row.location && typeof row.location === 'string') {
+                                    try {
+                                        const parsableLocationString = row.location.replace(/'/g, '"');
+                                        const locationData = JSON.parse(parsableLocationString);
+                                        const keys = Object.keys(locationData).reduce((acc, k) => {
+                                            acc[k.toLowerCase()] = locationData[k];
+                                            return acc;
+                                        }, {});
+                                        p1Loc = keys['protein1'] || keys['chaina'] || keys['chain a'] || 'N/A';
+                                        p2Loc = keys['protein2'] || keys['chainb'] || keys['chain b'] || 'N/A';
+                                    } catch (e) {
+                                        // fallback: leave as N/A
+                                    }
+                                }
+                                const locationCellHTML = `
+                                    <div class="location-cell-content">
+                                        <div><strong>${p1Frag}</strong>: ${p1Loc}</div>
+                                        <div><strong>${p2Frag}</strong>: ${p2Loc}</div>
+                                    </div>
+                                `;
+
+                                tr.innerHTML = `
+                                    <td>${fragmentsDisplay}</td>
+                                    <td>${locationCellHTML}</td>
+                                    <td>${formatNumber(row.min_pae)}</td>
+                                    <td>${formatNumber(row.avg_pae)}</td>
+                                    <td>${formatNumber(row.ipTM)}</td>
+                                    <td>${formatNumber(row.pdockq)}</td>
+                                    <td>${formatNumber(row.max_promiscuity, true)}</td>
+                                    <td>${formatNumber(row.rop, true)}</td>
+                                    <td>${formatNumber(row.size, true)}</td>
+                                    <td>${formatNumber(row.evenness)}</td>
+                                `;
+                                tableBody.appendChild(tr);
+                            }
+                        });
+
+                        if (!foundInteractions) {
+                            tableBody.innerHTML = `<tr><td colspan="10" style="text-align:center;">No interactions found between ${protein1Name} and ${protein2Name} for selected fragments.</td></tr>`;
+                        }
+                    },
+                    error: function(error) {
+                        console.error('Error parsing interaction CSV:', error);
+                        tableBody.innerHTML = `<tr><td colspan="10" class="loading" style="color:red;"><i class="fas fa-exclamation-triangle"></i> Error parsing interaction data.</td></tr>`;
+                    }
+                });
+            } catch (error) {
+                console.error('Error fetching or parsing interaction CSV:', error);
+                tableBody.innerHTML = `<tr><td colspan="10" class="loading" style="color:red;"><i class="fas fa-exclamation-triangle"></i> Error fetching interaction data.</td></tr>`;
+            }
+        } */
+
+        function initCollapsibleSections() {
+            document.querySelectorAll('.sidebar-title, .content-section-title').forEach(title => {
+                title.addEventListener('click', function () {
+                    const isContentTitle = this.classList.contains('content-section-title');
+                    const isSidebarTitle = this.classList.contains('sidebar-title');
+
+                    if (isContentTitle) {
+                        const contentArea = this.closest('main.content-area');
+                        if (contentArea) {
+                            contentArea.classList.toggle('collapsed');
+                        }
+                    } else if (isSidebarTitle) {
+                        const sidebarTitleH2 = this.querySelector('h2');
+                        const isMainPageSectionsSidebarTitle = sidebarTitleH2 && sidebarTitleH2.querySelector('i.fa-list-ul');
+                        
+                        const sidebarElement = this.closest('aside.sidebar');
+                        const parentGrid = this.closest('.main-content .grid');
+
+                        if (isMainPageSectionsSidebarTitle && sidebarElement && parentGrid) {
+                            sidebarElement.classList.toggle('collapsed');
+                            parentGrid.classList.toggle('sidebar-collapsed');
+                        } else {
+                            const sectionToCollapse = this.closest('.sidebar-section');
+                            if (sectionToCollapse) {
+                                sectionToCollapse.classList.toggle('collapsed');
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        // Helper: Get structure file name for a fragment pair is now handled inside setupStructureSection
+        async function setupStructureSection() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const p1 = decodeURIComponent(urlParams.get('p1') || '');
+            const p2 = decodeURIComponent(urlParams.get('p2') || '');
+            const f1_id_param = decodeURIComponent(urlParams.get('f1_id') || '');
+            const f2_id_param = decodeURIComponent(urlParams.get('f2_id') || '');
+
+            let f1Fragments, f2Fragments;
+
+            if (f1_id_param) {
+                f1Fragments = f1_id_param.split(',').map(f => f.trim()).filter(f => f);
+            } else {
+                f1Fragments = []; // Ensure it's an array
+            }
+
+            if (f2_id_param) {
+                f2Fragments = f2_id_param.split(',').map(f => f.trim()).filter(f => f);
+            } else {
+                f2Fragments = []; // Ensure it's an array
+            }
+
+            const gridContainer = document.getElementById('structure-grid-container');
+            const viewerDiv = document.getElementById('structure-viewer-pair-page'); // Corrected ID
+            const fallback = document.getElementById('structure-viewer-fallback');
+            const controlsContainer = document.getElementById('structure-controls-pair-page'); // Corrected selector
+
+            if (!gridContainer || !viewerDiv || !fallback || !controlsContainer) {
+                console.error("Structure section elements not found. Needed: gridContainer, viewerDiv, fallback, controlsContainer.", {gridContainer, viewerDiv, fallback, controlsContainer});
+                if (fallback) fallback.textContent = "Structure viewer components missing from page. Please check console.";
+                // Attempt to hide controls if they exist but other parts are missing
+                if(controlsContainer) controlsContainer.style.display = 'none';
+                // If grid container is missing, can't proceed with grid.
+                if(!gridContainer && fallback) fallback.textContent += " Grid container missing.";
+                return;
+            }
+            
+            if (typeof $3Dmol === 'undefined') {
+                console.error("setupStructureSection: 3Dmol.js library not loaded or $3Dmol is not defined.");
+                viewerDiv.innerHTML = "<p style='color:red; text-align:center;'>Error: 3Dmol.js library failed to load. Structure viewer cannot be initialized.</p>";
+                controlsContainer.style.display = 'none';
+                return;
+            }
+
+            // Viewer instance will be created by displayStructureInViewer when a PDB is loaded.
+            // Controls are also handled by displayStructureInViewer.
+            // The initial $3Dmol.createViewer call and attachStructureControls have been removed.
+            controlsContainer.style.display = 'none'; // Hide controls initially
+
+            // Attempt to load default PDB on page load
+            const initialPdbPath = viewerDiv.getAttribute('data-pdb');
+            if (initialPdbPath && f1Fragments.length > 0 && f2Fragments.length > 0) { // Only load if fragments exist for a grid
+                window.displayStructureInViewer(viewerDiv, initialPdbPath);
+            } else if (f1Fragments.length === 0 || f2Fragments.length === 0) {
+                if (fallback) fallback.textContent = "Fragment information missing, cannot display structure grid or viewer.";
+                gridContainer.innerHTML = "<p style='text-align:center;'>Fragment information not available to build the grid.</p>";
+                controlsContainer.style.display = 'none';
+                return; // Exit if no fragments to build grid
+            } else {
+                 if (fallback) fallback.textContent = "No default structure specified or fragments missing.";
+            }
+
+            let pdbFiles = [];
+            try {
+                const response = await fetch('structures/pdb_files.txt');
+                if (response.ok) {
+                    const fileListText = await response.text();
+                    pdbFiles = fileListText.split('\n').filter(f => f.endsWith('.pdb'));
+                } else {
+                    console.error('Could not fetch structures/pdb_files.txt. Structure links may be broken.');
+                    gridContainer.innerHTML = `<p style="color:red; text-align:center;">Could not load PDB file list. Cannot build structure grid.</p>`;
+                    return;
+                }
+            } catch (error) {
+                console.error('Error fetching PDB file list:', error);
+                gridContainer.innerHTML = `<p style="color:red; text-align:center;">Error loading PDB file list. Cannot build structure grid.</p>`;
+                return;
+            }
+
+            let proteinForX, fragmentsForX, proteinForY, fragmentsForY;
+
+            if (f1Fragments.length < f2Fragments.length) {
+                // p1 has fewer fragments, so p1 goes on Y-axis, p2 on X-axis
+                proteinForY = p1;
+                fragmentsForY = f1Fragments;
+                proteinForX = p2;
+                fragmentsForX = f2Fragments;
+            } else {
+                // p1 has more or equal fragments than p2 (or p2 has fewer).
+                // So, p2 goes on Y-axis (if lengths differ, p2 is shorter; if equal, p2 on Y by convention).
+                // p1 goes on X-axis.
+                proteinForY = p2;
+                fragmentsForY = f2Fragments;
+                proteinForX = p1;
+                fragmentsForX = f1Fragments;
+            }
+
+
+            // Build grid layout with labels
+            let gridLayoutHtml = `<div class="structure-grid-layout">`; 
+            
+            // Protein X Label (Horizontal, above table)
+            gridLayoutHtml += `<div class="structure-grid-protein-x-label">${proteinForX}</div>`;
+
+            gridLayoutHtml += `<div class="structure-grid-y-label-table-container">`; 
+
+            // Protein Y Label (Vertical, left of table)
+            gridLayoutHtml += `<div class="structure-grid-protein-y-label">${proteinForY}</div>`;
+            
+            // Table container
+            gridLayoutHtml += `<div>`;
+            let tableHtml = '<table class="structure-grid">'; 
+            tableHtml += '<tr><th></th>'; // Empty top-left cell
+            fragmentsForX.forEach(fX => {
+                tableHtml += `<th class="structure-grid-col-header">${fX}</th>`;
+            });
+            tableHtml += '</tr>';
+            fragmentsForY.forEach(fY => {
+                tableHtml += `<tr><th class="structure-grid-row-header">${fY}</th>`;
+                fragmentsForX.forEach(fX => {
+                    const p1_frag = `${proteinForX}_F${fX}`;
+                    const p2_frag = `${proteinForY}_F${fY}`;
+                    const prefix1 = `${p1_frag}_${p2_frag}`;
+                    const prefix2 = `${p2_frag}_${p1_frag}`;
+                    
+                    const pdbFile = pdbFiles.find(f => f.startsWith(prefix1) || f.startsWith(prefix2));
+                    const filePath = pdbFile ? `structures/${pdbFile}` : "";
+                    const buttonDisabled = !filePath ? 'disabled' : '';
+                    const buttonTitle = filePath 
+                        ? `View structure for ${proteinForX} F${fX} + ${proteinForY} F${fY}`
+                        : `Structure not available for ${proteinForX} F${fX} + ${proteinForY} F${fY}`;
+                    const buttonIcon = filePath ? '&#128269;' : '&#10060;'; // Magnifying glass or cross mark
+
+                    tableHtml += `<td class="structure-grid-cell">
+                        <button class="structure-cell-btn" 
+                            data-p1="${proteinForX}" data-f1="${fX}" 
+                            data-p2="${proteinForY}" data-f2="${fY}" 
+                            data-file="${filePath}" 
+                            title="${buttonTitle}" ${buttonDisabled}>${buttonIcon}</button>
+                    </td>`;
+                });
+                tableHtml += '</tr>';
+            });
+            tableHtml += '</table>';
+            gridLayoutHtml += tableHtml;
+            gridLayoutHtml += `</div>`; // End table container
+            gridLayoutHtml += `</div>`; // End Protein Y Label + Table container
+            gridLayoutHtml += `</div>`; // End Main container
+
+            gridContainer.innerHTML = gridLayoutHtml;
+
+
+            // Add click handlers for grid cells
+            gridContainer.querySelectorAll('.structure-cell-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // --- Highlighting logic ---
+                    // 1. Remove 'selected' class from any currently selected cell
+                    const currentlySelected = gridContainer.querySelector('.structure-grid-cell.selected');
+                    if (currentlySelected) {
+                        currentlySelected.classList.remove('selected');
+                    }
+                    // 2. Add 'selected' class to the parent cell of the clicked button
+                    this.closest('.structure-grid-cell').classList.add('selected');
+
+                    const file = this.getAttribute('data-file');
+                    const viewerDiv = document.getElementById('structure-viewer-pair-page');
+                    const controlsContainer = document.getElementById('structure-controls-pair-page');
+
+                    if (file) {
+                        // By clearing the viewer div, we force 3Dmol to create a new canvas.
+                        // This should resolve issues where the viewer instance is not correctly updated on subsequent calls.
+                        viewerDiv.innerHTML = '';
+
+                        // Ensure controls are visible when a structure is about to be loaded.
+                        if (controlsContainer) {
+                            controlsContainer.style.display = ''; 
+                        }
+                        
+                        window.displayStructureInViewer(viewerDiv, file);
+                    }
+                });
+            });
+        }
+
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadHTMLIncludes(); // Load header and footer first
+            updatePageTitleWithProteinPair(); // Update title with protein pair names
+            initCollapsibleSections();
+
+            // Chord plot controls
+            const chordDomainsBtn = document.getElementById('chord-domains-btn');
+            if (chordDomainsBtn) {
+                chordDomainsBtn.classList.toggle('active', chordPlotShowDomains);
+                chordDomainsBtn.addEventListener('click', async () => {
+                    chordPlotShowDomains = !chordPlotShowDomains;
+                    chordDomainsBtn.classList.toggle('active', chordPlotShowDomains);
+                    // Re-render chord plot
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const p1 = decodeURIComponent(urlParams.get('p1') || '');
+                    const p2 = decodeURIComponent(urlParams.get('p2') || '');
+                    if (p1 && p2) {
+                        const filteredData = table.getFilteredData();
+                        await initializeChordPlot(filteredData, p1, p2);
+                    }
+                });
+            }
+
+            // Define initial filters for this page (directly for columnFilters)
+            const initialNumericFiltersForProteinPage = {
+                min_pae: { max: 5 }, // min_pae <= 5
+                avg_pae: { max: 15 }, // avg_pae <= 15
+                rop: { min: 2 }      // rop >= 2 (as per original user request for protein page)
+            };
+
+            table.setOnFiltersChanged(async () => {
+                table.updateActiveFilterDisplay(); // Update active filter tags in UI
+                // The chord plot will be updated here
+                const urlParams = new URLSearchParams(window.location.search);
+                const p1 = decodeURIComponent(urlParams.get('p1') || '');
+                const p2 = decodeURIComponent(urlParams.get('p2') || '');
+                if (p1 && p2) {
+                    const filteredData = table.getFilteredData();
+                    await initializeChordPlot(filteredData, p1, p2);
+                }
+            });
+
+            // Get protein name from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const p1 = decodeURIComponent(urlParams.get('p1') || '');
+            const p2 = decodeURIComponent(urlParams.get('p2') || '');
+
+            if (p1 && p2) {
+                // Apply initial filters to the table state without rendering
+                table.setColumnFilters(initialNumericFiltersForProteinPage, false); 
+                // Initialize table (this will load data and then render with initial filters)
+                await initializePPITableForProtein(p1, p2);
+                // The initial call to initializeChordPlot is now handled inside initializePPITableForProtein.
+            } else {
+                console.warn("Protein names not provided in URL parameters. Cannot initialize table.");
+                const tableBody = document.getElementById('dataBody');
+                if (tableBody) {
+                    tableBody.innerHTML = `<tr><td colspan="10" style="text-align:center;">Protein names not specified in URL parameters.</td></tr>`;
+                }
+            }
+
+            //  Ensure linked section is uncollapsed when navigating via sidebar links
+            document.querySelectorAll('.sidebar .sidebar-section ul li a').forEach(link => {
+                link.addEventListener('click', function(event) {
+                    const targetId = this.getAttribute('href').substring(1);
+                    const targetSectionElement = document.getElementById(targetId);
+
+                    if (targetSectionElement) {
+                        const contentArea = targetSectionElement.closest('main.content-area');
+                        if (contentArea && contentArea.classList.contains('collapsed')) {
+                            contentArea.classList.remove('collapsed');
+                        }
+                    }
+                });
+            });
+
+            // Any other initializations for protein_pair.html can go here
+            await setupStructureSection(); // Initialize the structure grid and viewer logic
+        });
+    </script>
+    <!-- The duplicated script block that was here has been removed. -->
+</body>
+</html>

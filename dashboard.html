@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="logo.png" type="image/png">
+    <title>Centrosome Explorer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="header-placeholder"></div>
+    <!-- Add 3 side by side boxes -->
+    <div class="dashboard-container">
+        <a href="all_predictions.html" class="dashboard-box dashboard-box-1">
+            Browse predictions
+        </a>
+        <a href="protein_search.html" class="dashboard-box dashboard-box-2">
+            Search for a protein
+        </a>
+        <a href="protein_pair_search.html"  class="dashboard-box dashboard-box-3">
+            Search for a protein pair
+        </a>
+    </div>
+
+    <div id="footer-placeholder"></div>
+    <script>
+        // Function to load HTML includes
+        async function loadHTMLIncludes() {
+            const headerPlaceholder = document.getElementById('header-placeholder');
+            const footerPlaceholder = document.getElementById('footer-placeholder');
+
+            if (headerPlaceholder) {
+                try {
+                    const response = await fetch('_header.html');
+                    if (response.ok) {
+                        headerPlaceholder.innerHTML = await response.text();
+                        // Set active nav link for dashboard.html
+                        document.querySelectorAll('nav a').forEach(link => link.classList.remove('active'));
+                        const navDashboard = document.getElementById('navDashboard');
+                        if (navDashboard) {
+                            navDashboard.classList.add('active');
+                        }
+                    } else {
+                        console.error('Failed to load header:', response.statusText);
+                        headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
+                    }
+                } catch (error) {
+                    console.error('Error fetching header:', error);
+                    headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
+                }
+            }
+
+            if (footerPlaceholder) {
+                try {
+                    const response = await fetch('_footer.html');
+                    if (response.ok) {
+                        footerPlaceholder.innerHTML = await response.text();
+                    } else {
+                        console.error('Failed to load footer:', response.statusText);
+                        footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
+                    }
+                } catch (error) {
+                    console.error('Error fetching footer:', error);
+                    footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
+                }
+            }
+        }
+
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadHTMLIncludes(); // Load header and footer first
+        });
+    </script>
+</body>
+</html>

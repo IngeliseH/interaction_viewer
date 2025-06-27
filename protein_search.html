@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="logo.png" type="image/png">
+    <title>Centrosome Explorer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="header-placeholder"></div>
+    <div class="container">
+        <div class="main-content">
+            <h1 class="page-main-heading">Protein search</h1>
+            <div class="protein-search-box" style="margin-top: 20px; text-align: center;">
+                <label for="proteinSearchInput" style="display: block; margin-bottom: 10px; font-size: 1.1rem;">Protein name or id:</label>
+                <input type="text" id="proteinSearchInput" placeholder="e.g. Ana2" style="width: 300px; padding: 10px; font-size: 1rem; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px;">
+                <datalist id="proteinList"></datalist>
+                <button id="proteinSearchButton" class="big-button">Search</button>
+                <div id="searchErrorMessage" style="color: var(--text-light); margin-top: 10px; font-size: 0.9rem; min-height: 1.2em;"></div>
+            </div>
+        </div>
+    </div>
+    <div id="footer-placeholder"></div>
+    <script>
+        let fragmentData = []; // To store data from all_fragments_2025.06.04.csv
+        let uniqueProteins = []; // To store unique protein names
+
+        // Function to load HTML includes
+        async function loadHTMLIncludes() {
+            const headerPlaceholder = document.getElementById('header-placeholder');
+            const footerPlaceholder = document.getElementById('footer-placeholder');
+
+            if (headerPlaceholder) {
+                try {
+                    const response = await fetch('_header.html');
+                    if (response.ok) {
+                        headerPlaceholder.innerHTML = await response.text();
+                        // Set active nav link for this page (protein_search.html)
+                        document.querySelectorAll('nav a').forEach(link => link.classList.remove('active'));
+                        const navProteinSearchLink = document.getElementById('navProteins'); // Assuming 'navProteins' is the ID for the "Protein Search" link
+                        if (navProteinSearchLink) {
+                            navProteinSearchLink.classList.add('active');
+                        }
+                    } else {
+                        console.error('Failed to load header:', response.statusText);
+                        headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
+                    }
+                } catch (error) {
+                    console.error('Error fetching header:', error);
+                    headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
+                }
+            }
+
+            if (footerPlaceholder) {
+                try {
+                    const response = await fetch('_footer.html');
+                    if (response.ok) {
+                        footerPlaceholder.innerHTML = await response.text();
+                    } else {
+                        console.error('Failed to load footer:', response.statusText);
+                        footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
+                    }
+                } catch (error) {
+                    console.error('Error fetching footer:', error);
+                    footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
+                }
+            }
+        }
+
+        async function init() {
+            return new Promise((resolve, reject) => {
+                const searchErrorMessageElement = document.getElementById('searchErrorMessage');
+                Papa.parse('all_fragments_2025.06.04.csv', {
+                    download: true,
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        if (results.errors && results.errors.length > 0) {
+                            console.error("Parsing errors for fragmentData:", results.errors);
+                            if (searchErrorMessageElement) searchErrorMessageElement.textContent = 'Error: Could not parse protein data.';
+                            reject(new Error("Error parsing fragmentData CSV"));
+                        } else {
+                            fragmentData = results.data;
+                            populateProteinSuggestionList();
+                            resolve();
+                        }
+                    },
+                    error: function(error) {
+                        console.error("Error loading fragmentData CSV:", error);
+                        if (searchErrorMessageElement) searchErrorMessageElement.textContent = 'Error: Could not load protein data.';
+                        reject(new Error("Error loading fragmentData CSV"));
+                    }
+                });
+            });
+        }
+
+        function populateProteinSuggestionList() {
+            if (!fragmentData.length) {
+                console.warn("fragmentData is empty. Cannot populate protein suggestions.");
+                return;
+            }
+
+            const proteinNameSet = new Set();
+            fragmentData.forEach(row => {
+                if (row.name) proteinNameSet.add(row.name);
+            });
+            uniqueProteins = Array.from(proteinNameSet).sort();
+
+            const proteinDatalist = document.getElementById('proteinList');
+            const proteinSearchInput = document.getElementById('proteinSearchInput');
+            
+            if (!proteinDatalist || !proteinSearchInput) {
+                console.error("Datalist or input field not found for protein suggestions.");
+                return;
+            }
+            proteinDatalist.innerHTML = ''; // Clear existing options
+
+            uniqueProteins.forEach(protein => {
+                const option = document.createElement('option');
+                option.value = protein;
+                proteinDatalist.appendChild(option);
+            });
+
+            proteinSearchInput.setAttribute('list', 'proteinList');
+        }
+
+        function setupSearchButton() {
+            const searchButton = document.getElementById('proteinSearchButton');
+            const proteinInput = document.getElementById('proteinSearchInput');
+            const searchErrorMessageElement = document.getElementById('searchErrorMessage');
+
+            if (!searchButton || !proteinInput || !searchErrorMessageElement) {
+                console.error("Search button or related elements not found.");
+                return;
+            }
+
+            searchButton.addEventListener('click', () => {
+                searchErrorMessageElement.textContent = ''; // Clear previous errors
+                const proteinName = proteinInput.value.trim();
+
+                if (!proteinName) {
+                    searchErrorMessageElement.textContent = "Protein name is required.";
+                    return;
+                }
+                if (!uniqueProteins.includes(proteinName)) {
+                    searchErrorMessageElement.textContent = `Protein "${proteinName}" is not a valid selection. Please choose from the suggestions.`;
+                    return;
+                }
+
+                // Redirect to protein.html with p1 parameter
+                window.location.href = `protein.html?p1=${encodeURIComponent(proteinName)}`;
+            });
+        }
+
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadHTMLIncludes(); // Load header and footer first
+            try {
+                await init(); // Load data and populate suggestions
+                setupSearchButton(); // Setup search button functionality
+            } catch (error) {
+                console.error("Initialization failed:", error);
+                const searchErrorMessageElement = document.getElementById('searchErrorMessage');
+                if (searchErrorMessageElement) {
+                     // More specific error messages are handled within init()
+                    if (!searchErrorMessageElement.textContent) { // Avoid overwriting specific parse/load errors
+                        searchErrorMessageElement.textContent = "Page initialization failed. Please try again later.";
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

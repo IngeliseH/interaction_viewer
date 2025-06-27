@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="logo.png" type="image/png">
+    <title>Centrosome Explorer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="header-placeholder"></div>
+    <div class="container">
+        <div class="main-content"></div>
+        <h1 id="pageTitle">Protein pair search</h1>
+            <div class="protein-input-columns">
+                <div class="protein-column">
+                    <h3>Protein 1</h3>
+                    <label for="protein1">Protein name or id:</label>
+                    <input type="text" id="protein1" placeholder="e.g. Ana2">
+
+                    <div id="protein1-optional-inputs" style="visibility: hidden;">
+                        <p>Fragment(s) (optional)
+                            <span class="info-btn">
+                                ⓘ
+                                <span class="info-tooltip">To select multiple non-adjacent fragments, hold Ctrl (Windows/Linux) or Cmd (Mac) and click on your desired options.</span>
+                            </span>
+                        </p>
+                        <select id="fragment1" multiple>
+                            <!-- Options will be populated dynamically -->
+                        </select>
+
+                        <p>Residues to include (optional)</p>
+                        <input type="text" id="residues1" placeholder="e.g. 10-20, 30">
+                    </div>
+                </div>
+
+                <div class="protein-column">
+                    <h3>Protein 2</h3>
+                    <label for="protein2">Protein name or id:</label>
+                    <input type="text" id="protein2" placeholder="e.g. Plk4">
+
+                    <div id="protein2-optional-inputs" style="visibility: hidden;">
+                        <p>Fragment(s) (optional)
+                            <span class="info-btn">
+                                ⓘ
+                                <span class="info-tooltip">To select multiple non-adjacent fragments, hold Ctrl (Windows/Linux) or Cmd (Mac) and click on your desired options.</span>
+                            </span>
+                        </p>
+                        <select id="fragment2" multiple>
+                            <!-- Options will be populated dynamically -->
+                        </select>
+
+                        <p>Residues to include (optional)</p>
+                        <input type="text" id="residues2" placeholder="e.g. 15-25, 35">
+                    </div>
+                </div>  
+            </div>
+            <!-- Modified button section -->
+            <div style="text-align: center; margin-top: 20px;">
+                <button id="searchButton" class="big-button">Search</button>
+                <div id="searchErrorMessage" style="color: var(--text-light); margin-top: 10px; font-size: 0.9rem; min-height: 1.2em;"></div>
+            </div>
+        </div>
+    </div>
+    <div id="footer-placeholder"></div>
+    <script>
+        let fragmentData = []; // To store data from all_fragments_2025.06.04.csv
+        let uniqueProteins = []; // Declare uniqueProteins in a broader scope
+
+        // Function to load HTML includes
+        async function loadHTMLIncludes() {
+            const headerPlaceholder = document.getElementById('header-placeholder');
+            const footerPlaceholder = document.getElementById('footer-placeholder');
+
+            if (headerPlaceholder) {
+                try {
+                    const response = await fetch('_header.html');
+                    if (response.ok) {
+                        headerPlaceholder.innerHTML = await response.text();
+                        // Set active nav link for protein_pair.html
+                        document.querySelectorAll('nav a').forEach(link => link.classList.remove('active'));
+                        const navProteinPairs = document.getElementById('navProteinPairs');
+                        if (navProteinPairs) {
+                            navProteinPairs.classList.add('active');
+                        }
+                    } else {
+                        console.error('Failed to load header:', response.statusText);
+                        headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
+                    }
+                } catch (error) {
+                    console.error('Error fetching header:', error);
+                    headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
+                }
+            }
+
+            if (footerPlaceholder) {
+                try {
+                    const response = await fetch('_footer.html');
+                    if (response.ok) {
+                        footerPlaceholder.innerHTML = await response.text();
+                    } else {
+                        console.error('Failed to load footer:', response.statusText);
+                        footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
+                    }
+                } catch (error) {
+                    console.error('Error fetching footer:', error);
+                    footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
+                }
+            }
+        }
+
+        async function init() {
+            // Modified init to return a Promise
+            return new Promise((resolve, reject) => {
+                let fragmentDataLoaded = false;
+
+                const checkCompletion = () => {
+                    if (fragmentDataLoaded) {
+                        // populateProteinSuggestionLists is called here, after fragment data is loaded
+                        // It will populate the global uniqueProteins array
+                        populateProteinSuggestionLists(); 
+                        resolve();
+                    }
+                };
+
+                // Load fragment definition data (all_fragments_2025.06.04.csv)
+                Papa.parse('all_fragments_2025.06.04.csv', {
+                    download: true,
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        if (results.errors && results.errors.length > 0) {
+                            console.error("Parsing errors for fragmentData:", results.errors);
+                            alert('Error: Could not parse fragment definition data.');
+                        } else {
+                            fragmentData = results.data;
+                            // console.log("fragmentData loaded successfully", fragmentData);
+                        }
+                        fragmentDataLoaded = true;
+                        checkCompletion(); // checkCompletion will call populateProteinSuggestionLists
+                    },
+                    error: function(error) {
+                        console.error("Error loading fragmentData CSV:", error);
+                        alert('Error: Could not load fragment definition data. Please try again later.');
+                        fragmentDataLoaded = true; // Still mark as loaded or reject
+                        checkCompletion();
+                        // Consider rejecting the promise: reject(new Error("Error loading fragmentData CSV"));
+                    }
+                });
+            });
+        }
+
+        function parseFragmentIndices(indicesStr) {
+            if (!indicesStr || typeof indicesStr !== 'string') {
+                return [];
+            }
+            const fragments = [];
+            const regex = /\((\d+),\s*(\d+)\)/g;
+            let match;
+            while ((match = regex.exec(indicesStr)) !== null) {
+                fragments.push({ start: parseInt(match[1]), end: parseInt(match[2]) });
+            }
+            return fragments;
+        }
+
+        function populateFragmentList(selectedProteinName, fragmentSelectId) {
+            const fragmentSelectElement = document.getElementById(fragmentSelectId);
+            if (!fragmentData || !selectedProteinName || !fragmentSelectElement) return;
+
+            const proteinInfo = fragmentData.find(p => p.name === selectedProteinName);
+            let parsedFragments = [];
+
+            if (proteinInfo && proteinInfo.fragment_indices) {
+                parsedFragments = parseFragmentIndices(proteinInfo.fragment_indices);
+            }
+
+            // Clear existing options
+            fragmentSelectElement.innerHTML = ''; 
+
+            // The 'multiple' attribute on the <select> HTML element allows users to select
+            // multiple (including non-adjacent) options, typically using Ctrl-click or Cmd-click.
+            if (parsedFragments.length > 0) {
+                parsedFragments.forEach((frag, index) => {
+                    const option = document.createElement('option');
+                    // Using 1-based indexing for fragment names for UI
+                    const fragmentName = `Fragment ${index + 1}`; // e.g., Fragment 1 (1,281)
+                    option.value = fragmentName; // Store "Fragment N" as value
+                    option.textContent = `${fragmentName} (${frag.start}-${frag.end})`;
+                    option.selected = true; // Select all fragments by default
+                    fragmentSelectElement.appendChild(option);
+                });
+                fragmentSelectElement.disabled = false;
+                fragmentSelectElement.size = Math.min(parsedFragments.length, 4); 
+            } else {
+                const option = document.createElement('option');
+                option.textContent = "No fragments available";
+                option.disabled = true;
+                fragmentSelectElement.appendChild(option);
+                fragmentSelectElement.disabled = true;
+                fragmentSelectElement.size = 1; // Reset size
+            }
+        }
+
+        function populateProteinSuggestionLists() {
+            if (!fragmentData.length) { // Use fragmentData to populate protein names
+                // console.warn("fragmentData is empty. Cannot populate protein suggestions.");
+                return;
+            }
+
+            const proteinNameSet = new Set();
+            fragmentData.forEach(row => {
+                if (row.name) proteinNameSet.add(row.name);
+            });
+
+            // Assign to the global uniqueProteins variable
+            uniqueProteins = Array.from(proteinNameSet).sort();
+
+            const protein1Input = document.getElementById('protein1');
+            const protein2Input = document.getElementById('protein2');
+            const protein1OptionalInputs = document.getElementById('protein1-optional-inputs');
+            const protein2OptionalInputs = document.getElementById('protein2-optional-inputs');
+
+            const protein1DatalistId = 'protein1-list';
+            const protein2DatalistId = 'protein2-list';
+
+            let protein1Datalist = document.getElementById(protein1DatalistId);
+            if (!protein1Datalist) {
+                protein1Datalist = document.createElement('datalist');
+                protein1Datalist.id = protein1DatalistId;
+                document.body.appendChild(protein1Datalist); // Or a more specific container
+            }
+            protein1Datalist.innerHTML = ''; // Clear existing options
+
+            let protein2Datalist = document.getElementById(protein2DatalistId);
+            if (!protein2Datalist) {
+                protein2Datalist = document.createElement('datalist');
+                protein2Datalist.id = protein2DatalistId;
+                document.body.appendChild(protein2Datalist); // Or a more specific container
+            }
+            protein2Datalist.innerHTML = ''; // Clear existing options
+
+            uniqueProteins.forEach(protein => {
+                const option = document.createElement('option');
+                option.value = protein;
+                protein1Datalist.appendChild(option.cloneNode(true));
+                protein2Datalist.appendChild(option);
+            });
+
+            protein1Input.setAttribute('list', protein1DatalistId);
+            protein2Input.setAttribute('list', protein2DatalistId);
+
+            const fragment1SelectId = 'fragment1';
+            const fragment2SelectId = 'fragment2';
+
+            protein1Input.addEventListener('input', () => {
+                const selectedValue = protein1Input.value;
+                // uniqueProteins is now the global variable
+                if (uniqueProteins.includes(selectedValue)) {
+                    protein1OptionalInputs.style.visibility = 'visible';
+                    populateFragmentList(selectedValue, fragment1SelectId);
+                } else {
+                    protein1OptionalInputs.style.visibility = 'hidden';
+                    const fragSelect = document.getElementById(fragment1SelectId);
+                    if (fragSelect) {
+                        fragSelect.innerHTML = ''; // Clear options
+                        const defaultOption = document.createElement('option');
+                        defaultOption.textContent = "Select protein first";
+                        defaultOption.disabled = true;
+                        fragSelect.appendChild(defaultOption);
+                        fragSelect.disabled = true;
+                        fragSelect.size = 1; // Reset size for multi-select
+                    }
+                }
+            });
+
+            protein2Input.addEventListener('input', () => {
+                const selectedValue = protein2Input.value;
+                // uniqueProteins is now the global variable
+                if (uniqueProteins.includes(selectedValue)) {
+                    protein2OptionalInputs.style.visibility = 'visible';
+                    populateFragmentList(selectedValue, fragment2SelectId);
+                } else {
+                    protein2OptionalInputs.style.visibility = 'hidden';
+                    const fragSelect = document.getElementById(fragment2SelectId);
+                    if (fragSelect) {
+                        fragSelect.innerHTML = ''; // Clear options
+                        const defaultOption = document.createElement('option');
+                        defaultOption.textContent = "Select protein first";
+                        defaultOption.disabled = true;
+                        fragSelect.appendChild(defaultOption);
+                        fragSelect.disabled = true;
+                        fragSelect.size = 1; // Reset size for multi-select
+                    }
+                }
+            });
+        }
+
+
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadHTMLIncludes(); // Load header and footer first
+            await init(); // Wait for init to complete (data loaded, uniqueProteins populated)
+
+            // Setup search button functionality after init is done
+            const searchButton = document.getElementById('searchButton');
+            const protein1Input = document.getElementById('protein1');
+            const protein2Input = document.getElementById('protein2');
+            const fragment1Select = document.getElementById('fragment1');
+            const fragment2Select = document.getElementById('fragment2');
+            const residues1Input = document.getElementById('residues1');
+            const residues2Input = document.getElementById('residues2');
+            const searchErrorMessageElement = document.getElementById('searchErrorMessage');
+
+            searchButton.addEventListener('click', () => {
+                searchErrorMessageElement.textContent = ''; // Clear previous errors
+
+                const p1Name = protein1Input.value.trim();
+                const p2Name = protein2Input.value.trim();
+                const selectedFragElements1 = Array.from(fragment1Select.selectedOptions);
+                const selectedFragElements2 = Array.from(fragment2Select.selectedOptions);
+                const residues1 = residues1Input.value.trim();
+                const residues2 = residues2Input.value.trim();
+
+                // Validation
+                if (!p1Name) {
+                    searchErrorMessageElement.textContent = "Protein 1 name is required.";
+                    return;
+                }
+                if (!uniqueProteins.includes(p1Name)) {
+                    searchErrorMessageElement.textContent = `Protein 1 "${p1Name}" is not a valid selection. Please choose from the suggestions.`;
+                    return;
+                }
+                if (!p2Name) {
+                    searchErrorMessageElement.textContent = "Protein 2 name is required.";
+                    return;
+                }
+                if (!uniqueProteins.includes(p2Name)) {
+                    searchErrorMessageElement.textContent = `Protein 2 "${p2Name}" is not a valid selection. Please choose from the suggestions.`;
+                    return;
+                }
+
+                const protein1OptionalInputs = document.getElementById('protein1-optional-inputs');
+                if (protein1OptionalInputs.style.visibility !== 'hidden') { // Only validate fragments if inputs are visible
+                    if (selectedFragElements1.length === 0 && fragment1Select.options.length > 0 && fragment1Select.options[0].textContent !== "No fragments available") {
+                        searchErrorMessageElement.textContent = "At least one fragment for Protein 1 must be selected.";
+                        return;
+                    }
+                }
+                
+                const protein2OptionalInputs = document.getElementById('protein2-optional-inputs');
+                if (protein2OptionalInputs.style.visibility !== 'hidden') { // Only validate fragments if inputs are visible
+                     if (selectedFragElements2.length === 0 && fragment2Select.options.length > 0 && fragment2Select.options[0].textContent !== "No fragments available") {
+                        searchErrorMessageElement.textContent = "At least one fragment for Protein 2 must be selected.";
+                        return;
+                    }
+                }
+
+
+                // Construct URL parameters
+                let protein1QueryPart = p1Name;
+                let f1_id_param = "";
+                if (selectedFragElements1.length > 0) {
+                    const fragNumbers1 = selectedFragElements1.map(el => el.value.split(" ")[1]).join(',');
+                    if (fragNumbers1) { // Ensure not empty
+                        f1_id_param = `${fragNumbers1}`;
+                    }
+                }
+
+                let protein2QueryPart = p2Name;
+                let f2_id_param = "";
+                if (selectedFragElements2.length > 0) {
+                    const fragNumbers2 = selectedFragElements2.map(el => el.value.split(" ")[1]).join(',');
+                    if (fragNumbers2) { // Ensure not empty
+                        f2_id_param = `${fragNumbers2}`;
+                    }
+                }
+                
+                let url = `protein_pair.html?`;
+                url += `&p1=${encodeURIComponent(p1Name)}`;
+                url += `&p2=${encodeURIComponent(p2Name)}`;
+
+                if (f1_id_param) {
+                    url += `&f1_id=${encodeURIComponent(f1_id_param)}`;
+                }
+
+                if (f2_id_param) {
+                    url += `&f2_id=${encodeURIComponent(f2_id_param)}`;
+                }
+
+                if (residues1) {
+                    url += `&res1=${encodeURIComponent(residues1)}`;
+                }
+                if (residues2) {
+                    url += `&res2=${encodeURIComponent(residues2)}`;
+                }
+
+                window.location.href = url;
+            });
+        });
+    </script>
+</body>
+</html>

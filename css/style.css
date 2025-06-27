@@ -1,0 +1,1392 @@
+:root {
+    --primary: #2c3e50;
+    --secondary: #3498db;
+    --accent: #1abc9c;
+    --light: #ecf0f1;
+    --dark: #34495e;
+    --text: #2c3e50;
+    --text-light: #7f8c8d;
+    --success: #27ae60;
+    --warning: #f39c12;
+    --danger: #e74c3c;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Arial', sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.container {
+    max-width: 1800px;
+    margin: 0 auto;
+    padding: 0 20px;
+    flex-grow: 1;
+}
+
+header {
+    background: var(--primary);
+    color: white;
+    padding: 15px 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo i {
+    font-size: 2rem;
+    color: var(--accent);
+}
+
+.logo h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+nav ul {
+    display: flex;
+    list-style: none;
+    gap: 25px;
+}
+
+nav a {
+    color: var(--light);
+    text-decoration: none;
+    font-weight: 500;
+    padding: 8px 12px;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+nav a:hover, nav a.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--accent);
+}
+
+nav a.active::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+}
+
+.main-content {
+    gap: 25px;
+    padding: 5px 0;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 255px 1fr;
+    gap: 25px;
+    padding: 5px 0;
+}
+
+/* Style for the content column in the grid layout, merged */
+.content-column {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.sidebar {
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 10px;
+    align-self: start;
+    position: sticky;
+    top: 90px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.sidebar-section {
+    margin-bottom: 3px;
+}
+
+.sidebar-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid var(--light);
+    cursor: pointer;
+}
+
+.sidebar-title h2 {
+    font-size: 1.3rem;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.sidebar-title i {
+    font-size: 1.2rem;
+    color: var(--secondary);
+    transition: transform 0.3s ease;
+}
+
+.collapsed .sidebar-title > i {
+    transform: rotate(180deg);
+}
+
+/* Styles for the main page sections sidebar collapse */
+aside.sidebar.collapsed {
+    position: fixed;
+    top: 90px;
+    left: 10px;
+    width: auto;
+    padding: 8px 10px;
+    z-index: 1050;
+    background: white;
+    box-shadow: var(--shadow);
+    border-radius: 12px;
+}
+
+aside.sidebar.collapsed .sidebar-title {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+    justify-content: center;
+}
+
+aside.sidebar.collapsed .sidebar-title h2 {
+    margin: 0;
+    gap: 8px;
+}
+
+aside.sidebar.collapsed .sidebar-title h2 span {
+    display: none;
+}
+
+aside.sidebar.collapsed .sidebar-content {
+    display: none;
+}
+
+.main-content .grid.sidebar-collapsed .content-column {
+    grid-column: 1 / -1;
+}
+
+.filter-group {
+    margin-bottom: 20px;
+}
+
+.filter-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--dark);
+}
+
+.filter-control {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.filter-control:focus {
+    border-color: var(--secondary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+.active-filters {
+    margin-bottom: 15px;
+}
+
+.active-filters h3 {
+    padding: 15px;
+}
+
+.filter-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 0px;
+    padding: 10px;
+}
+
+.filter-tag {
+    background: #e3f2fd;
+    color: var(--secondary);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.search-container {
+    position: relative;
+    margin-bottom: 15px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 10px 15px 10px 40px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.search-input:focus {
+    border-color: var(--secondary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+.protein-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-top: none;
+    z-index: 1000;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-radius: 0 0 4px 4px;
+}
+
+.dropdown-option {
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--text);
+}
+
+.dropdown-option:hover {
+    background-color: #f0f0f0;
+}
+
+.search-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light);
+}
+
+.selected-proteins {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.protein-tag {
+    background: #e3f2fd;
+    color: var(--secondary);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.remove-tag {
+    cursor: pointer;
+    font-size: 1.1rem;
+    line-height: 1;
+    transition: transform 0.2s;
+}
+
+.remove-tag:hover {
+    transform: scale(1.2);
+    color: var(--danger);
+}
+
+.search-mode {
+    display: flex;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.mode-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.mode-option input {
+    cursor: pointer;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex: 1;
+}
+
+.btn-primary {
+    background: var(--secondary);
+    color: white;
+    box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.btn-primary:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+}
+
+.btn-outline {
+    background: white;
+    color: var(--secondary);
+    border: 2px solid var(--secondary);
+}
+
+.btn-outline:hover {
+    background: #e3f2fd;
+}
+
+/* Big button style */
+.big-button {
+    display: inline-block;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: white;
+    background-color: var(--secondary);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.big-button:hover {
+    background-color: #2980b9; /* Darker shade of var(--secondary) */
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.big-button:active {
+    transform: translateY(0px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.content-area {
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 25px;
+    min-height: 400px;
+    overflow-x: hidden; /* Add this line to constrain width and enable child horizontal scroll */
+}
+
+.section-title {
+    font-size: 1.8rem;
+    color: var(--primary);
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    padding-top: 15px;
+    padding-left: 15px;
+    border-bottom: 2px solid var(--light);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.page-main-heading {
+    font-size: 2.5rem; /* Larger font size */
+    color: var(--primary);
+    text-align: center; /* Center the title */
+    margin-top: 10px; /* Add some space above */
+    margin-bottom: 5px; /* Adjusted space below for subtitle */
+}
+
+.page-subtitle {
+    text-align: center;
+    font-size: 1.5rem;
+    color: var(--text-light);
+    margin-top: 0; /* Sits below h1 */
+    margin-bottom: 10px; /* Space before the grid content */
+    font-weight: normal; /* Subtitles are often lighter */
+}
+
+.page-subtitle a {
+    color: inherit; /* Ensures link color matches subtitle text color */
+    text-decoration: none; /* Removes default underline */
+}
+
+.page-subtitle a:hover {
+    color: var(--secondary); /* Changes color on hover for interactivity */
+    text-decoration: underline; /* Adds underline on hover */
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    transition: transform 0.3s ease;
+}
+
+/* Stat color classes (background only, text uses standard color) */
+.stat-card.stat-red        { background: #ff8585 !important; }
+.stat-card.stat-orange     { background: #fbc37a !important; }
+.stat-card.stat-yellow     { background: #fcea8f !important; }
+.stat-card.stat-lightgreen { background: #adf073 !important; }
+.stat-card.stat-darkgreen  { background: #46e27c !important; }
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--secondary);
+    margin: 10px 0;
+}
+
+.stat-label {
+    font-size: 1rem;
+    color: var(--dark);
+    font-weight: 500;
+}
+
+/* Make stat value (number) use grey text color on colored stat cards */
+.stat-card.stat-red .stat-value,
+.stat-card.stat-orange .stat-value,
+.stat-card.stat-yellow .stat-value,
+.stat-card.stat-lightgreen .stat-value,
+.stat-card.stat-darkgreen .stat-value {
+    color: var(--text) !important;
+}
+
+.table-container {
+    overflow-x: auto;
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    margin-top: 25px;
+    max-height: 70vh;
+    overflow-y: visible;;
+    max-width: 70vw; /* Prevent table container from overflowing page */
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed; 
+}
+
+/* Specific style for the PPI table in protein_pair.html to allow column auto-sizing */
+#ppi-table #dataTable {
+    table-layout: auto; /* Override the global 'fixed' layout */
+}
+#ppi-table #dataTable th {
+    min-width: 80px; /* Set a minimum width for all columns */
+}
+#ppi-table #dataTable th[data-column="partner"] {
+    min-width: 110px; /* Ensure partner column has enough space for most values */
+}
+
+/* Specific style for the structure fragment grid table in protein_pair.html */
+table.structure-grid {
+    width: auto; /* Allow table to be as narrow as its content */
+    min-width: 0; /* Override general table min-width */
+    table-layout: auto; /* Ensure layout is based on content */
+    margin-left: auto; /* If its container is wider and a block, this can help center */
+    margin-right: auto; /* If its container is wider and a block, this can help center */
+    border-collapse: collapse;
+}
+
+/* NEW Structure Fragment Grid Styles */
+#structure-grid-container {
+    overflow-x: auto;
+    margin-bottom: 20px;
+}
+
+.structure-grid-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.structure-grid-protein-x-label {
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.structure-grid-y-label-table-container {
+    display: flex;
+    align-items: flex-start;
+}
+
+.structure-grid-protein-y-label {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    margin-right: 10px;
+    font-weight: bold;
+    white-space: nowrap;
+    text-align: center;
+    align-self: center;
+}
+
+/* Styling for TH and TD elements within the structure grid */
+.structure-grid th,
+.structure-grid td {
+    padding: 4px 8px;
+    border: 1px solid #ccc; /* Default border for all cells */
+}
+
+/* Specific alignment for column header TH elements */
+.structure-grid th.structure-grid-col-header {
+    text-align: center;
+}
+
+/* Specific alignment for row header TH elements */
+.structure-grid th.structure-grid-row-header {
+    text-align: right;
+}
+
+/* Specific alignment for TD elements (data cells) */
+.structure-grid td.structure-grid-cell {
+    text-align: center;
+}
+
+/* Styling for the button within structure grid cells */
+.structure-cell-btn {
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    padding: 0; /* Remove default button padding */
+    line-height: 1; /* Adjust line height for better icon centering */
+    color: var(--secondary); /* Use theme color for the icon */
+}
+
+.structure-cell-btn:hover {
+    color: var(--primary); /* Darken icon on hover */
+}
+
+/* NEW: Style for the selected structure grid cell */
+.structure-grid-cell.selected {
+    background-color: #bbdefb; /* A darker blue from the project's palette */
+}
+
+
+th {
+    background-color: var(--primary);
+    color: #b3e0ff;
+    font-weight: 600;
+    padding: 8px 15px; /* Adjusted padding for more vertical space */
+    text-align: left;
+    position: sticky;
+    top: 0;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+    vertical-align: top; /* Align content to the top for multi-line headers */
+}
+
+/* New styles for internal header structure */
+.header-main-text {
+    display: block; /* Makes it take full width of the th */
+    margin-bottom: 5px; /* Space between text and icons */
+    /* Text will wrap naturally based on th width */
+}
+
+/* Generic Info Button and Tooltip Styles */
+.info-btn {
+    position: relative; /* For tooltip positioning */
+    cursor: help;
+    color: var(--secondary); /* Default icon color */
+}
+  
+ .info-btn .info-tooltip {
+    visibility: hidden;
+    opacity: 0;
+    width: 240px; /* Adjusted width */
+    background-color: #333; /* Dark background like index.html tooltips */
+    color: #fff;
+    text-align: left; /* Changed for better readability of instructions */
+    border-radius: 6px;
+    padding: 10px; /* Increased padding */
+    position: absolute;
+    z-index: 1070; /* Ensure it's above most other elements, adjust if necessary */
+    bottom: 130%; /* Position above the icon, adjusted */
+    left: 50%;
+    transform: translateX(-50%); /* Center the tooltip */
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    font-size: 0.8rem; /* Slightly smaller font for tooltip */
+    line-height: 1.5; /* Improved line spacing */
+    box-shadow: 0 3px 7px rgba(0,0,0,0.3);
+    white-space: normal; /* Allow text wrapping */
+ }
+  
+.info-btn, .filter-icon {
+    display: inline-block; /* Allows icons to sit side-by-side */
+    vertical-align: middle; /* Aligns icons nicely if they have different heights */
+    margin-right: 0px; /* Space between icons */
+    margin-left: 5px; /* Specific margin for info-btn */
+    font-size: 1em;
+    user-select: none; /* Prevent text selection on click */
+}
+
+.filter-icon {
+    cursor: pointer; 
+}
+
+.info-btn:hover .info-tooltip,
+.info-btn:focus-within .info-tooltip { /* Show on hover or when an element inside info-btn has focus */
+    visibility: visible;
+    opacity: 1;
+}
+
+
+/* Example of setting specific column widths */
+/* Adjust these values as per your content and layout needs */
+th[data-column="Proteins"] {
+    width: 200px; /* Allows this column to adjust based on content and remaining space */
+}
+th[data-column="min_pae"],
+th[data-column="avg_pae"],
+th[data-column="pdockq"],
+th[data-column="size"],
+th[data-column="evenness"] {
+    width: 100px;
+}
+th[data-column="iptm"],
+th[data-column="rop"] { /* Consolidated iptm and rop */
+    width: 80px;
+}
+th[data-column="max_promiscuity"]{
+    width: 170px;
+}
+th[data-column="location"] {
+    width: 250px;
+}
+th[data-column="relative_location"] {
+    width: 250px;
+}
+
+th:hover {
+    background-color: #1a2530;
+}
+
+th.sort-asc::after {
+    content: " ▲";
+    font-size: 0.85em;
+}
+
+th.sort-desc::after {
+    content: " ▼";
+    font-size: 0.85em;
+}
+
+td {
+    padding: 1px 20px; /* Existing td padding */
+    color: var(--text-light);
+    border-bottom: 1px solid var(--light);
+    vertical-align: middle; /* Good for consistency if content wraps */
+}
+
+/* Style for links within table cells */
+td a {
+    color: inherit; /* Inherit color from parent td (var(--text-light)) */
+    text-decoration: none; /* Remove default underline */
+    cursor: pointer;
+}
+
+td a:hover {
+    color: var(--secondary); /* Change color on hover to an accent color */
+    text-decoration: underline; /* Add underline on hover for better affordance */
+}
+
+/* Ensure content in the first column (Proteins) wraps */
+td:first-child {
+    word-break: break-word; /* Or overflow-wrap: break-word; */
+    overflow-wrap: break-word; /* More modern, handles long words better */
+}
+
+tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+tr:hover {
+    background-color: #e9f7fe;
+}
+
+/* Reduce vertical spacing in table */
+tr {
+    min-height: 50px;
+}
+
+/* Make protein labels inline */
+.location-display div {
+    display: flex;
+    gap: 0px;
+    align-items: baseline;
+}
+
+/* Reduce whitespace in location boxes */
+.location-display > div {
+    margin-bottom: 0px;
+}
+
+/* Compact mode for table */
+.table-container table {
+    border-spacing: 0;
+}
+
+.location-display {
+    background: #f8f9fa;
+    border-radius: 6px;
+    font-size: 0.5rem; /* Smaller font for compactness */
+}
+
+.location-bar {
+    height: 1px;
+    background: #adb5bd;
+    margin: 0px 0; /* Reduced margin */
+}
+
+.protein-label {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    font-weight: 500;
+}
+
+footer {
+    background: var(--primary);
+    color: white;
+    text-align: center;
+    padding: 25px;
+    margin-top: 40px;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+    gap: 10px;
+    padding-bottom: 18px; /* Add padding below page numbering */
+}
+
+.page-btn {
+    padding: 8px 15px;
+    background: var(--light);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.page-btn.active {
+    background: var(--secondary);
+    color: white;
+}
+
+.page-btn:hover:not(.active) {
+    background: #d6dbdf;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-light);
+}
+
+.loading i {
+    font-size: 3rem;
+    margin-bottom: 20px;
+    color: var(--secondary);
+    animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Styles moved from index.html - now with more specific selectors for tooltips */
+.sidebar-section.collapsed .sidebar-content {
+    max-height: 0;
+    overflow: hidden; /* Keep hidden for collapse animation */
+    opacity: 0;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+.sidebar-section .sidebar-content {
+    max-height: 2000px; /* Adjust as needed - set to a value larger than any expected content height */
+    overflow-y: visible; /* Allow vertical overflow for elements like dropdowns */
+    overflow-x: hidden; /* Prevent horizontal overflow */
+    opacity: 1;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+th > .info-tooltip { /* Made selector more specific */
+    /* display: none; */ /* Initially hidden - REMOVE THIS LINE */
+    visibility: hidden; /* ADD THIS: Use visibility to allow transitions */
+    opacity: 0;         /* ADD THIS: Start fully transparent */
+    position: absolute;
+    top: 100%; /* Position below the header cell content */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333; /* Dark background */
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1000; /* High z-index to appear above other elements */
+    width: 280px; /* Adjust width as needed */
+    text-align: left;
+    font-size: 0.875em; /* Slightly smaller font for tooltip */
+    line-height: 1.5;
+    font-weight: normal; /* Reset font weight from th */
+    transition: opacity 0.3s ease, visibility 0.3s ease; /* ADD THIS: For smooth show/hide */
+}
+
+/* ADD THIS NEW RULE SET */
+/* Show tooltip when .info-btn (sibling) is hovered or focused */
+th > .info-btn:hover + .info-tooltip,
+th > .info-btn:focus + .info-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+th > .info-tooltip h4 { /* Made selector more specific */
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 1em; /* Adjust heading size within tooltip */
+    color: #f0f0f0;
+    border-bottom: 1px solid #555;
+    padding-bottom: 5px; /* Adjusted from 0px to give a little space */
+}
+
+th > .info-tooltip p { /* Made selector more specific */
+    margin-bottom: 0;
+}
+
+.location-cell-content {
+    max-height: 2.4em; 
+    overflow-x: auto; 
+    white-space: normal; 
+    line-height: 1.2em; 
+    max-width: 250px;      /* Cap width for location cell */
+    min-width: 120px;      /* Optional: reasonable min width */
+    display: block;
+}
+
+.location-cell-content div { 
+    white-space: nowrap; 
+}
+
+#dataTable td {
+    padding-top: 0px; 
+    padding-bottom: 0px; 
+}
+
+/* Dashboard specific styles */
+.dashboard-container {
+    display: flex;
+    justify-content: space-around; /* Distribute boxes evenly */
+    align-items: center; /* Align items vertically */
+    padding: 40px 200px; /* Add some padding around the container */
+    gap: 10px; /* Space between boxes */
+    flex-grow: 1; /* Allow this container to grow and fill available space */
+}
+
+.dashboard-box {
+    width: 30%; /* Each box takes roughly a third of the width */
+    min-height: 250px; /* Minimum height for the boxes */
+    padding: 10px; /* Added padding for text wrapping */
+    border-radius: 12px; /* Rounded corners */
+    box-shadow: var(--shadow);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2rem; /* Large text size for '1', '2', '3' */
+    font-weight: bold;
+    color: var(--text);
+    text-decoration: none;
+    text-shadow: 2px 2px 4px white; /* Text shadow for readability */
+    text-align: center; /* Ensure wrapped text is centered */
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative; /* Needed for the pseudo-element */
+    overflow: hidden; /* To contain the pseudo-element */
+}
+
+.dashboard-box::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover; /* Cover the area with the image */
+    background-position: center; /* Center the image */
+    /* background-image will be set by specific classes below */
+    opacity: 0.3;
+    transition: opacity 0.3s ease;
+    z-index: -1; /* Place it behind the content */
+}
+
+.dashboard-box-1::before {
+    background-image: url('../all_predictions.png'); /* Adjust path if logos are not in the root */
+}
+
+.dashboard-box-2::before {
+    background-image: url('../protein.png'); /* Adjust path if logos are not in the root */
+}
+
+.dashboard-box-3::before {
+    background-image: url('../protein_pair.png'); /* Adjust path if logos are not in the root */
+}
+
+.dashboard-box:hover::before {
+    opacity: 0.8;
+}
+
+.dashboard-box:hover {
+    transform: translateY(-10px) scale(1.03);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Protein pair search */
+.protein-input-columns {
+    display: flex;
+    gap: 80px; /* Increased gap between columns */
+    margin-bottom: 8px;
+}
+.protein-column {
+    flex: 1; /* Each column takes equal width */
+    display: flex;
+    flex-direction: column;
+}
+.protein-column label, .protein-column p {
+    margin-top: 10px;
+    margin-bottom: 5px;
+}
+.protein-column h3 {
+    margin-top: 10px;
+    margin-bottom: 5px;
+    text-align: center;
+}
+.protein-column input[type="text"], .protein-column select {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+/* General layout for content areas if not already defined elsewhere */
+.content-column {
+    width: 100%; /* Or flex-grow: 1 if in a flex container */
+    box-sizing: border-box;
+}
+
+main.content-area {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 20px; /* Example spacing */
+    overflow: visible; /* MODIFIED: Ensures content is not clipped if it expands */
+}
+
+.content-section {
+    width: 100%;
+    box-sizing: border-box;
+    background-color: var(--background-light); /* Match existing styling if applicable */
+    border-radius: 8px; /* Match existing styling if applicable */
+    /* padding: 15px; Match existing styling if applicable */
+}
+
+/* Styles for sidebar navigation list in interaction.html */
+.sidebar .sidebar-section ul {
+    list-style: none;
+    padding-left: 0;
+    margin-top: 0;
+    margin-bottom: 0; /* Remove bottom margin if any */
+}
+
+.sidebar .sidebar-section ul li {
+    margin-bottom: 5px; /* Space between items */
+}
+
+.sidebar .sidebar-section ul li:last-child {
+    margin-bottom: 0; /* No margin for the last item */
+}
+
+.sidebar .sidebar-section ul li a {
+    display: block;
+    padding: 8px 12px;
+    text-decoration: none;
+    color: var(--primary);
+    border-radius: 4px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    font-weight: 500;
+}
+
+.sidebar .sidebar-section ul li a:hover {
+    background-color: var(--light);
+    color: var(--secondary);
+}
+
+/* Styles for collapsible content sections in main area */
+/* main.content-area is now the primary styled block for each section */
+main.content-area {
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow-light);
+    margin-bottom: 25px;
+    overflow: visible; /* Ensures content is not clipped if it expands */
+    padding: 0 10px; /* MODIFIED: 0 top/bottom, 10px left/right */
+    min-height: auto; /* Override inherited min-height */
+}
+
+main.content-area:last-child {
+    margin-bottom: 0;
+}
+
+.content-section-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 25px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color, #eee); /* Use theme variable or fallback */
+    transition: border-bottom-color 0.3s ease-out;
+}
+
+.content-section-title h2 {
+    font-size: 1.5rem; /* Slightly larger than sidebar section titles */
+    color: var(--primary);
+    margin: 0;
+    font-weight: 600; /* Make titles a bit bolder */
+}
+
+.content-section-title > i.fas { /* Targeting the chevron icon specifically */
+    font-size: 1.2rem;
+    color: var(--secondary);
+    transition: transform 0.3s ease;
+}
+
+/* Update collapsed state selectors */
+main.content-area.collapsed .content-section-title { /* MODIFIED: Was .content-section.collapsed ... */
+    border-bottom-color: transparent; /* Keep title visually clean when collapsed */
+}
+
+main.content-area.collapsed .content-section-title > i.fas { /* MODIFIED: Was .content-section.collapsed ... */
+    transform: rotate(180deg);
+}
+
+/* Add this nuevo style for domain table row hover */
+tr.domain-table-row-hover td {
+    background-color: #e6f7ff; /* Light blue background for hovered row cells */
+}
+
+.content-section-content {
+    width: 100%;
+    padding: 20px 25px;
+    opacity: 1;
+    overflow-y: visible; /* Allow vertical expansion */
+    overflow-x: auto;   /* Allow horizontal scroll if content is too wide */
+    transition: max-height 0.35s ease-out, opacity 0.35s ease-out, padding-top 0.35s ease-out, padding-bottom 0.35s ease-out;
+    line-height: 1.6; /* Improve readability of content text */
+}
+
+/* Update collapsed state selectors for content */
+main.content-area.collapsed .content-section-content { /* MODIFIED: Was .content-section.collapsed ... */
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+}
+
+/* General rule for content-section collapsibility */
+.content-section.collapsed .content-section-content {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease-out, opacity 0.35s ease-out, padding-top 0.35s ease-out, padding-bottom 0.35s ease-out;
+}
+
+@media (max-width: 1024px) {
+    .main-content {
+        grid-template-columns: 1fr;
+    }
+    .sidebar {
+        position: relative;
+        top: 0;
+        width: 100%;
+        z-index: 100;
+        margin-bottom: 20px;
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        left: 0;
+        max-width: none;
+        min-width: 0;
+        padding: 10px;
+    }
+    .grid {
+        grid-template-columns: 1fr;
+    }
+    body.index-page .sidebar {
+        order: -1;
+    }
+    body:not(.index-page) .sidebar {
+        order: initial;
+    }
+    .table-container {
+        max-width: 90vw;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    nav ul {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .dashboard-container {
+        flex-direction: column; /* Stack boxes vertically */
+        padding: 20px;
+    }
+
+    .dashboard-box {
+        width: 90%; /* Wider boxes on small screens */
+        min-height: 200px; /* Adjust height */
+        margin-bottom: 20px; /* Add space between stacked boxes */
+    }
+
+    .dashboard-box:last-child {
+        margin-bottom: 0;
+    }
+}
+
+/* Structure viewer styles */
+.structure-controls { /* This class might still be used for max-width or specific margins not part of the bar itself */
+    max-width: 700px;
+    margin: 0 auto 10px auto;
+}
+
+.structure-viewer {
+    width: 100%;
+    max-width: 700px;
+    height: 400px;
+    min-height: 300px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin: 0 auto 15px auto;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    position: relative;
+}
+
+.control-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 18px;
+    padding: 8px 0;
+    background: #f4f7fa;
+    border-radius: 8px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+}
+
+.control-button-group {
+    display: flex;
+    gap: 12px;
+}
+
+.control-button {
+    background: var(--light);
+    color: var(--primary);
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 1rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.control-button:hover {
+    background: #d8dcde;
+    color: var(--primary);
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+
+.control-button.active,
+.resetViewBtn,
+.colorModeBtn {
+    background: #1c70a5;
+    color: #fff;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    transform: translateY(1px);
+}
+
+.control-button.active:hover,
+.resetViewBtn:hover,
+.colorModeBtn:hover {
+    background: #217dbb;
+    color: #fff;
+    transform: translateY(0px) scale(1.02);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);
+}
+
+.promiscuityPlotContainer {
+    width: 100%;
+    min-height: 220px;
+    height: auto;
+    position: relative;
+    box-sizing: border-box;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.promiscuity-plot-caption {
+    text-align: center;
+    font-style: italic;
+    margin-top: 10px;
+    margin-bottom: 0;
+    position: static;
+    z-index: 1;
+    background: none;
+}
+
+.domainFragmentPlotContainer {
+    width: 100%;
+    min-height: 100px;
+    position: relative;
+    box-sizing: border-box;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+.domain-fragment-plot-caption {
+    text-align: center;
+    font-style: italic;
+    margin-top: 0px;
+}
+
+/* Filters */
+.filter-popup {
+    position: absolute;
+    border: 1px solid #ccc;
+    background: white;
+    padding: 10px;
+    z-index: 1010;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    min-width: 200px;
+}
+.filter-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.filter-popup-header h4 {
+    margin: 0;
+    font-size: 1.05em;
+}
+.filter-popup-header .close-popup {
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+    color: #888;
+}
+.filter-popup-body .filter-group {
+    margin-bottom: 10px;
+}
+.filter-popup input[type="number"] {
+    width: 100px;
+    margin-bottom: 5px;
+}
+.filter-popup .btn {
+    margin-right: 5px;
+    margin-top: 5px;
+}

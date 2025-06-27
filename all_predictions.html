@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="logo.png" type="image/png">
+    <title>Centrosome Explorer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="index-page">
+    <div id="header-placeholder"></div>
+
+    <div class="container">
+        <div class="main-content">
+            <div class="grid">
+                <aside class="sidebar">
+                    <div class="sidebar-section">
+                        <div class="sidebar-title">
+                            <h2><i class="fas fa-search"></i> Protein Search</h2>
+                            <i class="fas fa-chevron-up"></i>
+                        </div>
+                        <div class="sidebar-content">
+                            <div class="search-container">
+                                <i class="fas fa-search search-icon"></i>
+                                <input type="text" class="search-input" id="proteinSearch" placeholder="Search proteins...">
+                            </div>
+                            
+                            <div class="search-mode">
+                                <div class="mode-option">
+                                    <input type="radio" id="modeIncludes" name="searchMode" value="includes" checked>
+                                    <label for="modeIncludes">Includes (any selected)</label>
+                                </div>
+                                <div class="mode-option">
+                                    <input type="radio" id="modeOnly" name="searchMode" value="only">
+                                    <label for="modeOnly">Only (both selected)</label>
+                                </div>
+                            </div>
+                            
+                            <div class="selected-proteins" id="selectedTags">
+                                <!-- Selected proteins will appear here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="sidebar-section">
+                        <div class="sidebar-title">
+                            <h2><i class="fas fa-filter"></i> Numerical Filters</h2>
+                            <i class="fas fa-chevron-up"></i>
+                        </div>
+                        <div class="sidebar-content">
+                            <div class="filter-group">
+                                <label for="filterColumn">Filter by Column</label>
+                                <select id="filterColumn" class="filter-control">
+                                    <option value="">Select a column</option>
+                                    <option value="min_pae">min_pae</option>
+                                    <option value="avg_pae">avg_pae</option>
+                                    <option value="iptm">ipTM</option>
+                                    <option value="pdockq">pDockQ</option>
+                                    <option value="max_promiscuity">max_promiscuity</option>
+                                    <option value="rop">rop</option>
+                                    <option value="size">size</option>
+                                    <option value="evenness">evenness</option>
+                                </select>
+                            </div>
+                            
+                            <div class="filter-group">
+                                <label for="filterCondition">Condition</label>
+                                <select id="filterCondition" class="filter-control">
+                                    <option value="above">Above</option>
+                                    <option value="below">Below</option>
+                                </select>
+                            </div>
+                            
+                            <div class="filter-group">
+                                <label for="filterValue">Value</label>
+                                <input type="number" id="filterValue" class="filter-control" step="0.1" placeholder="Enter value">
+                            </div>
+                            
+                            <div class="action-buttons">
+                                <button class="btn btn-primary" id="applyFilter">
+                                    <i class="fas fa-filter"></i> Apply Filter
+                                </button>
+                                <button class="btn btn-outline" id="resetFilters">
+                                    <i class="fas fa-sync-alt"></i> Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="sidebar-section">
+                        <div class="sidebar-title">
+                            <h2><i class="fas fa-chart-line"></i> Stats Summary</h2>
+                            <i class="fas fa-chevron-up"></i>
+                        </div>
+                        <div class="sidebar-content">
+                            <div class="stats-grid">
+                                <div class="stat-card">
+                                    <div class="stat-label">Interactions</div>
+                                    <div class="stat-value" id="interactionCount">0</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-label">Unique Proteins</div>
+                                    <div class="stat-value" id="proteinCount">0</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-label">Avg. Confidence</div>
+                                    <div class="stat-value" id="avgConfidence">0.00</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-label">Filtered Rows</div>
+                                    <div class="stat-value" id="filteredCount">0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+                
+                <main class="content-area">
+                    <h2 class="section-title"><i class="fas fa-table"></i> All Predictions </h2>
+                    <div class="active-filters">
+                        <h3>Active Filters:</h3>
+                        <div class="filter-tags" id="activeFilters"></div>
+                    </div>
+                    <div class="table-container">
+                        <table id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th data-column="Proteins">
+                                        Proteins 
+                                    </th>
+                                    <th data-column="min_pae">
+                                        <span class="header-main-text">min_pae</span> 
+                                        <span class="filter-icon">
+                                            <i class="fas fa-filter"></i>
+                                        </span>
+                                        <!-- The info-btn will be appended here by JavaScript -->
+                                    </th>
+                                    <th data-column="avg_pae">
+                                        <span class="header-main-text">avg_pae</span> 
+                                        <span class="filter-icon">
+                                            <i class="fas fa-filter"></i>
+                                        </span>
+                                    </th>
+                                    <th data-column="iptm">
+                                        <span class="header-main-text">ipTM</span> 
+                                        <span class="filter-icon">
+                                            <i class="fas fa-filter"></i>
+                                        </span>
+                                    </th>
+                                    <th data-column="pdockq">
+                                        <span class="header-main-text">pDockQ</span> 
+                                        <span class="filter-icon">
+                                            <i class="fas fa-filter"></i>
+                                        </span>
+                                    </th>
+                                    <th data-column="max_promiscuity">
+                                        <span class="header-main-text">Max Promiscuity</span> 
+                                        <span class="filter-icon">
+                                            <i class="fas fa-filter"></i>
+                                        </span>
+                                    </th>
+                                    <th data-column="rop">
+                                        <span class="header-main-text">ROP</span> 
+                                        <span class="filter-icon">
+                                            <i class="fas fa-filter"></i>
+                                        </span>
+                                    </th>
+                                    <th data-column="size">
+                                        <span class="header-main-text">Size</span> 
+                                        <span class="filter-icon">
+                                            <i class="fas fa-filter"></i>
+                                        </span>
+                                    </th>
+                                    <th data-column="evenness">
+                                        <span class="header-main-text">Evenness</span> 
+                                        <span class="filter-icon">
+                                            <i class="fas fa-filter"></i>
+                                        </span>
+                                    </th>
+                                    <th data-column="location">
+                                        Location 
+                                    </th>
+                                    <th data-column="relative_location">
+                                        Relative Location 
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody">
+                                <!-- Data will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="pagination" id="pagination">
+                        <!-- Pagination will be generated here -->
+                    </div>
+
+                    <h2 class="section-title" style="margin-top: 40px;"><i class="fas fa-project-diagram"></i> Chord Plot</h2>
+                    <div id="chord-plot-container" style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+                        <!-- Chord plot will be rendered here -->
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+    
+    <div id="footer-placeholder"></div>
+
+    <script type="module">
+        import * as table from './js/table.js';
+        import { drawChordByPosition } from './js/chord-plot.js';
+
+        // Set up column descriptions for info tooltips
+        table.setColumnDescriptions({
+            "Proteins": "Proteins involved in the interaction, and the fragments used in the prediction in which this interaction is seen. Multiple interactions may be seen between the same proteins and the same fragments.",
+            "min_pae": "Minimum PAE value for the interface. PAE gives the predicted error in the relative positioning of 2 residues, with lower values indicating more confident relative positioning. This is the best (lowest) PAE for any pair of residues from different proteins in this interface.",
+            "avg_pae": "Average PAE across the interface. PAE gives the predicted error in the relative positioning of 2 residues, with lower values indicating more confident relative positioning. This is the average PAE for all pairs of residues from different proteins in this interface.",
+            "iptm": "Interface predicted TM-score (ipTM). Higher values indicate higher model quality (0-1). Values above 0.55 indicate an interaction. Scores are typically lower on coiled coil predictions and predictions with larger input, especially when multiple regions of the predicted structure are within interaction distance with varying confidences. ",
+            "pdockq": "pDockQ score estimates the goodness of fit of the modeled interaction interface (0-1). It is based on the actual structure rather than prediction confidence. Scores above 0.23 indicate a plausible interaction. Can be biased towards coiled-coil structures.",
+            "max_promiscuity": "The higher of the two partners' promiscuity scores. Represents the number of other interactions predicted for the same interface region. A high score may indicate a non-specific binding site, or completion bias.",
+            "rop": "Repeatability of Prediction. How many times (out of 4) the same interface was predicted in repeat runs. A score of 4 indicates high consistency.",
+            "size": "The number of residue pairs within interaction distance at the interface.",
+            "evenness": "How evenly balanced the interaction confidence is in each direction (Protein 1 -> Protein 2 vs. Protein 2 -> Protein 1).",
+            "location": "Location of the regions involved in this predicted interaction in each full length protein. This is not necessarily every interacting region between these proteins or these fragments.",
+            "relative_location": "The interacting residue ranges within the protein fragments used for prediction. Useful for mapping to the predicted structure."
+        });
+
+        // Load header and footer includes
+        async function loadHTMLIncludes() {
+            const headerPlaceholder = document.getElementById('header-placeholder');
+            const footerPlaceholder = document.getElementById('footer-placeholder');
+
+            if (headerPlaceholder) {
+                try {
+                    const response = await fetch('_header.html');
+                    if (response.ok) {
+                        headerPlaceholder.innerHTML = await response.text();
+                        // Set active nav link
+                        document.querySelectorAll('nav a').forEach(link => link.classList.remove('active'));
+                        const navAllPredictions = document.getElementById('navAllPredictions');
+                        if (navAllPredictions) {
+                            navAllPredictions.classList.add('active');
+                        }
+                    } else {
+                        headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
+                    }
+                } catch (error) {
+                    headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
+                }
+            }
+
+            if (footerPlaceholder) {
+                try {
+                    const response = await fetch('_footer.html');
+                    if (response.ok) {
+                        footerPlaceholder.innerHTML = await response.text();
+                    } else {
+                        footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
+                    }
+                } catch (error) {
+                    footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
+                }
+            }
+        }
+
+        // --- Sidebar Event Listeners ---
+        function setupSidebarEventListeners() {
+            // Protein search
+            const proteinSearch = document.getElementById('proteinSearch');
+            proteinSearch.addEventListener('input', () => {
+                const searchTerm = proteinSearch.value.trim().toLowerCase();
+                const dropdown = document.querySelector('.protein-dropdown');
+                if (dropdown) dropdown.remove();
+                if (searchTerm.length < 2) return;
+                const uniqueProteins = [...new Set([
+                    ...table.tableData.map(row => row.Protein1),
+                    ...table.tableData.map(row => row.Protein2),
+                    ...table.tableData.map(row => row.Protein1_Domain),
+                    ...table.tableData.map(row => row.Protein2_Domain)
+                ])];
+                const matches = uniqueProteins.filter(protein => protein && protein.toLowerCase().includes(searchTerm));
+                const dropdownContainer = document.createElement('div');
+                dropdownContainer.className = 'protein-dropdown';
+                matches.forEach(protein => {
+                    const option = document.createElement('div');
+                    option.className = 'dropdown-option';
+                    option.textContent = protein;
+                    option.addEventListener('click', () => {
+                        if (!table.selectedProteins.includes(protein)) {
+                            table.setSelectedProteins([...table.selectedProteins, protein]);
+                            table.updateActiveFilterDisplay();
+                            table.renderTable();
+                            initializeChordPlot();
+                        }
+                        dropdownContainer.remove();
+                        proteinSearch.value = '';
+                    });
+                    dropdownContainer.appendChild(option);
+                });
+                proteinSearch.parentNode.appendChild(dropdownContainer);
+            });
+
+            // Search mode
+            document.querySelectorAll('input[name="searchMode"]').forEach(input => {
+                input.addEventListener('change', function() {
+                    table.setSearchMode(this.value);
+                    table.renderTable();
+                    initializeChordPlot();
+                });
+            });
+
+            // Sidebar filter apply
+            document.getElementById('applyFilter').addEventListener('click', () => {
+                const column = document.getElementById('filterColumn').value;
+                const condition = document.getElementById('filterCondition').value; // 'above' or 'below'
+                const value = document.getElementById('filterValue').value; // Keep as string for refineNumericFilter
+                if (!column || value.trim() === '') {
+                    alert('Please select a valid column and enter a numerical value');
+                    return;
+                }
+                table.refineNumericFilter(column, condition, value);
+                // table.updateActiveFilterDisplay(); // Called by refineNumericFilter via onFiltersChanged
+                // table.renderTable(); // Called by refineNumericFilter
+            });
+
+            // Sidebar filter reset
+            document.getElementById('resetFilters').addEventListener('click', () => {
+                table.setColumnFilters({}); // Clear all numeric filters
+                table.setSelectedProteins([]);
+                document.getElementById('proteinSearch').value = '';
+                document.getElementById('filterColumn').value = '';
+                document.getElementById('filterCondition').value = 'above';
+                document.getElementById('filterValue').value = '';
+                // table.updateActiveFilterDisplay(); // Called by setColumnFilters via onFiltersChanged
+                // table.renderTable(); // Called by setColumnFilters
+            });
+        }
+
+        // --- Stats summary ---
+        function updateStats(filteredData, allData) {
+            const interactionCount = document.getElementById('interactionCount');
+            const proteinCount = document.getElementById('proteinCount');
+            const avgConfidence = document.getElementById('avgConfidence');
+            const filteredCount = document.getElementById('filteredCount');
+            if (!allData) allData = table.tableData;
+            if (!filteredData) filteredData = allData;
+            interactionCount.textContent = allData.length;
+            filteredCount.textContent = filteredData.length;
+            const proteins = [...new Set([
+                ...allData.map(row => row.Protein1_Domain),
+                ...allData.map(row => row.Protein2_Domain)
+            ])];
+            proteinCount.textContent = proteins.length;
+            if (allData.length > 0) {
+                const totalConfidence = allData.reduce((sum, row) => sum + parseFloat(row.pdockq), 0);
+                const avg = totalConfidence / allData.length;
+                avgConfidence.textContent = avg.toFixed(2);
+            } else {
+                avgConfidence.textContent = '0.00';
+            }
+        }
+
+        // --- Chord Plot ---
+        async function initializeChordPlot() {
+            const containerSelector = '#chord-plot-container';
+            const containerEl = document.querySelector(containerSelector);
+            if (!containerEl) return;
+
+            containerEl.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">Loading interaction data for chord plot...</p>`;
+
+            try {
+                // table data is already loaded.
+                const filteredData = table.getFilteredData ? table.getFilteredData() : [];
+
+                await drawChordByPosition(filteredData, containerSelector, {
+                    size: 500,
+                    queryProtein: null, // No query protein on index page
+                    coloringMode: 'gradient', // Use the new gradient mode
+                    showDomainsOnArcs: false, // No domain data available on this page
+                    domainColorMap: null,
+                    domainRanges: null,
+                    expandQuery: false
+                });
+
+            } catch (error) {
+                console.error('Error initializing chord plot:', error);
+                containerEl.innerHTML = `<p style="text-align:center; color:red; padding-top: 20px;">Could not load chord plot: ${error.message}</p>`;
+            }
+        }
+
+        // --- Initial active filters ---
+        // Removed: const initialSidebarFilters = [...]
+
+        // --- Collapsible sections ---
+        function initCollapsibleSections() {
+            document.querySelectorAll('.sidebar-section .sidebar-title').forEach(title => {
+                title.addEventListener('click', function() {
+                    const sidebarSection = this.closest('.sidebar-section');
+                    if (sidebarSection) {
+                        sidebarSection.classList.toggle('collapsed');
+                        const icon = this.querySelector('i.fas.fa-chevron-up, i.fas.fa-chevron-down');
+                        if (icon) {
+                            // Toggle chevron icon classes
+                            if (sidebarSection.classList.contains('collapsed')) {
+                                icon.classList.remove('fa-chevron-up');
+                                icon.classList.add('fa-chevron-down');
+                            } else {
+                                icon.classList.remove('fa-chevron-down');
+                                icon.classList.add('fa-chevron-up');
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        // --- Initialize everything ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadHTMLIncludes();
+            initCollapsibleSections(); // Initialize collapsible sidebar sections
+            await table.loadData();
+
+            // Set UI update hooks and filter change callback first
+            table.setUpdateStatsUI(updateStats);
+            table.setUpdatePaginationUI(table.updatePaginationControls);
+            table.setOnFiltersChanged(() => {
+                table.updateActiveFilterDisplay();
+                initializeChordPlot();
+            }); 
+
+            // Set initial numeric filters directly using setColumnFilters
+            // This will now trigger onFiltersChanged (and thus updateActiveFilterDisplay)
+            // and also call renderTable internally.
+            const initialNumericFilters = {
+                min_pae: { max: 5 }, // min_pae <= 5
+                avg_pae: { max: 15 }, // avg_pae <= 15
+                rop: { min: 2 }      // rop >= 2
+            };
+            table.setColumnFilters(initialNumericFilters);
+            
+            table.initTable(); // Initializes column headers, etc.
+            setupSidebarEventListeners();
+            // The table.renderTable() call is removed from here as 
+            // table.setColumnFilters() already calls renderTable() and updates active filter display.
+        });
+    </script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

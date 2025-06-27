@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="logo.png" type="image/png">
+    <title>Centrosome Explorer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+    <script src="https://3dmol.org/build/3Dmol-min.js"></script>
+    <script src="js/domain-fragment-plot.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="header-placeholder"></div>
+    <div class="container">
+        <div class="main-content">
+            <h1 class="page-main-heading">Centrosome Predicted Interaction Data Explorer</h1>
+            <div class="grid">
+                <aside class="sidebar">
+                    <div class="sidebar-section">
+                        <div class="sidebar-title">
+                            <h2><i class="fas fa-list-ul"></i> <span>Page Sections</span></h2>
+                            <i class="fas fa-chevron-up"></i>
+                        </div>
+                        <div class="sidebar-content">
+                            <ul>
+                                <li><a href="#interaction-details">Interaction Details</a></li>
+                                <li><a href="#structure-viewer">Structure</a></li>
+                                <li><a href="#domains-fragments">Domains and Fragments</a></li>
+                                <li><a href="#chord-plot">Chord Plot</a></li>
+                                <li><a href="#promiscuity-plots">Promiscuity Plots</a></li>
+                                <li><a href="#other-interactions">Other Interactions</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </aside>
+                    
+                <div class="content-column">
+                    <main class="content-area">
+                        <div class="content-section" id="interaction-details">
+                            <div class="content-section-title">
+                                <h2>Interaction Details</h2>
+                                <i class="fas fa-chevron-up"></i>
+                            </div>
+                            <div class="content-section-content">
+                                <!-- Stat boxes for interaction metrics -->
+                                <div class="interaction-stats-row" style="display: flex; gap: 18px; margin-bottom: 18px;">
+                                    <div class="stat-card" id="stat-card-iptm" style="flex:1; text-align:center;">
+                                        <div class="stat-label">ipTM</div>
+                                        <div class="stat-value" id="stat-iptm">-</div>
+                                    </div>
+                                    <div class="stat-card" id="stat-card-minpae" style="flex:1; text-align:center;">
+                                        <div class="stat-label">min_pae</div>
+                                        <div class="stat-value" id="stat-minpae">-</div>
+                                    </div>
+                                    <div class="stat-card" id="stat-card-avgpae" style="flex:1; text-align:center;">
+                                        <div class="stat-label">avg_pae</div>
+                                        <div class="stat-value" id="stat-avgpae">-</div>
+                                    </div>
+                                    <div class="stat-card" id="stat-card-rop" style="flex:1; text-align:center;">
+                                        <div class="stat-label">ROP</div>
+                                        <div class="stat-value" id="stat-rop">-</div>
+                                    </div>
+                                    <div class="stat-card" id="stat-card-pdockq" style="flex:1; text-align:center;">
+                                        <div class="stat-label">pDockQ</div>
+                                        <div class="stat-value" id="stat-pdockq">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                    <main class="content-area">
+                        <div class="content-section" id="structure-viewer">
+                            <div class="content-section-title">
+                                <h2>Structure</h2>
+                                <i class="fas fa-chevron-up"></i>
+                            </div>
+                            <div class="content-section-content" style="position: relative;">
+                                <!-- Structure viewer controls -->
+                                <div class="structure-controls"> 
+                                    <div class="control-bar"> 
+                                        <div class="control-button-group"> 
+                                            <button type="button" class="resetViewBtn control-button" title="Reset View"> 
+                                                <i class="fas fa-undo"></i> Reset
+                                            </button>
+                                            <button type="button" class="atomsBtn control-button" title="Atoms"> 
+                                                <i class="fas fa-grip-lines"></i> Atoms
+                                            </button>
+                                            <button type="button" class="surfaceBtn control-button" title="Surface"> 
+                                                <i class="fas fa-layer-group"></i> Surface
+                                            </button>
+                                            <button type="button" class="colorModeBtn control-button" title="Toggle Color Mode"> 
+                                                <i class="fas fa-stream"></i> By Chain
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="structure-viewer"
+                                   data-pdb="structures/Ana2_F1_Sas-4_F3_unrelaxed_rank_001_alphafold2_multimer_v3_model_5_seed_000.pdb"></div>
+                            </div>
+                        </div>
+                    </main>
+                    <main class="content-area">
+                        <div class="content-section" id="domains-fragments">
+                            <div class="content-section-title">
+                                <h2>Domains and Fragments</h2>
+                                <i class="fas fa-chevron-up"></i>
+                            </div>
+                            <div class="content-section-content">
+                                <!-- Global controls for domain/fragment plots -->
+                                <div class="control-bar global-domain-fragment-plot-controls" style="margin-bottom: 20px;">
+                                    <div class="control-button-group">
+                                        <button type="button" class="global-uniprotDomainsBtn control-button" title="Toggle UniProt Domains">
+                                            <i class="fas fa-layer-group"></i> Domains
+                                        </button>
+                                        <button type="button" class="global-alphafoldDomainsBtn control-button" title="Toggle AlphaFold Domains">
+                                            <i class="fas fa-brain"></i> AlphaFold Domains
+                                        </button>
+                                        <button type="button" class="global-fragmentsBtn control-button" title="Toggle Fragments">
+                                            <i class="fas fa-puzzle-piece"></i> Fragments
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Protein 1 Plot Section -->
+                                <div id="domain-fragment-plot-p1-section">
+                                    <h3 id="protein1-name-subheading-df" class="page-subtitle">Loading Protein 1...</h3>
+                                    <div class="domainFragmentPlotContainerP1">
+                                        <!-- Domain/Fragment Plot for P1 will be rendered here -->
+                                    </div>
+                                    <!-- Collapsible table for P1 will be generated here by JS -->
+                                </div>
+
+                                <!-- Protein 2 Plot Section -->
+                                <div id="domain-fragment-plot-p2-section" style="margin-top: 30px; display: none;"> <!-- Initially hidden -->
+                                    <h3 id="protein2-name-subheading-df" class="page-subtitle">Loading Protein 2...</h3>
+                                    <div class="domainFragmentPlotContainerP2">
+                                        <!-- Domain/Fragment Plot for P2 will be rendered here -->
+                                    </div>
+                                    <!-- Collapsible table for P2 will be generated here by JS -->
+                                </div>
+                                <p id="fragments-fallback-message-df" style="text-align:center; display:none; margin-top: 15px;">
+                                    Information about domains and fragments will be shown here if available.
+                                </p>
+                            </div>
+                        </div>
+                    </main>
+                    <main class="content-area">
+                        <div class="content-section" id="chord-plot">
+                            <div class="content-section-title">
+                                <h2>Chord Plot</h2>
+                                <i class="fas fa-chevron-up"></i>
+                            </div>
+                            <div class="content-section-content">
+                                <!-- Content for Chord Plot will go here -->
+                                <p>A chord plot visualizing interactions or other relationships will be displayed here.</p>
+                            </div>
+                        </div>
+                    </main>
+                    <main class="content-area">
+                        <div class="content-section" id="promiscuity-plots">
+                            <div class="content-section-title">
+                                <h2>Promiscuity Plots</h2>
+                                <i class="fas fa-chevron-up"></i>
+                            </div>
+                            <div class="content-section-content">
+                                <!-- Promiscuity plots for each protein -->
+                                <div id="promiscuity-plot-p1-section" style="margin-bottom: 32px;">
+                                    <h3 id="protein1-name-subheading-promiscuity" class="page-subtitle">Loading Protein 1...</h3>
+                                    <div class="promiscuityPlotContainerP1"></div>
+                                    <p class="promiscuity-plot-caption-p1"></p>
+                                </div>
+                                <div id="promiscuity-plot-p2-section" style="margin-bottom: 32px; display: none;">
+                                    <h3 id="protein2-name-subheading-promiscuity" class="page-subtitle">Loading Protein 2...</h3>
+                                    <div class="promiscuityPlotContainerP2"></div>
+                                    <p class="promiscuity-plot-caption-p2"></p>
+                                </div>
+                                <p id="promiscuity-fallback-message" style="text-align:center; display:none; margin-top: 15px;">
+                                    Promiscuity plots will be shown here if protein parameters are provided.
+                                </p>
+                            </div>
+                        </div>
+                    </main>
+                    <main class="content-area">
+                        <div class="content-section" id="other-interactions">
+                            <div class="content-section-title">
+                                <h2>Other Interactions</h2>
+                                <i class="fas fa-chevron-up"></i>
+                            </div>
+                            <div class="content-section-content">
+                                <div id="other-interactions-list">
+                                    <div class="active-filters">
+                                        <h3>Active Filters:</h3>
+                                        <div class="filter-tags" id="activeFilters"></div>
+                                    </div>
+                                    <div class="table-container">
+                                        <table id="dataTable">
+                                            <thead>
+                                                <tr>
+                                                    <th data-column="location">Location</th>
+                                                    <th data-column="min_pae">
+                                                        <span class="header-main-text">min_pae</span> 
+                                                        <span class="filter-icon">
+                                                            <i class="fas fa-filter"></i>
+                                                        </span>
+                                                    </th>
+                                                    <th data-column="avg_pae">
+                                                        <span class="header-main-text">avg_pae</span> 
+                                                        <span class="filter-icon">
+                                                            <i class="fas fa-filter"></i>
+                                                        </span>
+                                                    </th>
+                                                    <th data-column="iptm">
+                                                        <span class="header-main-text">ipTM</span> 
+                                                        <span class="filter-icon">
+                                                            <i class="fas fa-filter"></i>
+                                                        </span>
+                                                    </th>
+                                                    <th data-column="pdockq">
+                                                        <span class="header-main-text">pDockQ</span> 
+                                                        <span class="filter-icon">
+                                                            <i class="fas fa-filter"></i>
+                                                        </span>
+                                                    </th>
+                                                    <th data-column="max_promiscuity">
+                                                        <span class="header-main-text">Max Promiscuity</span> 
+                                                        <span class="filter-icon">
+                                                            <i class="fas fa-filter"></i>
+                                                        </span>
+                                                    </th>
+                                                    <th data-column="rop">
+                                                        <span class="header-main-text">ROP</span> 
+                                                        <span class="filter-icon">
+                                                            <i class="fas fa-filter"></i>
+                                                        </span>
+                                                    </th>
+                                                    <th data-column="size">
+                                                        <span class="header-main-text">Size</span> 
+                                                        <span class="filter-icon">
+                                                            <i class="fas fa-filter"></i>
+                                                        </span>
+                                                    </th>
+                                                    <th data-column="evenness">
+                                                        <span class="header-main-text">Evenness</span> 
+                                                        <span class="filter-icon">
+                                                            <i class="fas fa-filter"></i>
+                                                        </span>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tableBody">
+                                                <!-- Data will be populated by JavaScript -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="pagination" id="pagination">
+                                        <!-- Pagination will be generated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="footer-placeholder"></div>
+    <script src="js/promiscuity-plot.js"></script>
+    <!-- The structure viewer script is now loaded dynamically after the PDB file is identified -->
+    <!-- <script src="js/interaction-structure-viewer.js"></script> -->
+    <script type="module">
+        import * as table from './js/table.js';
+
+        // Function to load HTML includes
+        async function loadHTMLIncludes() {
+            const headerPlaceholder = document.getElementById('header-placeholder');
+            const footerPlaceholder = document.getElementById('footer-placeholder');
+
+            if (headerPlaceholder) {
+                try {
+                    const response = await fetch('_header.html');
+                    if (response.ok) {
+                        headerPlaceholder.innerHTML = await response.text();
+                        // Set active nav link for protein_pair.html
+                        document.querySelectorAll('nav a').forEach(link => link.classList.remove('active'));
+                        const navProteinPairs = document.getElementById('navProteinPairs');
+                        if (navProteinPairs) {
+                            navProteinPairs.classList.add('active');
+                        }
+                    } else {
+                        console.error('Failed to load header:', response.statusText);
+                        headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
+                    }
+                } catch (error) {
+                    console.error('Error fetching header:', error);
+                    headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
+                }
+            }
+
+            if (footerPlaceholder) {
+                try {
+                    const response = await fetch('_footer.html');
+                    if (response.ok) {
+                        footerPlaceholder.innerHTML = await response.text();
+                    } else {
+                        console.error('Failed to load footer:', response.statusText);
+                        footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
+                    }
+                } catch (error) {
+                    console.error('Error fetching footer:', error);
+                    footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
+                }
+            }
+        }
+
+        // Function to update page title and H1 based on URL parameters
+        function updatePageTitleWithProteinPair() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const p1 = decodeURIComponent(urlParams.get('p1') || ''); 
+            const p2 = decodeURIComponent(urlParams.get('p2') || '');
+            const f1_id = decodeURIComponent(urlParams.get('f1_id') || '');
+            const f2_id = decodeURIComponent(urlParams.get('f2_id') || '');
+
+            // Update main page title and subheadings for domain/fragment plots
+            const pageTitleElement = document.querySelector('.page-main-heading');
+            const protein1DFSubheading = document.getElementById('protein1-name-subheading-df');
+            const protein2DFSubheading = document.getElementById('protein2-name-subheading-df');
+
+            if (p1 && p2) {
+                const p1Display = f1_id ? `${p1} (Fragment ${f1_id})` : p1;
+                const p2Display = f2_id ? `${p2} (Fragment ${f2_id})` : p2;
+                const title = `${p1Display} + ${p2Display}`;
+                document.title = title;
+                if (pageTitleElement) pageTitleElement.textContent = title;
+                
+                // The domain-fragment-plot.js will handle showing/hiding P2 plot section
+                // and initializing the plots.
+
+            } else {
+                console.warn('Protein pair parameters not found in URL.');
+                document.title = 'Centrosome Interaction Data Explorer';
+                if (pageTitleElement) pageTitleElement.textContent = 'Centrosome Interaction Data Explorer';
+                if (protein1DFSubheading) protein1DFSubheading.textContent = 'Protein 1 not specified';
+                if (protein2DFSubheading) protein2DFSubheading.style.display = 'none';
+
+
+                const fallbackMessageDF = document.getElementById('fragments-fallback-message-df');
+                if(fallbackMessageDF) {
+                    fallbackMessageDF.textContent = 'Protein parameters not provided to display domain/fragment plots.';
+                    fallbackMessageDF.style.display = 'block';
+                }
+            }
+        }
+        function initCollapsibleSections() {
+            document.querySelectorAll('.sidebar-title, .content-section-title').forEach(title => {
+                title.addEventListener('click', function () {
+                    const isContentTitle = this.classList.contains('content-section-title');
+                    const isSidebarTitle = this.classList.contains('sidebar-title');
+
+                    if (isContentTitle) {
+                        const contentArea = this.closest('main.content-area');
+                        if (contentArea) {
+                            contentArea.classList.toggle('collapsed');
+                        }
+                    } else if (isSidebarTitle) {
+                        const sidebarTitleH2 = this.querySelector('h2');
+                        const isMainPageSectionsSidebarTitle = sidebarTitleH2 && sidebarTitleH2.querySelector('i.fa-list-ul');
+                        
+                        const sidebarElement = this.closest('aside.sidebar');
+                        const parentGrid = this.closest('.main-content .grid');
+
+                        if (isMainPageSectionsSidebarTitle && sidebarElement && parentGrid) {
+                            sidebarElement.classList.toggle('collapsed');
+                            parentGrid.classList.toggle('sidebar-collapsed');
+                        } else {
+                            const sectionToCollapse = this.closest('.sidebar-section');
+                            if (sectionToCollapse) {
+                                sectionToCollapse.classList.toggle('collapsed');
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        // Function to update stat boxes from URL params and color them
+        function updateInteractionStatsFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            function round2(val) {
+                const num = parseFloat(val);
+                return isNaN(num) ? '-' : num.toFixed(2);
+            }
+            function toInt(val) {
+                const num = parseFloat(val);
+                return isNaN(num) ? '-' : Math.round(num);
+            }
+
+            // Helper to set color class
+            function setStatColor(element, value, colorFunc) {
+                element.classList.remove(
+                    'stat-red', 'stat-orange', 'stat-yellow', 'stat-lightgreen', 'stat-darkgreen'
+                );
+                const colorClass = colorFunc(value);
+                if (colorClass) element.classList.add(colorClass);
+            }
+
+            // Color functions for each stat
+            function iptmColor(val) {
+                val = parseFloat(val);
+                if (isNaN(val)) return '';
+                if (val < 0.3) return 'stat-red';
+                if (val < 0.55) return 'stat-orange';
+                if (val < 0.7) return 'stat-lightgreen';
+                return 'stat-darkgreen';
+            }
+            function minpaeColor(val) {
+                val = parseFloat(val);
+                if (isNaN(val)) return '';
+                if (val >= 7 && val <= 30) return 'stat-red';
+                if (val >= 5 && val < 7) return 'stat-orange';
+                if (val >= 3 && val < 5) return 'stat-yellow';
+                if (val >= 2 && val < 3) return 'stat-lightgreen';
+                if (val >= 0 && val < 2) return 'stat-darkgreen';
+                return '';
+            }
+            function avgpaeColor(val) {
+                val = parseFloat(val);
+                if (isNaN(val)) return '';
+                if (val >= 20 && val <= 30) return 'stat-red';
+                if (val >= 15 && val < 20) return 'stat-orange';
+                if (val >= 10 && val < 15) return 'stat-yellow';
+                if (val >= 5 && val < 10) return 'stat-lightgreen';
+                if (val >= 0 && val < 5) return 'stat-darkgreen';
+                return '';
+            }
+            function pdockqColor(val) {
+                val = parseFloat(val);
+                if (isNaN(val)) return '';
+                if (val < 0.1) return 'stat-red';
+                if (val < 0.23) return 'stat-orange';
+                if (val < 0.5) return 'stat-yellow';
+                if (val < 0.7) return 'stat-lightgreen';
+                return 'stat-darkgreen';
+            }
+            function ropColor(val) {
+                val = parseInt(val);
+                if (isNaN(val)) return '';
+                if (val === 0) return 'stat-red';
+                if (val === 1) return 'stat-orange';
+                if (val === 2) return 'stat-yellow';
+                if (val === 3) return 'stat-lightgreen';
+                if (val >= 4) return 'stat-darkgreen';
+                return '';
+            }
+
+            // Set values and colors
+            const iptmVal = urlParams.get('iptm');
+            const minpaeVal = urlParams.get('min_pae');
+            const avgpaeVal = urlParams.get('avg_pae');
+            const ropVal = urlParams.get('rop');
+            const pdockqVal = urlParams.get('pdockq');
+
+            document.getElementById('stat-iptm').textContent    = round2(iptmVal);
+            document.getElementById('stat-minpae').textContent  = round2(minpaeVal);
+            document.getElementById('stat-avgpae').textContent  = round2(avgpaeVal);
+            document.getElementById('stat-rop').textContent     = toInt(ropVal);
+            document.getElementById('stat-pdockq').textContent  = round2(pdockqVal);
+
+            setStatColor(document.getElementById('stat-card-iptm'),    iptmVal,    iptmColor);
+            setStatColor(document.getElementById('stat-card-minpae'), minpaeVal,  minpaeColor);
+            setStatColor(document.getElementById('stat-card-avgpae'), avgpaeVal,  avgpaeColor);
+            setStatColor(document.getElementById('stat-card-rop'),    ropVal,     ropColor);
+            setStatColor(document.getElementById('stat-card-pdockq'), pdockqVal,  pdockqColor);
+        }
+
+        // New function to find PDB file, set data-pdb, and load the viewer script
+        async function updateStructureViewerPdbAndLoadScript() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const p1 = decodeURIComponent(urlParams.get('p1') || '');
+            const p2 = decodeURIComponent(urlParams.get('p2') || '');
+            const f1_id = decodeURIComponent(urlParams.get('f1_id') || '');
+            const f2_id = decodeURIComponent(urlParams.get('f2_id') || '');
+
+            const structureViewer = document.querySelector('.structure-viewer');
+
+            if (!p1 || !p2 || !f1_id || !f2_id) {
+                console.log("Protein/fragment parameters missing, cannot determine PDB file.");
+                structureViewer.innerHTML = `<p style="color:red; text-align:center;">Protein/fragment parameters missing.</p>`;
+                return;
+            }
+
+            // Assumes a manifest `structures/pdb_files.txt` exists, listing all PDB filenames.
+            // This file can be generated by running `ls *.pdb > pdb_files.txt` inside the `structures` directory.
+            try {
+                const response = await fetch('structures/pdb_files.txt');
+                if (!response.ok) {
+                    console.error('Could not fetch structures/pdb_files.txt. Please ensure it exists.');
+                    structureViewer.innerHTML = `<p style="color:red; text-align:center;">Could not load PDB file list.</p>`;
+                    return;
+                }
+                const fileListText = await response.text();
+                const pdbFiles = fileListText.split('\n').filter(f => f.endsWith('.pdb'));
+
+                const prefix = `${p1}_${f1_id}_${p2}_${f2_id}`;
+                const pdbFile = pdbFiles.find(f => f.startsWith(prefix));
+
+                if (pdbFile) {
+                    structureViewer.setAttribute('data-pdb', `structures/${pdbFile}`);
+                    // Now that data-pdb is set, load the viewer script
+                    const script = document.createElement('script');
+                    script.src = 'js/interaction-structure-viewer.js';
+                    document.body.appendChild(script);
+                } else {
+                    console.error(`PDB file starting with "${prefix}" not found in structures/pdb_files.txt.`);
+                    structureViewer.innerHTML = `<p style="color:red; text-align:center;">PDB file not found for this interaction.</p>`;
+                }
+            } catch (error) {
+                console.error('Error finding PDB file:', error);
+                structureViewer.innerHTML = `<p style="color:red; text-align:center;">Error loading PDB file.</p>`;
+            }
+        }
+
+        // Helper to extract interaction regions for p1 and p2 from URL params
+        function getInteractionRegionsFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            // Accept comma-separated ranges, e.g. "10-20,30-40"
+            function parseRegion(str) {
+                if (!str) return [];
+                return str.split(',').map(r => {
+                    const m = r.match(/(\d+)-(\d+)/);
+                    if (m) {
+                        return { start: parseInt(m[1], 10), end: parseInt(m[2], 10) };
+                    }
+                    return null;
+                }).filter(Boolean);
+            }
+            return {
+                p1: parseRegion(urlParams.get('f1_loc')),
+                p2: parseRegion(urlParams.get('f2_loc'))
+            };
+        }
+
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadHTMLIncludes(); // Load header and footer first
+            updatePageTitleWithProteinPair(); // Update title with protein pair names
+            updateInteractionStatsFromURL(); // <-- Add this line
+            initCollapsibleSections(); // Initialize collapsible sections
+
+            // Ensure linked section is uncollapsed when navigating via sidebar links from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const sectionIdFromUrl = urlParams.get('section');
+            if (sectionIdFromUrl) {
+                const targetSectionDiv = document.getElementById(sectionIdFromUrl);
+                if (targetSectionDiv) {
+                    const mainContentArea = targetSectionDiv.closest('main.content-area');
+                    if (mainContentArea) {
+                        mainContentArea.classList.remove('collapsed');
+                    }
+                    const sidebarLink = document.querySelector(`.sidebar-content a[href="#${sectionIdFromUrl}"]`);
+                    if (sidebarLink) {
+                        document.querySelectorAll('.sidebar-content a.active').forEach(l => l.classList.remove('active'));
+                        sidebarLink.classList.add('active');
+                    }
+                }
+            }
+
+            // Add click listeners for sidebar links to handle active state and uncollapse sections
+            document.querySelectorAll('.sidebar .sidebar-section ul li a').forEach(link => {
+                link.addEventListener('click', function(event) {
+                    // Update active class for sidebar links
+                    document.querySelectorAll('.sidebar .sidebar-section ul li a.active').forEach(activeLink => {
+                        activeLink.classList.remove('active');
+                    });
+                    this.classList.add('active');
+
+                    const targetId = this.getAttribute('href').substring(1);
+                    const targetSectionElement = document.getElementById(targetId); // This is the div.content-section
+
+                    if (targetSectionElement) {
+                        const mainContentArea = targetSectionElement.closest('main.content-area');
+                        if (mainContentArea && mainContentArea.classList.contains('collapsed')) {
+                            mainContentArea.classList.remove('collapsed');
+                            // Chevron icon for the content section should update via CSS
+                        }
+                        // Allow default anchor behavior to scroll to the section
+                    }
+                });
+            });
+
+            // Function to load other interactions for the same protein pair
+            async function loadOtherInteractions() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const p1 = decodeURIComponent(urlParams.get('p1') || '');
+                const p2 = decodeURIComponent(urlParams.get('p2') || '');
+                const container = document.getElementById('other-interactions-list');
+
+                if (!p1 || !p2 || !container) {
+                    const tableBody = document.querySelector('#other-interactions-list #tableBody');
+                    if (tableBody) tableBody.innerHTML = '<tr><td colspan="9"><p>Protein pair not specified.</p></td></tr>';
+                    return;
+                }
+
+                // Define initial filters, same as protein_pair.html
+                const initialNumericFilters = {
+                    min_pae: { max: 5 },
+                    avg_pae: { max: 15 },
+                    rop: { min: 2 }
+                };
+
+                // Based on protein_pair.html
+                table.setColumnDescriptions({
+                    "query_fragment": "Query protein fragment (domain or fragment name).",
+                    "partner": "Partner protein name.",
+                    "partner_id": "UniProt accession ID of the partner protein.",
+                    "Category": "Functional category of the partner protein.",
+                    "min_pae": "Minimum Predicted Aligned Error (PAE) value. Lower values indicate higher confidence.",
+                    "avg_pae": "Average Predicted Aligned Error (PAE) across the interface.",
+                    "iptm": "Interface predicted TM-score (ipTM). Higher values indicate higher model quality (0-1).",
+                    "pdockq": "pDockQ score estimates the confidence in the modeled interaction.",
+                    "max_promiscuity": "Maximum promiscuity score of the two domains.",
+                    "rop": "Residue Overlap Score (ROP) measures the proportion of residues in the domain that are involved in the interface.",
+                    "size": "Size of the interaction interface in square Angstroms (Å²).",
+                    "evenness": "How evenly distributed the interface residues are between the two proteins.",
+                    "location": "Location of the interaction on each protein chain."
+                });
+
+                table.setOnFiltersChanged(() => {
+                    table.updateActiveFilterDisplay();
+                });
+
+                await table.loadData();
+                table.setColumnFilters(initialNumericFilters); // Apply initial filters
+                table.setSelectedProteins([p1, p2]);
+                table.setSearchMode("pair-exact");
+                table.setCurrentPage(1);
+                table.setUpdatePaginationUI(table.updatePaginationControls);
+                table.setUpdateStatsUI(null);
+                table.initTable();
+                table.updateActiveFilterDisplay();
+                table.renderTable();
+            }
+
+            // Promiscuity plots for each protein
+            function updatePromiscuityPlots() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const p1 = decodeURIComponent(urlParams.get('p1') || '');
+                const p2 = decodeURIComponent(urlParams.get('p2') || '');
+
+                const p1Section = document.getElementById('promiscuity-plot-p1-section');
+                const p2Section = document.getElementById('promiscuity-plot-p2-section');
+                const fallbackMsg = document.getElementById('promiscuity-fallback-message');
+                const p1Subheading = document.getElementById('protein1-name-subheading-promiscuity');
+                const p2Subheading = document.getElementById('protein2-name-subheading-promiscuity');
+
+                // --- NEW: Get interaction regions from URL ---
+                const interactionRegions = getInteractionRegionsFromURL();
+
+                // --- FIX: Clear both containers and captions before drawing ---
+                const p1Container = document.querySelector('.promiscuityPlotContainerP1');
+                const p2Container = document.querySelector('.promiscuityPlotContainerP2');
+                const p1Caption = document.querySelector('.promiscuity-plot-caption-p1');
+                const p2Caption = document.querySelector('.promiscuity-plot-caption-p2');
+                if (p1Container) p1Container.innerHTML = '';
+                if (p2Container) p2Container.innerHTML = '';
+                if (p1Caption) p1Caption.textContent = '';
+                if (p2Caption) p2Caption.textContent = '';
+
+                if (p1) {
+                    if (p1Section) p1Section.style.display = '';
+                    if (p1Subheading) p1Subheading.textContent = p1;
+                    if (window.initPromiscuityPlot) {
+                        window.initPromiscuityPlot({
+                            containerSelector: '.promiscuityPlotContainerP1',
+                            captionSelector: '.promiscuity-plot-caption-p1',
+                            proteinName: p1,
+                            interactionRegion: interactionRegions.p1
+                        });
+                    }
+                } else {
+                    if (p1Section) p1Section.style.display = 'none';
+                }
+
+                if (p2) {
+                    if (p2Section) p2Section.style.display = '';
+                    if (p2Subheading) p2Subheading.textContent = p2;
+                    if (window.initPromiscuityPlot) {
+                        window.initPromiscuityPlot({
+                            containerSelector: '.promiscuityPlotContainerP2',
+                            captionSelector: '.promiscuity-plot-caption-p2',
+                            proteinName: p2,
+                            interactionRegion: interactionRegions.p2
+                        });
+                    }
+                } else {
+                    if (p2Section) p2Section.style.display = 'none';
+                }
+
+                if (!p1 && !p2) {
+                    if (fallbackMsg) fallbackMsg.style.display = 'block';
+                } else {
+                    if (fallbackMsg) fallbackMsg.style.display = 'none';
+                }
+            }
+
+            updatePromiscuityPlots();
+            loadOtherInteractions();
+
+            // Dynamically find PDB and load structure viewer.
+            await updateStructureViewerPdbAndLoadScript();
+        });
+    </script>
+</body>
+</html>
