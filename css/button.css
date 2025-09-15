@@ -1,0 +1,67 @@
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.btn,
+.btn-outline,
+.big-button {
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+    box-shadow: var(--shadow);
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn {
+    padding: 10px 20px;
+    font-size: 1rem;
+    flex: 1;
+}
+
+.btn-primary {
+    background: var(--secondary);
+    color: white;
+    box-shadow: var(--shadow);
+}
+
+.btn-primary:hover {
+    background: var(--secondary-hover);
+    box-shadow: var(--shadow-hover);
+}
+
+.btn-outline {
+    background: white;
+    color: var(--secondary);
+    border: 2px solid var(--secondary);
+}
+
+.btn-outline:hover {
+    background: var(--light-hover);
+}
+
+.big-button {
+    display: inline-block;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    color: white;
+    background-color: var(--secondary);
+    text-decoration: none;
+    box-shadow: var(--shadow);
+}
+
+.big-button:hover {
+    background-color: var(--secondary-hover);
+    box-shadow: var(--shadow-hover, 0 4px 8px rgba(0,0,0,0.15));
+}
+
+.big-button:active {
+    transform: translateY(2px);
+}

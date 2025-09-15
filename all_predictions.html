@@ -8,6 +8,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/button.css">
+    <link rel="stylesheet" href="css/filter.css">
+    <link rel="stylesheet" href="css/plots.css">
+    <link rel="stylesheet" href="css/search.css">
+    <link rel="stylesheet" href="css/sidebar.css">
+    <link rel="stylesheet" href="css/stat-cards.css">
+    <link rel="stylesheet" href="css/structure-viewer.css">
+    <link rel="stylesheet" href="css/table.css">
 </head>
 <body class="index-page">
     <div id="header-placeholder"></div>
@@ -58,8 +66,8 @@
                                     <option value="avg_pae">avg_pae</option>
                                     <option value="iptm">ipTM</option>
                                     <option value="pdockq">pDockQ</option>
-                                    <option value="max_promiscuity">max_promiscuity</option>
                                     <option value="rop">rop</option>
+                                    <option value="max_promiscuity">max_promiscuity</option>
                                     <option value="size">size</option>
                                     <option value="evenness">evenness</option>
                                 </select>
@@ -155,14 +163,14 @@
                                             <i class="fas fa-filter"></i>
                                         </span>
                                     </th>
-                                    <th data-column="max_promiscuity">
-                                        <span class="header-main-text">Max Promiscuity</span> 
+                                    <th data-column="rop">
+                                        <span class="header-main-text">ROP</span> 
                                         <span class="filter-icon">
                                             <i class="fas fa-filter"></i>
                                         </span>
                                     </th>
-                                    <th data-column="rop">
-                                        <span class="header-main-text">ROP</span> 
+                                    <th data-column="max_promiscuity">
+                                        <span class="header-main-text">Max Promiscuity</span> 
                                         <span class="filter-icon">
                                             <i class="fas fa-filter"></i>
                                         </span>
@@ -219,8 +227,8 @@
             "avg_pae": "Average PAE across the interface. PAE gives the predicted error in the relative positioning of 2 residues, with lower values indicating more confident relative positioning. This is the average PAE for all pairs of residues from different proteins in this interface.",
             "iptm": "Interface predicted TM-score (ipTM). Higher values indicate higher model quality (0-1). Values above 0.55 indicate an interaction. Scores are typically lower on coiled coil predictions and predictions with larger input, especially when multiple regions of the predicted structure are within interaction distance with varying confidences. ",
             "pdockq": "pDockQ score estimates the goodness of fit of the modeled interaction interface (0-1). It is based on the actual structure rather than prediction confidence. Scores above 0.23 indicate a plausible interaction. Can be biased towards coiled-coil structures.",
-            "max_promiscuity": "The higher of the two partners' promiscuity scores. Represents the number of other interactions predicted for the same interface region. A high score may indicate a non-specific binding site, or completion bias.",
             "rop": "Repeatability of Prediction. How many times (out of 4) the same interface was predicted in repeat runs. A score of 4 indicates high consistency.",
+            "max_promiscuity": "The higher of the two partners' promiscuity scores. Represents the number of other interactions predicted for the same interface region. A high score may indicate a non-specific binding site, or completion bias.",
             "size": "The number of residue pairs within interaction distance at the interface.",
             "evenness": "How evenly balanced the interaction confidence is in each direction (Protein 1 -> Protein 2 vs. Protein 2 -> Protein 1).",
             "location": "Location of the regions involved in this predicted interaction in each full length protein. This is not necessarily every interacting region between these proteins or these fragments.",

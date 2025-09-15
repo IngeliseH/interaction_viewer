@@ -1,0 +1,19 @@
+.domainFragmentPlotContainer .promiscuityPlotContainer {
+    width: 100%;
+    position: relative;
+    margin-bottom: 10px;
+}
+
+.promiscuityPlotContainer {
+    min-height: 220px;
+}
+
+.promiscuity-plot-caption {
+    text-align: center;
+    font-style: italic;
+    margin-top: 10px;
+}
+
+.domainFragmentPlotContainer {
+    min-height: 100px;
+}

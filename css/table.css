@@ -1,0 +1,284 @@
+.table-container {
+    overflow-x: auto;
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    margin-top: 25px;
+    max-height: 70vh;
+    overflow-y: visible;;
+    max-width: 70vw; /* Prevent table container from overflowing page */
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed; 
+}
+
+/* Specific style for the PPI table in protein_pair.html to allow column auto-sizing */
+#ppi-table #dataTable {
+    table-layout: auto; /* Override the global 'fixed' layout */
+}
+#ppi-table #dataTable th {
+    min-width: 80px; /* Set a minimum width for all columns */
+}
+#ppi-table #dataTable th[data-column="partner"] {
+    min-width: 110px; /* Ensure partner column has enough space for most values */
+}
+
+th {
+    background-color: var(--primary);
+    color: #b3e0ff;
+    font-weight: 600;
+    padding: 8px 15px; /* Adjusted padding for more vertical space */
+    text-align: left;
+    position: sticky;
+    top: 0;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+    vertical-align: top; /* Align content to the top for multi-line headers */
+}
+
+/* Example of setting specific column widths */
+/* Adjust these values as per your content and layout needs */
+th[data-column="Proteins"] {
+    width: 200px; /* Allows this column to adjust based on content and remaining space */
+}
+th[data-column="min_pae"],
+th[data-column="avg_pae"],
+th[data-column="pdockq"],
+th[data-column="size"],
+th[data-column="evenness"] {
+    width: 100px;
+}
+th[data-column="iptm"],
+th[data-column="rop"] { /* Consolidated iptm and rop */
+    width: 80px;
+}
+th[data-column="max_promiscuity"]{
+    width: 170px;
+}
+th[data-column="location"] {
+    width: 250px;
+}
+th[data-column="relative_location"] {
+    width: 250px;
+}
+
+th:hover {
+    background-color: #1a2530;
+}
+
+th.sort-asc::after {
+    content: " ▲";
+    font-size: 0.85em;
+}
+
+th.sort-desc::after {
+    content: " ▼";
+    font-size: 0.85em;
+}
+
+td {
+    padding: 1px 20px; /* Existing td padding */
+    color: var(--text-light);
+    border-bottom: 1px solid var(--light);
+    vertical-align: middle; /* Good for consistency if content wraps */
+}
+
+/* Style for links within table cells */
+td a {
+    color: inherit; /* Inherit color from parent td (var(--text-light)) */
+    text-decoration: none; /* Remove default underline */
+    cursor: pointer;
+}
+
+td a:hover {
+    color: var(--secondary); /* Change color on hover to an accent color */
+    text-decoration: underline; /* Add underline on hover for better affordance */
+}
+
+/* Ensure content in the first column (Proteins) wraps */
+td:first-child {
+    word-break: break-word; /* Or overflow-wrap: break-word; */
+    overflow-wrap: break-word; /* More modern, handles long words better */
+}
+
+tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+tr:hover {
+    background-color: #e9f7fe;
+}
+
+/* Reduce vertical spacing in table */
+tr {
+    min-height: 50px;
+}
+
+/* Example of setting specific column widths */
+/* Adjust these values as per your content and layout needs */
+th[data-column="Proteins"] {
+    width: 200px; /* Allows this column to adjust based on content and remaining space */
+}
+th[data-column="min_pae"],
+th[data-column="avg_pae"],
+th[data-column="pdockq"],
+th[data-column="size"],
+th[data-column="evenness"] {
+    width: 100px;
+}
+th[data-column="iptm"],
+th[data-column="rop"] { /* Consolidated iptm and rop */
+    width: 80px;
+}
+th[data-column="max_promiscuity"]{
+    width: 170px;
+}
+th[data-column="location"] {
+    width: 250px;
+}
+th[data-column="relative_location"] {
+    width: 250px;
+}
+
+th:hover {
+    background-color: #1a2530;
+}
+
+th.sort-asc::after {
+    content: " ▲";
+    font-size: 0.85em;
+}
+
+th.sort-desc::after {
+    content: " ▼";
+    font-size: 0.85em;
+}
+
+td {
+    padding: 1px 20px; /* Existing td padding */
+    color: var(--text-light);
+    border-bottom: 1px solid var(--light);
+    vertical-align: middle; /* Good for consistency if content wraps */
+}
+
+/* Style for links within table cells */
+td a {
+    color: inherit; /* Inherit color from parent td (var(--text-light)) */
+    text-decoration: none; /* Remove default underline */
+    cursor: pointer;
+}
+
+td a:hover {
+    color: var(--secondary); /* Change color on hover to an accent color */
+    text-decoration: underline; /* Add underline on hover for better affordance */
+}
+
+/* Ensure content in the first column (Proteins) wraps */
+td:first-child {
+    word-break: break-word; /* Or overflow-wrap: break-word; */
+    overflow-wrap: break-word; /* More modern, handles long words better */
+}
+
+tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+tr:hover {
+    background-color: #e9f7fe;
+}
+
+/* Reduce vertical spacing in table */
+tr {
+    min-height: 50px;
+}
+
+th > .info-tooltip { /* Made selector more specific */
+    /* display: none; */ /* Initially hidden - REMOVE THIS LINE */
+    visibility: hidden; /* ADD THIS: Use visibility to allow transitions */
+    opacity: 0;         /* ADD THIS: Start fully transparent */
+    position: absolute;
+    top: 100%; /* Position below the header cell content */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333; /* Dark background */
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1000; /* High z-index to appear above other elements */
+    width: 280px; /* Adjust width as needed */
+    text-align: left;
+    font-size: 0.875em; /* Slightly smaller font for tooltip */
+    line-height: 1.5;
+    font-weight: normal; /* Reset font weight from th */
+    transition: opacity 0.3s ease, visibility 0.3s ease; /* ADD THIS: For smooth show/hide */
+}
+
+/* ADD THIS NEW RULE SET */
+/* Show tooltip when .info-btn (sibling) is hovered or focused */
+th > .info-btn:hover + .info-tooltip,
+th > .info-btn:focus + .info-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+th > .info-tooltip h4 { /* Made selector more specific */
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 1em; /* Adjust heading size within tooltip */
+    color: #f0f0f0;
+    border-bottom: 1px solid #555;
+    padding-bottom: 5px; /* Adjusted from 0px to give a little space */
+}
+
+th > .info-tooltip p { /* Made selector more specific */
+    margin-bottom: 0;
+}
+
+.location-cell-content {
+    max-height: 2.4em; 
+    overflow-x: auto; 
+    white-space: normal; 
+    line-height: 1.2em; 
+    max-width: 250px;      /* Cap width for location cell */
+    min-width: 120px;      /* Optional: reasonable min width */
+    display: block;
+}
+
+.location-cell-content div { 
+    white-space: nowrap; 
+}
+
+#dataTable td {
+    padding-top: 0px; 
+    padding-bottom: 0px; 
+}
+
+/* Add this nuevo style for domain table row hover */
+tr.domain-table-row-hover td {
+    background-color: #e6f7ff; /* Light blue background for hovered row cells */
+}
+
+/* NEW: On row hover, increase opacity of stat color cells */
+tr:hover td.stat-red        { background-color: #ffb3b3; }
+tr:hover td.stat-orange     { background-color: #ffd699; }
+tr:hover td.stat-yellow     { background-color: #fff6b3; }
+tr:hover td.stat-lightgreen { background-color: #c8f7b3; }
+tr:hover td.stat-darkgreen  { background-color: #b3f7d1; }
+
+/* Keep text color readable */
+tr:hover td.stat-red,
+tr:hover td.stat-orange,
+tr:hover td.stat-yellow,
+tr:hover td.stat-lightgreen,
+tr:hover td.stat-darkgreen {
+    color: var(--text);
+}
+
+/* Compact mode for table */
+.table-container table {
+    border-spacing: 0;
+}

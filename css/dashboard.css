@@ -1,0 +1,72 @@
+.dashboard-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 3vw 10vw;
+    gap: 1vw;
+    flex-grow: 1;
+    flex-wrap: wrap;
+}
+
+.dashboard-box {
+    width: 30%;
+    height: 25vw;
+    padding: 1vw;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--text);
+    text-decoration: none;
+    text-shadow: 2px 2px 4px white;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.dashboard-box::before {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.3;
+    transition: opacity 0.3s ease;
+    z-index: -1;
+}
+
+.dashboard-box-1::before {
+    background-image: url('../all_predictions.png');
+}
+
+.dashboard-box-2::before {
+    background-image: url('../protein.png');
+}
+
+.dashboard-box-3::before {
+    background-image: url('../protein_pair.png');
+}
+
+.dashboard-box:hover::before {
+    opacity: 0.8;
+}
+
+.dashboard-box:hover {
+    transform: translateY(-0.7vw) scale(1.03);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 1024px) {
+    .dashboard-container {
+        flex-direction: column;
+        padding: 3vw 2vw;
+    }
+    .dashboard-box {
+        width: 100%;
+    }
+}

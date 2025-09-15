@@ -1,0 +1,128 @@
+.sidebar {
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 10px;
+    align-self: start;
+    position: sticky;
+    top: 90px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.sidebar-section {
+    margin-bottom: 3px;
+}
+
+.sidebar-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid var(--light);
+    cursor: pointer;
+}
+
+.sidebar-title h2 {
+    font-size: 1.3rem;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.sidebar-title i {
+    font-size: 1.2rem;
+    color: var(--secondary);
+    transition: transform 0.3s ease;
+}
+
+.collapsed .sidebar-title > i {
+    transform: rotate(180deg);
+}
+
+/* Styles for the main page sections sidebar collapse */
+aside.sidebar.collapsed {
+    position: fixed;
+    top: 90px;
+    left: 10px;
+    width: auto;
+    padding: 8px 10px;
+    z-index: 1050;
+    background: white;
+    box-shadow: var(--shadow);
+    border-radius: 12px;
+}
+
+aside.sidebar.collapsed .sidebar-title {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+    justify-content: center;
+}
+
+aside.sidebar.collapsed .sidebar-title h2 {
+    margin: 0;
+    gap: 8px;
+}
+
+aside.sidebar.collapsed .sidebar-title h2 span {
+    display: none;
+}
+
+aside.sidebar.collapsed .sidebar-content {
+    display: none;
+}
+
+.main-content .grid.sidebar-collapsed .content-column {
+    grid-column: 1 / -1;
+}
+
+/* Styles moved from index.html - now with more specific selectors for tooltips */
+.sidebar-section.collapsed .sidebar-content {
+    max-height: 0;
+    overflow: hidden; /* Keep hidden for collapse animation */
+    opacity: 0;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+.sidebar-section .sidebar-content {
+    max-height: 2000px; /* Adjust as needed - set to a value larger than any expected content height */
+    overflow-y: visible; /* Allow vertical overflow for elements like dropdowns */
+    overflow-x: hidden; /* Prevent horizontal overflow */
+    opacity: 1;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+/* Styles for sidebar navigation list in interaction.html */
+.sidebar .sidebar-section ul {
+    list-style: none;
+    padding-left: 0;
+    margin-top: 0;
+    margin-bottom: 0; /* Remove bottom margin if any */
+}
+
+.sidebar .sidebar-section ul li {
+    margin-bottom: 5px; /* Space between items */
+}
+
+.sidebar .sidebar-section ul li:last-child {
+    margin-bottom: 0; /* No margin for the last item */
+}
+
+.sidebar .sidebar-section ul li a {
+    display: block;
+    padding: 8px 12px;
+    text-decoration: none;
+    color: var(--primary);
+    border-radius: 4px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    font-weight: 500;
+}
+
+.sidebar .sidebar-section ul li a:hover {
+    background-color: var(--light);
+    color: var(--secondary);
+}
