@@ -26,6 +26,18 @@
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     position: relative;
     overflow: hidden;
+    flex: 1;
+}
+
+.dashboard-box h2 {
+    font-size: 1.2rem;
+    color: var(--primary);
+    margin-bottom: 10px;
+}
+
+.dashboard-box p {
+    font-size: 1.1rem;
+    color: var(--text-light);
 }
 
 .dashboard-box::before {
@@ -58,7 +70,7 @@
 
 .dashboard-box:hover {
     transform: translateY(-0.7vw) scale(1.03);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-hover);
 }
 
 @media (max-width: 1024px) {
@@ -67,6 +79,11 @@
         padding: 3vw 2vw;
     }
     .dashboard-box {
-        width: 100%;
+        width: 90%;
+        min-height: 200px;
+        margin-bottom: 15px;
+    }
+    .dashboard-box:last-child {
+        margin-bottom: 0;
     }
 }

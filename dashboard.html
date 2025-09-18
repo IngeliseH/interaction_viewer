@@ -9,10 +9,10 @@
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/header-footer.css">
 </head>
 <body>
     <div id="header-placeholder"></div>
-    <!-- Add 3 side by side boxes -->
     <div class="dashboard-container">
         <a href="all_predictions.html" class="dashboard-box dashboard-box-1">
             Browse predictions
@@ -27,7 +27,6 @@
 
     <div id="footer-placeholder"></div>
     <script>
-        // Function to load HTML includes
         async function loadHTMLIncludes() {
             const headerPlaceholder = document.getElementById('header-placeholder');
             const footerPlaceholder = document.getElementById('footer-placeholder');
@@ -37,7 +36,6 @@
                     const response = await fetch('_header.html');
                     if (response.ok) {
                         headerPlaceholder.innerHTML = await response.text();
-                        // Set active nav link for dashboard.html
                         document.querySelectorAll('nav a').forEach(link => link.classList.remove('active'));
                         const navDashboard = document.getElementById('navDashboard');
                         if (navDashboard) {
@@ -69,9 +67,8 @@
             }
         }
 
-        // Initialize the app when DOM is loaded
         document.addEventListener('DOMContentLoaded', async () => {
-            await loadHTMLIncludes(); // Load header and footer first
+            await loadHTMLIncludes();
         });
     </script>
 </body>

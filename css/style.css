@@ -2,8 +2,14 @@
     --primary: #2c3e50;
     --secondary: #3498db;
     --secondary-hover: #2980b9;
+    --secondary-light: #b3e0ff;
     --accent: #1abc9c;
-    --light: #ecf0f1;
+    --background: #e9ecef;
+    --light: #f8f9fa;
+    --light-border: 1px solid #ddd;
+    --light-hover: #e2e6ea;
+    --soft-border: 2px solid #f8f9fa;
+    --table-row-hover: #e9f7fe;
     --dark: #34495e;
     --text: #2c3e50;
     --text-light: #7f8c8d;
@@ -12,7 +18,8 @@
     --danger: #e74c3c;
     --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     --shadow-hover: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
-    --outline-hover: #e3f2fd;
+    --inset-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    --narrow-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
 * {
@@ -23,7 +30,7 @@
 }
 
 body {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    background: var(--background);
     color: var(--text);
     line-height: 1.6;
     min-height: 100vh;
@@ -39,71 +46,8 @@ body {
     flex-grow: 1;
 }
 
-header {
-    background: var(--primary);
-    color: white;
-    padding: 15px 0;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: var(--shadow);
-}
-
-.header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.logo i {
-    font-size: 2rem;
-    color: var(--accent);
-}
-
-.logo h1 {
-    font-size: 1.8rem;
-    font-weight: 700;
-}
-
-nav ul {
-    display: flex;
-    list-style: none;
-    gap: 25px;
-}
-
-nav a {
-    color: var(--light);
-    text-decoration: none;
-    font-weight: 500;
-    padding: 8px 12px;
-    border-radius: 4px;
-    transition: all 0.3s ease;
-    position: relative;
-}
-
-nav a:hover, nav a.active {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--accent);
-}
-
-nav a.active::after {
-    content: '';
-    position: absolute;
-    bottom: -8px;
-    left: 0;
-    width: 100%;
-    height: 3px;
-    background: var(--accent);
-    border-radius: 2px;
-}
-
-.main-content {
+.main-content,
+.grid {
     gap: 25px;
     padding: 5px 0;
 }
@@ -111,51 +55,23 @@ nav a.active::after {
 .grid {
     display: grid;
     grid-template-columns: 255px 1fr;
-    gap: 25px;
-    padding: 5px 0;
 }
 
-/* Style for the content column in the grid layout, merged */
 .content-column {
     min-width: 0;
     width: 100%;
     box-sizing: border-box;
 }
 
-.search-mode {
-    display: flex;
-    gap: 15px;
-    margin-top: 15px;
-}
-
-.mode-option {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-}
-
-.mode-option input {
-    cursor: pointer;
-}
-
-
-.content-area {
-    background: white;
-    border-radius: 12px;
-    box-shadow: var(--shadow);
-    padding: 25px;
-    min-height: 400px;
-    overflow-x: hidden; /* Add this line to constrain width and enable child horizontal scroll */
+.section-title,
+.page-main-heading {
+    color: var(--primary);
 }
 
 .section-title {
     font-size: 1.8rem;
-    color: var(--primary);
     margin-bottom: 25px;
-    padding-bottom: 15px;
-    padding-top: 15px;
-    padding-left: 15px;
+    padding: 15px;
     border-bottom: 2px solid var(--light);
     display: flex;
     align-items: center;
@@ -163,413 +79,37 @@ nav a.active::after {
 }
 
 .page-main-heading {
-    font-size: 2.5rem; /* Larger font size */
-    color: var(--primary);
-    text-align: center; /* Center the title */
-    margin-top: 10px; /* Add some space above */
-    margin-bottom: 5px; /* Adjusted space below for subtitle */
+    font-size: 2.5rem;
+    text-align: center;
+    margin: 10px 0 5px 0;
 }
 
 .page-subtitle {
     text-align: center;
     font-size: 1.5rem;
     color: var(--text-light);
-    margin-top: 0; /* Sits below h1 */
-    margin-bottom: 10px; /* Space before the grid content */
-    font-weight: normal; /* Subtitles are often lighter */
+    margin: 0 0 10px 0;
+    font-weight: normal;
 }
 
 .page-subtitle a {
-    color: inherit; /* Ensures link color matches subtitle text color */
-    text-decoration: none; /* Removes default underline */
+    color: inherit;
+    text-decoration: none;
 }
 
 .page-subtitle a:hover {
-    color: var(--secondary); /* Changes color on hover for interactivity */
-    text-decoration: underline; /* Adds underline on hover */
+    color: var(--secondary);
+    text-decoration: underline;
 }
 
-/* New styles for internal header structure */
 .header-main-text {
-    display: block; /* Makes it take full width of the th */
-    margin-bottom: 5px; /* Space between text and icons */
-    /* Text will wrap naturally based on th width */
-}
-
-/* Generic Info Button and Tooltip Styles */
-.info-btn {
-    position: relative; /* For tooltip positioning */
-    cursor: help;
-    color: var(--secondary); /* Default icon color */
-}
-  
- .info-btn .info-tooltip {
-    visibility: hidden;
-    opacity: 0;
-    width: 240px; /* Adjusted width */
-    background-color: #333; /* Dark background like index.html tooltips */
-    color: #fff;
-    text-align: left; /* Changed for better readability of instructions */
-    border-radius: 6px;
-    padding: 10px; /* Increased padding */
-    position: absolute;
-    z-index: 1070; /* Ensure it's above most other elements, adjust if necessary */
-    bottom: 130%; /* Position above the icon, adjusted */
-    left: 50%;
-    transform: translateX(-50%); /* Center the tooltip */
-    transition: opacity 0.3s ease, visibility 0.3s ease;
-    font-size: 0.8rem; /* Slightly smaller font for tooltip */
-    line-height: 1.5; /* Improved line spacing */
-    box-shadow: 0 3px 7px rgba(0,0,0,0.3);
-    white-space: normal; /* Allow text wrapping */
- }
-  
-.info-btn, .filter-icon {
-    display: inline-block; /* Allows icons to sit side-by-side */
-    vertical-align: middle; /* Aligns icons nicely if they have different heights */
-    margin-right: 0px; /* Space between icons */
-    margin-left: 5px; /* Specific margin for info-btn */
-    font-size: 1em;
-    user-select: none; /* Prevent text selection on click */
-}
-
-.filter-icon {
-    cursor: pointer; 
-}
-
-.info-btn:hover .info-tooltip,
-.info-btn:focus-within .info-tooltip { /* Show on hover or when an element inside info-btn has focus */
-    visibility: visible;
-    opacity: 1;
-}
-
-/* Make protein labels inline */
-.location-display div {
-    display: flex;
-    gap: 0px;
-    align-items: baseline;
-}
-
-/* Reduce whitespace in location boxes */
-.location-display > div {
-    margin-bottom: 0px;
-}
-
-.location-display {
-    background: #f8f9fa;
-    border-radius: 6px;
-    font-size: 0.5rem; /* Smaller font for compactness */
-}
-
-.location-bar {
-    height: 1px;
-    background: #adb5bd;
-    margin: 0px 0; /* Reduced margin */
-}
-
-.protein-label {
-    font-size: 0.85rem;
-    color: var(--text-light);
-    font-weight: 500;
-}
-
-footer {
-    background: var(--primary);
-    color: white;
-    text-align: center;
-    padding: 25px;
-    margin-top: 40px;
-}
-
-.pagination {
-    display: flex;
-    justify-content: center;
-    margin-top: 20px;
-    gap: 10px;
-    padding-bottom: 18px; /* Add padding below page numbering */
-}
-
-.page-btn {
-    padding: 8px 15px;
-    background: var(--light);
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.page-btn.active {
-    background: var(--secondary);
-    color: white;
-}
-
-.page-btn:hover:not(.active) {
-    background: #d6dbdf;
-}
-
-.loading {
-    text-align: center;
-    padding: 40px;
-    color: var(--text-light);
-}
-
-.loading i {
-    font-size: 3rem;
-    margin-bottom: 20px;
-    color: var(--secondary);
-    animation: spin 1.5s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Protein pair search */
-.protein-input-columns {
-    display: flex;
-    gap: 80px; /* Increased gap between columns */
-    margin-bottom: 8px;
-}
-.protein-column {
-    flex: 1; /* Each column takes equal width */
-    display: flex;
-    flex-direction: column;
-}
-.protein-column label, .protein-column p {
-    margin-top: 10px;
+    display: block;
     margin-bottom: 5px;
-}
-.protein-column h3 {
-    margin-top: 10px;
-    margin-bottom: 5px;
-    text-align: center;
-}
-.protein-column input[type="text"], .protein-column select {
-    width: 100%;
-    padding: 8px;
-    box-sizing: border-box;
-}
-
-/* General layout for content areas if not already defined elsewhere */
-.content-column {
-    width: 100%; /* Or flex-grow: 1 if in a flex container */
-    box-sizing: border-box;
-}
-
-main.content-area {
-    width: 100%;
-    box-sizing: border-box;
-    margin-bottom: 20px; /* Example spacing */
-    overflow: visible; /* MODIFIED: Ensures content is not clipped if it expands */
-}
-
-.content-section {
-    width: 100%;
-    box-sizing: border-box;
-    background-color: var(--background-light); /* Match existing styling if applicable */
-    border-radius: 8px; /* Match existing styling if applicable */
-    /* padding: 15px; Match existing styling if applicable */
-}
-
-
-/* Styles for collapsible content sections in main area */
-/* main.content-area is now the primary styled block for each section */
-main.content-area {
-    background: white;
-    border-radius: 12px;
-    box-shadow: var(--shadow-light);
-    margin-bottom: 25px;
-    overflow: visible; /* Ensures content is not clipped if it expands */
-    padding: 0 10px; /* MODIFIED: 0 top/bottom, 10px left/right */
-    min-height: auto; /* Override inherited min-height */
-}
-
-main.content-area:last-child {
-    margin-bottom: 0;
-}
-
-.content-section-title {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 25px;
-    cursor: pointer;
-    border-bottom: 1px solid var(--border-color, #eee); /* Use theme variable or fallback */
-    transition: border-bottom-color 0.3s ease-out;
-}
-
-.content-section-title h2 {
-    font-size: 1.5rem; /* Slightly larger than sidebar section titles */
-    color: var(--primary);
-    margin: 0;
-    font-weight: 600; /* Make titles a bit bolder */
-}
-
-.content-section-title > i.fas { /* Targeting the chevron icon specifically */
-    font-size: 1.2rem;
-    color: var(--secondary);
-    transition: transform 0.3s ease;
-}
-
-/* Update collapsed state selectors */
-main.content-area.collapsed .content-section-title { /* MODIFIED: Was .content-section.collapsed ... */
-    border-bottom-color: transparent; /* Keep title visually clean when collapsed */
-}
-
-main.content-area.collapsed .content-section-title > i.fas { /* MODIFIED: Was .content-section.collapsed ... */
-    transform: rotate(180deg);
-}
-
-.content-section-content {
-    width: 100%;
-    padding: 20px 25px;
-    opacity: 1;
-    overflow-y: visible; /* Allow vertical expansion */
-    overflow-x: auto;   /* Allow horizontal scroll if content is too wide */
-    transition: max-height 0.35s ease-out, opacity 0.35s ease-out, padding-top 0.35s ease-out, padding-bottom 0.35s ease-out;
-    line-height: 1.6; /* Improve readability of content text */
-}
-
-/* Update collapsed state selectors for content */
-main.content-area.collapsed .content-section-content { /* MODIFIED: Was .content-section.collapsed ... */
-    max-height: 0;
-    opacity: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    overflow: hidden;
-}
-
-/* General rule for content-section collapsibility */
-.content-section.collapsed .content-section-content {
-    max-height: 0;
-    opacity: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    overflow: hidden;
-    transition: max-height 0.35s ease-out, opacity 0.35s ease-out, padding-top 0.35s ease-out, padding-bottom 0.35s ease-out;
 }
 
 @media (max-width: 1024px) {
-    .main-content {
-        grid-template-columns: 1fr;
-    }
-    .sidebar {
-        position: relative;
-        top: 0;
-        width: 100%;
-        z-index: 100;
-        margin-bottom: 20px;
-        border-radius: 12px;
-        box-shadow: var(--shadow);
-        left: 0;
-        max-width: none;
-        min-width: 0;
-        padding: 10px;
-    }
+    .main-content,
     .grid {
         grid-template-columns: 1fr;
     }
-    body.index-page .sidebar {
-        order: -1;
-    }
-    body:not(.index-page) .sidebar {
-        order: initial;
-    }
-    .table-container {
-        max-width: 90vw;
-    }
-}
-
-@media (max-width: 768px) {
-    .header-content {
-        flex-direction: column;
-        gap: 15px;
-    }
-    
-    nav ul {
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-    
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .action-buttons {
-        flex-direction: column;
-    }
-
-    .dashboard-container {
-        flex-direction: column; /* Stack boxes vertically */
-        padding: 20px;
-    }
-
-    .dashboard-box {
-        width: 90%; /* Wider boxes on small screens */
-        min-height: 200px; /* Adjust height */
-        margin-bottom: 20px; /* Add space between stacked boxes */
-    }
-
-    .dashboard-box:last-child {
-        margin-bottom: 0;
-    }
-}
-
-
-.control-bar {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 18px;
-    padding: 8px 0;
-    background: #f4f7fa;
-    border-radius: 8px;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.04);
-}
-
-.control-button-group {
-    display: flex;
-    gap: 12px;
-}
-
-.control-button {
-    background: var(--light);
-    color: var(--primary);
-    border: none;
-    border-radius: 6px;
-    padding: 8px 16px;
-    font-size: 1rem;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    cursor: pointer;
-    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
-}
-
-.control-button:hover {
-    background: #d8dcde;
-    color: var(--primary);
-    transform: translateY(-2px) scale(1.04);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
-}
-
-.control-button.active,
-.resetViewBtn,
-.colorModeBtn {
-    background: #1c70a5;
-    color: #fff;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
-    transform: translateY(1px);
-}
-
-.control-button.active:hover,
-.resetViewBtn:hover,
-.colorModeBtn:hover {
-    background: #217dbb;
-    color: #fff;
-    transform: translateY(0px) scale(1.02);
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);
 }

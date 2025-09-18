@@ -11,12 +11,16 @@
     <script src="js/domain-fragment-plot.js"></script>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/button.css">
+    <link rel="stylesheet" href="css/collapsible-section.css">
+    <link rel="stylesheet" href="css/header-footer.css">
     <link rel="stylesheet" href="css/filter.css">
+    <link rel="stylesheet" href="css/loading.css">
     <link rel="stylesheet" href="css/plots.css">
     <link rel="stylesheet" href="css/sidebar.css">
     <link rel="stylesheet" href="css/stat-cards.css">
     <link rel="stylesheet" href="css/structure-viewer.css">
     <link rel="stylesheet" href="css/table.css">
+    <link rel="stylesheet" href="css/tooltip.css">
 </head>
 <body>
     <div id="header-placeholder"></div>
@@ -50,25 +54,24 @@
                                 <i class="fas fa-chevron-up"></i>
                             </div>
                             <div class="content-section-content">
-                                <!-- Stat boxes for interaction metrics -->
-                                <div class="interaction-stats-row" style="display: flex; gap: 18px; margin-bottom: 18px;">
-                                    <div class="stat-card" id="stat-card-iptm" style="flex:1; text-align:center;">
+                                <div class="stats-card-row">
+                                    <div class="stat-card" id="stat-card-iptm">
                                         <div class="stat-label">ipTM</div>
                                         <div class="stat-value" id="stat-iptm">-</div>
                                     </div>
-                                    <div class="stat-card" id="stat-card-minpae" style="flex:1; text-align:center;">
+                                    <div class="stat-card" id="stat-card-minpae">
                                         <div class="stat-label">min_pae</div>
                                         <div class="stat-value" id="stat-minpae">-</div>
                                     </div>
-                                    <div class="stat-card" id="stat-card-avgpae" style="flex:1; text-align:center;">
+                                    <div class="stat-card" id="stat-card-avgpae">
                                         <div class="stat-label">avg_pae</div>
                                         <div class="stat-value" id="stat-avgpae">-</div>
                                     </div>
-                                    <div class="stat-card" id="stat-card-rop" style="flex:1; text-align:center;">
+                                    <div class="stat-card" id="stat-card-rop">
                                         <div class="stat-label">ROP</div>
                                         <div class="stat-value" id="stat-rop">-</div>
                                     </div>
-                                    <div class="stat-card" id="stat-card-pdockq" style="flex:1; text-align:center;">
+                                    <div class="stat-card" id="stat-card-pdockq">
                                         <div class="stat-label">pDockQ</div>
                                         <div class="stat-value" id="stat-pdockq">-</div>
                                     </div>

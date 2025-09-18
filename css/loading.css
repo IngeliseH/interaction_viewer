@@ -1,0 +1,17 @@
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-light);
+}
+
+.loading i {
+    font-size: 3rem;
+    margin-bottom: 20px;
+    color: var(--secondary);
+    animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

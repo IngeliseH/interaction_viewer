@@ -11,11 +11,16 @@
     <script src="js/domain-fragment-plot.js"></script>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/button.css">
+    <link rel="stylesheet" href="css/collapsible-section.css">
+    <link rel="stylesheet" href="css/header-footer.css">
     <link rel="stylesheet" href="css/filter.css">
+    <link rel="stylesheet" href="css/loading.css">
     <link rel="stylesheet" href="css/plots.css">
     <link rel="stylesheet" href="css/sidebar.css">
+    <link rel="stylesheet" href="css/stat-cards.css">
     <link rel="stylesheet" href="css/structure-viewer.css">
     <link rel="stylesheet" href="css/table.css">
+    <link rel="stylesheet" href="css/tooltip.css">
 </head>
 <body>
     <div id="header-placeholder"></div>
@@ -196,7 +201,7 @@
                                     <!-- Grid will be populated here by JavaScript -->
                                 </div>
                                 <!-- Structure viewer controls -->
-                                <div id="structure-controls-pair-page" class="structure-controls">
+                                <div id="structure-controls" class="structure-controls">
                                     <div class="control-bar">
                                         <div class="control-button-group">
                                             <button type="button" class="resetViewBtn control-button" title="Reset View">
@@ -692,7 +697,7 @@
             const gridContainer = document.getElementById('structure-grid-container');
             const viewerDiv = document.getElementById('structure-viewer-pair-page'); // Corrected ID
             const fallback = document.getElementById('structure-viewer-fallback');
-            const controlsContainer = document.getElementById('structure-controls-pair-page'); // Corrected selector
+            const controlsContainer = document.getElementById('structure-controls'); // Corrected selector
 
             if (!gridContainer || !viewerDiv || !fallback || !controlsContainer) {
                 console.error("Structure section elements not found. Needed: gridContainer, viewerDiv, fallback, controlsContainer.", {gridContainer, viewerDiv, fallback, controlsContainer});
@@ -766,7 +771,7 @@
 
 
             // Build grid layout with labels
-            let gridLayoutHtml = `<div class="structure-grid-layout">`; 
+            let gridLayoutHtml = `<div>`; 
             
             // Protein X Label (Horizontal, above table)
             gridLayoutHtml += `<div class="structure-grid-protein-x-label">${proteinForX}</div>`;
@@ -833,7 +838,7 @@
 
                     const file = this.getAttribute('data-file');
                     const viewerDiv = document.getElementById('structure-viewer-pair-page');
-                    const controlsContainer = document.getElementById('structure-controls-pair-page');
+                    const controlsContainer = document.getElementById('structure-controls');
 
                     if (file) {
                         // By clearing the viewer div, we force 3Dmol to create a new canvas.

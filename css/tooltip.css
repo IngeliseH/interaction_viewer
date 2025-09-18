@@ -1,0 +1,42 @@
+.info-btn {
+    position: relative;
+    cursor: help;
+    color: var(--secondary);
+}
+
+.info-btn .info-tooltip,
+th > .info-tooltip {
+    visibility: hidden;
+    opacity: 0;
+    z-index: 1000;
+    background-color: #333;
+    color: white;
+    width: 240px;
+    padding: 10px 15px;
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+    position: absolute;
+    top: 100%;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    text-align: left;
+    font-size: 0.8rem;
+    font-weight: normal;
+    line-height: 1.5;
+}
+
+.info-btn:hover .info-tooltip,
+.info-btn:focus-within .info-tooltip,
+th > .info-btn:hover + .info-tooltip,
+th > .info-btn:focus + .info-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+.info-tooltip h4,
+th > .info-tooltip h4 {
+    margin: 0 0 8px 0;
+    font-size: 1em;
+    color: var(--light);
+    border-bottom: var(--light-border);
+    padding-bottom: 5px;
+}

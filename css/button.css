@@ -6,18 +6,24 @@
 
 .btn,
 .btn-outline,
-.big-button {
-    border-radius: 8px;
-    font-weight: 600;
+.big-button,
+.control-button {
     cursor: pointer;
     border: none;
-    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+    transition: background-color 0.3s, transform 0.2s, box-shadow 0.3s;
     box-shadow: var(--shadow);
     text-align: center;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
+    }
+
+.btn,
+.btn-outline,
+.big-button {
+    border-radius: 8px;
+    font-weight: 600;
 }
 
 .btn {
@@ -26,19 +32,34 @@
     flex: 1;
 }
 
-.btn-primary {
-    background: var(--secondary);
+.btn-primary,
+.big-button {
+    background-color: var(--secondary);
     color: white;
-    box-shadow: var(--shadow);
 }
 
-.btn-primary:hover {
+.big-button {
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    text-decoration: none;
+}
+
+.btn-primary:hover,
+.big-button:hover {
     background: var(--secondary-hover);
     box-shadow: var(--shadow-hover);
 }
 
+.btn:hover,
+.btn-outline:hover,
+.btn-primary:hover,
+.big-button:hover,
+.control-button:hover {
+    transform: translateY(2px);
+}
+
 .btn-outline {
-    background: white;
+    background-color: white;
     color: var(--secondary);
     border: 2px solid var(--secondary);
 }
@@ -47,21 +68,50 @@
     background: var(--light-hover);
 }
 
-.big-button {
-    display: inline-block;
-    padding: 15px 30px;
-    font-size: 1.2rem;
+.control-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 8px 0;
+    background: var(--light);
+    border-radius: 8px;
+    box-shadow: var(--narrow-shadow);
+}
+
+.control-button-group {
+    display: flex;
+    gap: 12px;
+}
+
+.control-button {
+    background-color: white;
+    color: var(--primary);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 1rem;
+}
+
+.control-button:hover {
+    background: var(--light);
+}
+
+.control-button.active,
+.resetViewBtn,
+.colorModeBtn {
+    background: var(--secondary);
     color: white;
-    background-color: var(--secondary);
-    text-decoration: none;
-    box-shadow: var(--shadow);
+    box-shadow: var(--inset-shadow);
 }
 
-.big-button:hover {
-    background-color: var(--secondary-hover);
-    box-shadow: var(--shadow-hover, 0 4px 8px rgba(0,0,0,0.15));
+.control-button.active:hover,
+.resetViewBtn:hover,
+.colorModeBtn:hover {
+    background: var(--secondary-hover);
 }
 
-.big-button:active {
-    transform: translateY(2px);
+@media (max-width: 768px) {
+    .action-buttons {
+        flex-direction: column;
+    }
 }

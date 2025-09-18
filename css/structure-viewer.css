@@ -1,28 +1,41 @@
-/* Specific style for the structure fragment grid table in protein_pair.html */
+.structure-controls {
+    max-width: 700px;
+    margin: 0 auto 10px auto;
+}
+
+.structure-viewer {
+    width: 100%;
+    max-width: 700px;
+    height: 400px;
+    border-radius: 12px;
+    margin: 0 auto 15px auto;
+    box-shadow: var(--shadow);
+    position: relative;
+}
+
 table.structure-grid {
-    width: auto; /* Allow table to be as narrow as its content */
-    min-width: 0; /* Override general table min-width */
-    table-layout: auto; /* Ensure layout is based on content */
-    margin-left: auto; /* If its container is wider and a block, this can help center */
-    margin-right: auto; /* If its container is wider and a block, this can help center */
+    width: auto;
+    min-width: 0;
+    table-layout: auto;
+    margin: 0 auto;
     border-collapse: collapse;
 }
 
-/* NEW Structure Fragment Grid Styles */
 #structure-grid-container {
-    overflow-x: auto;
     margin-bottom: 20px;
-}
-
-.structure-grid-layout {
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
-.structure-grid-protein-x-label {
-    margin-bottom: 5px;
+.structure-grid-protein-x-label,
+.structure-grid-protein-y-label {
     font-weight: bold;
+}
+
+.structure-grid-protein-x-label {
+    margin-bottom: 10px;
+    text-align: center;
 }
 
 .structure-grid-y-label-table-container {
@@ -34,68 +47,38 @@ table.structure-grid {
     writing-mode: vertical-rl;
     transform: rotate(180deg);
     margin-right: 10px;
-    font-weight: bold;
-    white-space: nowrap;
-    text-align: center;
     align-self: center;
 }
 
-/* Styling for TH and TD elements within the structure grid */
 .structure-grid th,
 .structure-grid td {
-    padding: 4px 8px;
-    border: 1px solid #ccc; /* Default border for all cells */
+    padding: 4px 10px;
+    border: var(--light-border);
 }
 
-/* Specific alignment for column header TH elements */
 .structure-grid th.structure-grid-col-header {
     text-align: center;
 }
 
-/* Specific alignment for row header TH elements */
 .structure-grid th.structure-grid-row-header {
-    text-align: right;
+    text-align: center;
 }
 
-/* Specific alignment for TD elements (data cells) */
 .structure-grid td.structure-grid-cell {
     text-align: center;
 }
 
-/* Styling for the button within structure grid cells */
 .structure-cell-btn {
     cursor: pointer;
     background: none;
     border: none;
     font-size: 1.2em;
-    padding: 0; /* Remove default button padding */
-    line-height: 1; /* Adjust line height for better icon centering */
-    color: var(--secondary); /* Use theme color for the icon */
 }
 
-.structure-cell-btn:hover {
-    color: var(--primary); /* Darken icon on hover */
+.structure-grid-cell:hover {
+    background-color: var(--light-hover);
 }
 
-/* NEW: Style for the selected structure grid cell */
 .structure-grid-cell.selected {
-    background-color: #bbdefb; /* A darker blue from the project's palette */
-}
-
-/* Structure viewer styles */
-.structure-controls { /* This class might still be used for max-width or specific margins not part of the bar itself */
-    max-width: 700px;
-    margin: 0 auto 10px auto;
-}
-
-.structure-viewer {
-    width: 100%;
-    max-width: 700px;
-    height: 400px;
-    min-height: 300px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    margin: 0 auto 15px auto;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-    position: relative;
+    background-color: var(--secondary);
 }

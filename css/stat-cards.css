@@ -1,33 +1,30 @@
 .stat-card {
+    flex: 1;
     background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
     border-radius: 10px;
     padding: 20px;
     text-align: center;
     box-shadow: var(--shadow);
-    transition: transform 0.3s ease;
+    transition: transform 0.3s;
 }
 
-/* Stat color classes (background only, text uses standard color) */
-.stat-card.stat-red        { background: #ff8585 !important; }      /* strong red */
-.stat-card.stat-orange     { background: #fbc37a !important; }      /* strong orange */
-.stat-card.stat-yellow     { background: #fcea8f !important; }      /* strong yellow */
-.stat-card.stat-lightgreen { background: #adf073 !important; }      /* strong light green */
-.stat-card.stat-darkgreen  { background: #46e27c !important; }      /* strong dark green */
+.stat-card.stat-red        { background: #ff8585; }
+.stat-card.stat-orange     { background: #fbc37a; }
+.stat-card.stat-yellow     { background: #fcea8f; }
+.stat-card.stat-lightgreen { background: #adf073; }
+.stat-card.stat-darkgreen  { background: #46e27c; }
 
-/* NEW: Stat colors for table cells (dimmed/pastel) */
 td.stat-red        { background-color: #ffd6d6; }
 td.stat-orange     { background-color: #ffe7c2; }
 td.stat-yellow     { background-color: #fff9d6; }
 td.stat-lightgreen { background-color: #e6f9d6; }
 td.stat-darkgreen  { background-color: #d6f9e6; }
 
-td.stat-red,
-td.stat-orange,
-td.stat-yellow,
-td.stat-lightgreen,
-td.stat-darkgreen {
-    color: var(--text);
-}
+tr:hover td.stat-red        { background-color: #ffb3b3; }
+tr:hover td.stat-orange     { background-color: #ffd699; }
+tr:hover td.stat-yellow     { background-color: #fff6b3; }
+tr:hover td.stat-lightgreen { background-color: #c8f7b3; }
+tr:hover td.stat-darkgreen  { background-color: #b3f7d1; }
 
 .stat-card:hover {
     transform: translateY(-5px);
@@ -36,28 +33,27 @@ td.stat-darkgreen {
 .stat-value {
     font-size: 2rem;
     font-weight: 700;
-    color: var(--secondary);
-    margin: 10px 0;
+    margin: 8px 0;
 }
 
 .stat-label {
     font-size: 1rem;
-    color: var(--dark);
     font-weight: 500;
-}
-
-/* Make stat value (number) use grey text color on colored stat cards */
-.stat-card.stat-red .stat-value,
-.stat-card.stat-orange .stat-value,
-.stat-card.stat-yellow .stat-value,
-.stat-card.stat-lightgreen .stat-value,
-.stat-card.stat-darkgreen .stat-value {
-    color: var(--text) !important;
 }
 
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 20px;
-    margin-bottom: 30px;
+}
+
+.stats-card-row {
+    display: flex;
+    gap: 20px;
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
 }
