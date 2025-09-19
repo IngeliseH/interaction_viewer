@@ -96,17 +96,13 @@
     background: var(--light);
 }
 
-.control-button.active,
-.resetViewBtn,
-.colorModeBtn {
+.control-button.active {
     background: var(--secondary);
     color: white;
     box-shadow: var(--inset-shadow);
 }
 
-.control-button.active:hover,
-.resetViewBtn:hover,
-.colorModeBtn:hover {
+.control-button.active:hover {
     background: var(--secondary-hover);
 }
 

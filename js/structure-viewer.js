@@ -1,50 +1,51 @@
 // Structure viewer module for 3Dmol.js
 
-// Renamed and refactored function to be callable with a specific PDB path
-function displayStructureInViewer(container, pdbPath, domainRangesArray) {
-    // console.log("[SV] displayStructureInViewer called with:", { pdbPath, domainRangesArray });
-    if (!container) {
-        console.error("Structure viewer container not provided to displayStructureInViewer.");
-        return;
+function isValidDomainRanges(ranges) {
+    return Array.isArray(ranges) && ranges.length > 0 &&
+        ranges.every(r => r && typeof r.start === 'number' && typeof r.end === 'number' &&
+            !isNaN(r.start) && !isNaN(r.end) && r.start > 0 && r.end >= r.start);
+}
+
+function getDomainColor(atom, useDomainColoring, ranges) {
+    if (useDomainColoring && atom.chain === 'A' && Array.isArray(ranges)) {
+        for (const range of ranges) {
+            if (atom.resi >= range.start && atom.resi <= range.end) {
+                return 'dodgerblue';
+            }
+        }
     }
-    container.innerHTML = ''; // Clear previous content (fallback or old viewer)
+    return 'ghostwhite';
+}
 
-    // Check if valid domain ranges are provided
-    const isDomainRangesArrayAnArray = Array.isArray(domainRangesArray);
-    const isDomainRangesArrayNotEmpty = isDomainRangesArrayAnArray && domainRangesArray.length > 0;
-    let areAllDomainRangeElementsValid = false;
+function displayStructureInViewer(container, pdbPath, options = {}) {
+    if (!container) return;
+    container.innerHTML = '';
 
-    if (isDomainRangesArrayNotEmpty) {
-        areAllDomainRangeElementsValid = domainRangesArray.every((r, index) => {
-            const isValidElement = r && typeof r.start === 'number' && typeof r.end === 'number' &&
-                                   !isNaN(r.start) && !isNaN(r.end) &&
-                                   r.start > 0 && r.end >= r.start;
-            return isValidElement;
-        });
-    }
-    
-    const useDomainColoring = isDomainRangesArrayAnArray && isDomainRangesArrayNotEmpty && areAllDomainRangeElementsValid;
+    const {
+        domainRangesArray,
+        zoomSelection,
+        baseChainColorFunc,
+        highlightStyle,
+        f1_loc,
+        f2_loc,
+        surfaceOptions,
+        surfaceColors
+    } = options;
 
-
-
-    const fallbackElementId = "structure-viewer-fallback-protein"; // Assuming protein.html uses this ID
-    let fallbackInContainer = container.querySelector(`#${fallbackElementId}`);
-    if (!fallbackInContainer) { // If not specific, look for any p
-        fallbackInContainer = container.querySelector('p');
-    }
-
+    const useDomainColoring = isValidDomainRanges(domainRangesArray);
+    const fallbackId = "structure-viewer-fallback-protein";
+    let fallback = container.querySelector(`#${fallbackId}`) || container.querySelector('p');
     if (!window.$3Dmol) {
         container.innerHTML = '<p style="color:red;text-align:center;">3Dmol.js library not loaded.</p>';
         return;
     }
     if (!pdbPath) {
-        if (fallbackInContainer) {
-            fallbackInContainer.textContent = 'No PDB path provided for structure viewer.';
-            fallbackInContainer.style.display = 'block';
+        if (fallback) {
+            fallback.textContent = 'No PDB path provided for structure viewer.';
+            fallback.style.display = 'block';
         } else {
             container.innerHTML = '<p style="color:grey;text-align:center;">No PDB path provided.</p>';
         }
-        // Ensure controls are hidden if no PDB path
         const controls = container.closest('.content-section-content')?.querySelector('.structure-controls');
         if (controls) controls.style.display = 'none';
         return;
@@ -53,28 +54,7 @@ function displayStructureInViewer(container, pdbPath, domainRangesArray) {
     const controls = container.closest('.content-section-content')?.querySelector('.structure-controls');
     let viewer = $3Dmol.createViewer(container, { defaultcolors: $3Dmol.rasmolElementColors });
     let modelLoaded = false;
-
-    // Helper function to determine color based on AlphaFold domain ranges
-    function getAlphaFoldDomainColor(atom, doApplyDomainColoring, ranges) {
-        let inDomain = false;
-        let matchedRange = null;
-
-        if (doApplyDomainColoring && atom.chain === 'A' && Array.isArray(ranges)) {
-            for (const range of ranges) {
-                if (atom.resi >= range.start && atom.resi <= range.end) {
-                    inDomain = true;
-                    matchedRange = range;
-                    break; 
-                }
-            }
-        }
-        
-        const color = inDomain ? 'dodgerblue' : 'ghostwhite';
-
-        return color;
-    }
-
-    if (controls) controls.style.display = 'none'; // Hide controls until PDB loaded
+    if (controls) controls.style.display = 'none';
 
     fetch(pdbPath)
         .then(response => {
@@ -83,121 +63,144 @@ function displayStructureInViewer(container, pdbPath, domainRangesArray) {
         })
         .then(pdbData => {
             viewer.addModel(pdbData, 'pdb');
-            
-            viewer.setStyle({}, {cartoon: {colorfunc: (atom) => getAlphaFoldDomainColor(atom, useDomainColoring, domainRangesArray)}});
-            
-            viewer.zoomTo();
+            if (zoomSelection) {
+                viewer.zoomTo(zoomSelection);
+            } else {
+                viewer.zoomTo();
+            }
             viewer.render();
             modelLoaded = true;
-            if (controls) controls.style.display = ''; // Show controls
-            if (fallbackInContainer) fallbackInContainer.style.display = 'none';
-
+            if (controls) controls.style.display = '';
+            if (fallback) fallback.style.display = 'none';
+            applyViewerState();
         })
-        .catch((error) => {
-            console.error('Error loading PDB into viewer:', error);
+        .catch(error => {
             container.innerHTML = `<p style="color:red;text-align:center;">Could not load structure: ${error.message}.</p>`;
             if (controls) controls.style.display = 'none';
         });
 
-    // Control logic (ensure this is robust if controls is null)
     if (controls) {
-        // State for toggles
         let atomsShown = false;
         let surfaceShown = false;
-        let colorMode = 'alphafold'; // Initial mode: 'alphafold' or 'spectrum'
+        let colorMode = useDomainColoring ? 'alphafold' : 'chain';
+        const initialColorMode = colorMode;
 
         function applyViewerState() {
-            if (!modelLoaded) {
-                return;
-            }
-            // Clear all styles and surfaces
-            viewer.setStyle({}, {}); // Clear previous styles
+            if (!modelLoaded) return;
+            viewer.setStyle({}, {});
             viewer.removeAllSurfaces();
 
-            // Both cartoon and stick (if atomsShown) should use the same coloring logic
-            if (colorMode === 'alphafold') {
-                // Cartoon always visible, colored by domain
-                viewer.setStyle({}, {cartoon: {colorfunc: (atom) => getAlphaFoldDomainColor(atom, useDomainColoring, domainRangesArray)}});
+            let styles;
+            if (colorMode === 'spectrum') {
+                styles = { cartoon: { color: 'spectrum' } };
                 if (atomsShown) {
-                    // Stick visible, colored by domain
-                    viewer.setStyle({}, {cartoon: {colorfunc: (atom) => getAlphaFoldDomainColor(atom, useDomainColoring, domainRangesArray)},
-                                         stick: {colorfunc: (atom) => getAlphaFoldDomainColor(atom, useDomainColoring, domainRangesArray), radius: 0.2}});
+                    styles.stick = { color: 'spectrum', radius: 0.2 };
                 }
-            } else { // spectrum
-                // Cartoon always visible, colored by spectrum
-                viewer.setStyle({}, {cartoon: {color: 'spectrum'}});
+            } else {
+                let colorFunc;
+                if (colorMode === 'alphafold') {
+                    colorFunc = atom => getDomainColor(atom, useDomainColoring, domainRangesArray);
+                } else { // 'chain'
+                    colorFunc = baseChainColorFunc || (atom => atom.chain === 'A' ? 'lightcoral' : 'lightskyblue');
+                }
+                styles = { cartoon: { colorfunc: colorFunc } };
                 if (atomsShown) {
-                    // Stick visible, colored by spectrum
-                    viewer.setStyle({}, {cartoon: {color: 'spectrum'}, stick: {color: 'spectrum', radius: 0.2}});
+                    styles.stick = { colorfunc: colorFunc, radius: 0.2 };
                 }
             }
+            viewer.setStyle({}, styles);
 
-            // Add surface if toggled
+            if (!atomsShown && highlightStyle) {
+                if (f1_loc) viewer.setStyle({ chain: 'A', resi: f1_loc }, highlightStyle("red"));
+                if (f2_loc) viewer.setStyle({ chain: 'B', resi: f2_loc }, highlightStyle("blue"));
+            }
+
             if (surfaceShown) {
-                viewer.addSurface($3Dmol.SurfaceType.VDW, {opacity: 0.7, color:'white'});
+                const defaultSurfaceOptions = { opacity: 0.7 };
+                const finalSurfaceOptions = { ...defaultSurfaceOptions, ...(surfaceOptions || {}) };
+
+                if (colorMode === 'chain' && surfaceColors) {
+                    surfaceColors.forEach(s => viewer.addSurface($3Dmol.SurfaceType.VDW, { ...finalSurfaceOptions, color: s.color }, s.sel));
+                } else {
+                    viewer.addSurface($3Dmol.SurfaceType.VDW, { ...finalSurfaceOptions, color: 'white' });
+                }
             }
             viewer.render();
         }
-        
-        controls.querySelector('.resetViewBtn')?.addEventListener('click', () => {
+
+        function updateColorModeButtonText(btn) {
+            if (!btn) return;
+            let nextModeText;
+            if (useDomainColoring) {
+                nextModeText = colorMode === 'alphafold' ? 'Spectrum' : 'AlphaFold domain';
+            } else {
+                nextModeText = colorMode === 'chain' ? 'Spectrum' : 'By Chain';
+            }
+            btn.innerHTML = `<i class="fas fa-palette"></i> ${nextModeText}`;
+        }
+
+        controls.querySelector('.control-button.reset')?.addEventListener('click', () => {
             if (!modelLoaded) return;
             atomsShown = false;
             surfaceShown = false;
-            colorMode = 'alphafold'; // Reset to alphafold mode
-            applyViewerState(); // Apply default styles first
-            viewer.zoomTo(); // Then zoom
-            updateColorModeButtonText(); // Update button text
+            colorMode = initialColorMode;
+            
+            applyViewerState();
+            
+            if (zoomSelection) {
+                viewer.zoomTo(zoomSelection);
+            } else {
+                viewer.zoomTo();
+            }
+            viewer.render();
+            updateColorModeButtonText(controls.querySelector('.control-button.color-mode'));
+            controls.querySelector('.control-button.atoms-btn')?.classList.remove('active');
+            controls.querySelector('.control-button.surface-btn')?.classList.remove('active');
         });
 
-        controls.querySelector('.atomsBtn')?.addEventListener('click', () => {
+        controls.querySelector('.control-button.atoms-btn')?.addEventListener('click', function() {
             if (!modelLoaded) return;
             atomsShown = !atomsShown;
+            this.classList.toggle('active', atomsShown);
             applyViewerState();
         });
 
-        controls.querySelector('.surfaceBtn')?.addEventListener('click', () => {
+        controls.querySelector('.control-button.surface-btn')?.addEventListener('click', function() {
             if (!modelLoaded) return;
             surfaceShown = !surfaceShown;
+            this.classList.toggle('active', surfaceShown);
             applyViewerState();
         });
 
-        const colorModeBtn = controls.querySelector('.colorModeBtn');
-        function updateColorModeButtonText() {
-            if (!colorModeBtn) return;
-            if (colorMode === 'alphafold') {
-                colorModeBtn.innerHTML = '<i class="fas fa-palette"></i> Spectrum';
-            } else {
-                colorModeBtn.innerHTML = '<i class="fas fa-palette"></i> AlphaFold domain';
-            }
-        }
+        const colorModeBtn = controls.querySelector('.control-button.color-mode');
         if (colorModeBtn) {
             colorModeBtn.addEventListener('click', () => {
                 if (!modelLoaded) return;
-                colorMode = (colorMode === 'alphafold') ? 'spectrum' : 'alphafold';
-                updateColorModeButtonText();
+                if (useDomainColoring) {
+                    colorMode = colorMode === 'alphafold' ? 'spectrum' : 'alphafold';
+                } else {
+                    colorMode = colorMode === 'chain' ? 'spectrum' : 'chain';
+                }
+                updateColorModeButtonText(colorModeBtn);
                 applyViewerState();
             });
-            updateColorModeButtonText(); // Initial text
+            updateColorModeButtonText(colorModeBtn);
         }
     }
 }
 
-// Expose the function to the global scope for protein.html
 window.displayStructureInViewer = displayStructureInViewer;
 
-// Initialize all structure viewers on DOMContentLoaded that have a data-pdb attribute
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.structure-viewer').forEach(container => {
         const pdbPath = container.getAttribute('data-pdb');
-        // Only initialize if data-pdb is present and non-empty.
-        // protein.html will call displayStructureInViewer explicitly after fetching AFDB URL with domain ranges.
         if (pdbPath && pdbPath.trim() !== "") {
-            // Check if we are on protein.html; if so, let its specific logic handle it.
-            // This is a simple check; might need refinement if structure-viewer div is used elsewhere without this pattern.
-            // The instance on protein.html is handled by fetchAndLoadAlphaFoldStructure.
-            // This block is for other pages that might use .structure-viewer with just a data-pdb.
-            if (!document.getElementById('structure-viewer-fallback-protein')) { // Avoid re-init on protein.html
-                displayStructureInViewer(container, pdbPath, []); // Pass empty array for domains
+            // This auto-initialization is mainly for protein.html's single viewer.
+            // interaction.html and protein_pair.html have specific logic to call the viewer.
+            // The check for the fallback element ID is a bit of a hack to prevent
+            // this from running on protein.html before the specific data is ready.
+            if (!document.getElementById('structure-viewer-fallback-protein')) {
+                displayStructureInViewer(container, pdbPath, {});
             }
         }
     });
