@@ -167,7 +167,7 @@
                                 <!-- Protein 1 Plot Section -->
                                 <div id="promiscuity-plot-p1-section" style="margin-bottom: 30px;">
                                     <h3 id="protein1-name-subheading-promiscuity" class="page-subtitle">Loading...</h3>
-                                    <div class="promiscuityPlotContainerP1">
+                                    <div id="promiscuity-plot-p1" class="promiscuityPlotContainer">
                                         <!-- Plot will be rendered here by JavaScript -->
                                     </div>
                                 </div>
@@ -175,7 +175,7 @@
                                 <!-- Protein 2 Plot Section -->
                                 <div id="promiscuity-plot-p2-section">
                                     <h3 id="protein2-name-subheading-promiscuity" class="page-subtitle">Loading...</h3>
-                                    <div class="promiscuityPlotContainerP2">
+                                    <div id="promiscuity-plot-p2" class="promiscuityPlotContainer">
                                         <!-- Plot will be rendered here by JavaScript -->
                                     </div>
                                 </div>
@@ -737,8 +737,8 @@
                 }
 
                 // --- FIX: Clear both containers and captions before drawing ---
-                const p1Container = document.querySelector('.promiscuityPlotContainerP1');
-                const p2Container = document.querySelector('.promiscuityPlotContainerP2');
+                const p1Container = document.querySelector('#promiscuity-plot-p1');
+                const p2Container = document.querySelector('#promiscuity-plot-p2');
                 if (p1Container) p1Container.innerHTML = '';
                 if (p2Container) p2Container.innerHTML = '';
 
@@ -746,8 +746,7 @@
                     if (p1Section) p1Section.style.display = '';
                     if (p1Subheading) p1Subheading.textContent = p1;
                     if (window.initPromiscuityPlot) {
-                        window.initPromiscuityPlot({
-                            containerSelector: '.promiscuityPlotContainerP1',
+                        window.initPromiscuityPlot('#promiscuity-plot-p1', {
                             proteinName: p1,
                             interactionRegion: interactionRegions.p1,
                             filterCriteria: filterCriteria // Pass criteria
@@ -761,8 +760,7 @@
                     if (p2Section) p2Section.style.display = '';
                     if (p2Subheading) p2Subheading.textContent = p2;
                     if (window.initPromiscuityPlot) {
-                        window.initPromiscuityPlot({
-                            containerSelector: '.promiscuityPlotContainerP2',
+                        window.initPromiscuityPlot('#promiscuity-plot-p2', {
                             proteinName: p2,
                             interactionRegion: interactionRegions.p2,
                             filterCriteria: filterCriteria // Pass criteria

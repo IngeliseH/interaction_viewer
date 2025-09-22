@@ -104,6 +104,7 @@
                                 <i class="fas fa-chevron-up"></i>
                             </div>
                             <div class="content-section-content">
+                                <div id="promiscuity-controls-placeholder"></div>
                                 <div class="promiscuityPlotContainer">
                                     <!-- Plot will be rendered here by JavaScript -->
                                 </div>
@@ -282,6 +283,7 @@
 
         let chordPlotShowDomains = true;
         let chordPlotExpandQuery = false;
+        let promiscuityUseFilteredData = true; // Start with filtered data
 
         // Function to load HTML includes
         async function loadHTMLIncludes() {
@@ -841,19 +843,10 @@
             // Setup table filter change listener to also update promiscuity plot
             table.setOnFiltersChanged(async () => {
                 table.updateActiveFilterDisplay(); // Update active filter tags in UI
-                const currentGlobalFilters = table.getAllFilters(); // Gets the {column, min, max} array
-                const promiscuityCriteria = convertTableFiltersToPromiscuityCriteria(currentGlobalFilters);
-                // console.log("[ProtHTML] Filters changed, updating promiscuity plot with criteria:", promiscuityCriteria);
-                if (window.initPromiscuityPlot) {
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const p1 = decodeURIComponent(urlParams.get('p1') || '');
-                    window.initPromiscuityPlot({
-                        proteinName: p1,
-                        containerSelector: '.promiscuityPlotContainer',
-                        filterCriteria: promiscuityCriteria,
-                        showFilterToggle: true // Enable the toggle
-                    }, proteinLengthData, interfaceData);
-                }
+                
+                // Update promiscuity plot
+                updatePromiscuityPlot();
+
                 // Update chord plot
                 const urlParams = new URLSearchParams(window.location.search);
                 const p1 = decodeURIComponent(urlParams.get('p1') || '');
@@ -861,6 +854,66 @@
                     await initializeChordPlot(p1);
                 }
             });
+
+            // Function to update the promiscuity plot based on current filters
+            function updatePromiscuityPlot() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const p1 = decodeURIComponent(urlParams.get('p1') || '');
+
+                if (!p1 || !window.initPromiscuityPlot) return;
+
+                let filterCriteria = {};
+                if (promiscuityUseFilteredData) {
+                    const currentGlobalFilters = table.getAllFilters();
+                    filterCriteria = convertTableFiltersToPromiscuityCriteria(currentGlobalFilters);
+                }
+
+                window.initPromiscuityPlot(
+                    '.promiscuityPlotContainer',
+                    {
+                        proteinName: p1,
+                        filterCriteria: filterCriteria,
+                    }, 
+                    proteinLengthData, 
+                    interfaceData
+                );
+            }
+
+            // Setup global controls for promiscuity plots
+            function setupPromiscuityControls() {
+                const placeholder = document.getElementById('promiscuity-controls-placeholder');
+                if (!placeholder) return;
+
+                placeholder.innerHTML = ''; // Clear existing controls
+
+                const controlBar = document.createElement('div');
+                controlBar.className = 'control-bar';
+                controlBar.style.marginBottom = '20px';
+
+                const buttonGroup = document.createElement('div');
+                buttonGroup.className = 'control-button-group';
+
+                const toggleButton = document.createElement('button');
+                toggleButton.type = 'button';
+                toggleButton.className = 'control-button';
+                toggleButton.innerHTML = promiscuityUseFilteredData
+                    ? '<i class="fas fa-list"></i> Show All Data'
+                    : '<i class="fas fa-filter"></i> Show Filtered Data';
+                toggleButton.title = 'Toggle between all and filtered interaction data';
+
+                toggleButton.addEventListener('click', () => {
+                    promiscuityUseFilteredData = !promiscuityUseFilteredData;
+                    toggleButton.innerHTML = promiscuityUseFilteredData
+                        ? '<i class="fas fa-list"></i> Show All Data'
+                        : '<i class="fas fa-filter"></i> Show Filtered Data';
+                    
+                    updatePromiscuityPlot();
+                });
+
+                buttonGroup.appendChild(toggleButton);
+                controlBar.appendChild(buttonGroup);
+                placeholder.appendChild(controlBar);
+            }
 
             // Get protein name from URL
             const urlParams = new URLSearchParams(window.location.search);
@@ -876,16 +929,10 @@
                 // Initialize Chord Plot
                 await initializeChordPlot(p1);
 
-                // Now, trigger the first promiscuity plot draw using these initial filters.
-                const initialPromiscuityCriteria = convertTableFiltersToPromiscuityCriteria(table.getAllFilters());
-                if (window.initPromiscuityPlot) {
-                    window.initPromiscuityPlot({
-                        proteinName: p1,
-                        containerSelector: '.promiscuityPlotContainer',
-                        filterCriteria: initialPromiscuityCriteria,
-                        showFilterToggle: true // Enable the toggle
-                    }, proteinLengthData, interfaceData);
-                }
+                // Setup controls and draw initial promiscuity plot
+                setupPromiscuityControls();
+                updatePromiscuityPlot();
+
             } else {
                 // If no protein, clear/hide promiscuity plot and table
                 const promiscuityContainer = document.querySelector('.promiscuityPlotContainer');
