@@ -743,8 +743,13 @@
 
         // --- Collapsible sections ---
         function initCollapsibleSections() {
-            document.querySelectorAll('.sidebar-title, .content-section-title').forEach(title => {
-                title.addEventListener('click', function () {
+            document.querySelectorAll('.sidebar-title, .content-section > .content-section-title').forEach(title => {
+                title.addEventListener('click', function (event) {
+                    // Prevent nested title clicks from triggering parent collapse
+                    if (event.target.closest('.collapsible-subsection-title')) {
+                        return;
+                    }
+                    
                     let sectionToCollapse;
                     const mainGrid = document.querySelector('.main-content .grid'); // Target the grid within main-content
 

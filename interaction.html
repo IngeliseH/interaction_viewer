@@ -276,6 +276,7 @@
     <script src="js/interaction-structure-viewer.js"></script>
     <script type="module">
         import * as table from './js/table.js';
+        import { fetchAndParseCSV } from './js/csv.js';
 
         // --- Page-level state for promiscuity plot filtering ---
         let promiscuityUseFilteredData = false;
@@ -361,8 +362,13 @@
             }
         }
         function initCollapsibleSections() {
-            document.querySelectorAll('.sidebar-title, .content-section-title').forEach(title => {
-                title.addEventListener('click', function () {
+            document.querySelectorAll('.sidebar-title, .content-section > .content-section-title').forEach(title => {
+                title.addEventListener('click', function (event) {
+                    // Prevent nested title clicks from triggering parent collapse
+                    if (event.target.closest('.collapsible-subsection-title')) {
+                        return;
+                    }
+
                     const isContentTitle = this.classList.contains('content-section-title');
                     const isSidebarTitle = this.classList.contains('sidebar-title');
 
@@ -559,6 +565,72 @@
             // --- Fetch and cache data for the page ---
             const proteinLengthData = await fetchAndParseCSV('all_fragments_2025.06.04.csv');
             const interfaceData = await fetchAndParseCSV('all_interface_analysis_2025.06.05_shifted.csv');
+
+            // Fetch and parse the CSV at the page level
+            const proteinData = {};
+            const csvData = await fetchAndParseCSV('all_fragments_2025.06.04.csv');
+            if (csvData) {
+                csvData.forEach(row => {
+                    const proteinName = row.name;
+                    if (proteinName) {
+                        proteinData[proteinName] = {
+                            length: row.length ? parseInt(row.length, 10) : null,
+                            fragmentIndicesRaw: row.fragment_indices || null,
+                            alphafoldDomains: parseDomains(row.domains, 'AF'),
+                            uniprotDomains: parseDomains(row.domains, 'UniProt')
+                        };
+                    }
+                });
+            }
+
+            // Helper function to parse domains
+            function parseDomains(domainsRaw, prefix) {
+                if (!domainsRaw) return [];
+                try {
+                    const jsonFriendlyDomainStr = domainsRaw
+                        .replace(/\(/g, '[')
+                        .replace(/\)/g, ']')
+                        .replace(/'/g, '"');
+                    const parsedDomains = JSON.parse(jsonFriendlyDomainStr);
+                    return parsedDomains
+                        .map(domainEntry => {
+                            if (Array.isArray(domainEntry) && domainEntry.length === 2 &&
+                                typeof domainEntry[0] === 'string' && Array.isArray(domainEntry[1]) && domainEntry[1].length === 2) {
+                                return {
+                                    id: domainEntry[0],
+                                    start: parseInt(domainEntry[1][0], 10),
+                                    end: parseInt(domainEntry[1][1], 10)
+                                };
+                            }
+                            return null;
+                        })
+                        .filter(d => d && d.id.startsWith(prefix));
+                } catch (e) {
+                    console.error(`Error parsing domains:`, e, "Raw string:", domainsRaw);
+                    return [];
+                }
+            }
+
+            // Initialize the domain/fragment plots with pre-parsed data
+            const urlParams = new URLSearchParams(window.location.search);
+            const p1 = decodeURIComponent(urlParams.get('p1') || '');
+            const p2 = decodeURIComponent(urlParams.get('p2') || '');
+
+            if (p1) {
+                await _initializeInstance('p1', p1, {
+                    container: '.domainFragmentPlotContainerP1',
+                    caption: '.domain-fragment-plot-caption-p1',
+                    subheading: '#protein1-name-subheading-df',
+                }, proteinData);
+            }
+
+            if (p2) {
+                await _initializeInstance('p2', p2, {
+                    container: '.domainFragmentPlotContainerP2',
+                    caption: '.domain-fragment-plot-caption-p2',
+                    subheading: '#protein2-name-subheading-df',
+                }, proteinData);
+            }
 
             updatePageTitleWithProteinPair(); // Update title with protein pair names
             updateInteractionStatsFromURL(); // <-- Add this line

@@ -15,14 +15,23 @@ main.content-area:last-child {
     margin-bottom: 0;
 }
 
-.content-section {
+.content-section,
+.collapsible-subsection {
     width: 100%;
     box-sizing: border-box;
     background-color: white;
     border-radius: 8px;
 }
 
-.content-section-title {
+.collapsible-subsection {
+    margin-top: 20px;
+    background-color: white;
+    overflow: hidden;
+    max-height: 500px;
+}
+
+.content-section-title,
+.collapsible-subsection-title {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -32,30 +41,44 @@ main.content-area:last-child {
     transition: border-bottom-color 0.3s;
 }
 
-.content-section-title h2 {
+.collapsible-subsection-title {
+    background-color: var(--light);
+}
+
+.content-section-title h2,
+.collapsible-subsection-title h4 {
     font-size: 1.5rem;
     color: var(--primary);
     margin: 0;
     font-weight: 600;
 }
 
-.content-section-title > i.fas {
+.collapsible-subsection-title h4 {
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+.content-section-title > i.fas,
+.collapsible-subsection-title > i.fas {
     font-size: 1.2rem;
     color: var(--secondary);
     transition: transform 0.3s;
 }
 
 main.content-area.collapsed .content-section-title,
-.content-section.collapsed .content-section-title {
+.content-section.collapsed .content-section-title,
+.collapsible-subsection.collapsed .collapsible-subsection-title {
     border-bottom-color: transparent;
 }
 
 main.content-area.collapsed .content-section-title > i.fas,
-.content-section.collapsed .content-section-title > i.fas {
-    transform: rotate(180deg);
+.content-section.collapsed .content-section-title > i.fas,
+.collapsible-subsection.collapsed .collapsible-subsection-title > i.fas {
+    transform: rotate(360deg);
 }
 
-.content-section-content {
+.content-section-content,
+.collapsible-subsection-content {
     width: 100%;
     padding: 20px 25px;
     opacity: 1;
@@ -65,11 +88,14 @@ main.content-area.collapsed .content-section-title > i.fas,
     line-height: 1.6;
 }
 
+
 main.content-area.collapsed .content-section-content,
-.content-section.collapsed .content-section-content {
+.content-section.collapsed .content-section-content,
+.collapsible-subsection.collapsed .content-section-content {
     max-height: 0;
     opacity: 0;
     padding-top: 0;
     padding-bottom: 0;
     overflow: hidden;
 }
+

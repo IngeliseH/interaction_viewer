@@ -518,8 +518,13 @@
         }
 
         function initCollapsibleSections() {
-            document.querySelectorAll('.sidebar-title, .content-section-title').forEach(title => {
-                title.addEventListener('click', function () {
+            document.querySelectorAll('.sidebar-title, .content-section > .content-section-title').forEach(title => {
+                title.addEventListener('click', function (event) {
+                    // Prevent nested title clicks from triggering parent collapse
+                    if (event.target.closest('.collapsible-subsection-title')) {
+                        return;
+                    }
+
                     const isContentTitle = this.classList.contains('content-section-title');
                     const isSidebarTitle = this.classList.contains('sidebar-title');
 
