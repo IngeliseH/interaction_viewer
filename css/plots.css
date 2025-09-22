@@ -4,16 +4,7 @@
     margin-bottom: 10px;
 }
 
-.domainFragmentPlotContainer {
-    min-height: 100px;
-}
-
+.domainFragmentPlotContainer,
 .promiscuityPlotContainer {
-    min-height: 220px;
-}
-
-.promiscuity-plot-caption {
-    text-align: center;
-    font-style: italic;
-    margin-top: 10px;
+    min-height: 100px;
 }

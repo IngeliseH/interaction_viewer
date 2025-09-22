@@ -162,16 +162,22 @@
                                 <i class="fas fa-chevron-up"></i>
                             </div>
                             <div class="content-section-content">
-                                <!-- Promiscuity plots for each protein -->
-                                <div id="promiscuity-plot-p1-section" style="margin-bottom: 32px;">
-                                    <h3 id="protein1-name-subheading-promiscuity" class="page-subtitle">Loading Protein 1...</h3>
-                                    <div class="promiscuityPlotContainerP1"></div>
-                                    <p class="promiscuity-plot-caption-p1"></p>
+                                <!-- Placeholder for global controls -->
+                                <div id="promiscuity-controls-placeholder"></div>
+                                <!-- Protein 1 Plot Section -->
+                                <div id="promiscuity-plot-p1-section" style="margin-bottom: 30px;">
+                                    <h3 id="protein1-name-subheading-promiscuity" class="page-subtitle">Loading...</h3>
+                                    <div class="promiscuityPlotContainerP1">
+                                        <!-- Plot will be rendered here by JavaScript -->
+                                    </div>
                                 </div>
-                                <div id="promiscuity-plot-p2-section" style="margin-bottom: 32px; display: none;">
-                                    <h3 id="protein2-name-subheading-promiscuity" class="page-subtitle">Loading Protein 2...</h3>
-                                    <div class="promiscuityPlotContainerP2"></div>
-                                    <p class="promiscuity-plot-caption-p2"></p>
+
+                                <!-- Protein 2 Plot Section -->
+                                <div id="promiscuity-plot-p2-section">
+                                    <h3 id="protein2-name-subheading-promiscuity" class="page-subtitle">Loading...</h3>
+                                    <div class="promiscuityPlotContainerP2">
+                                        <!-- Plot will be rendered here by JavaScript -->
+                                    </div>
                                 </div>
                                 <p id="promiscuity-fallback-message" style="text-align:center; display:none; margin-top: 15px;">
                                     Promiscuity plots will be shown here if protein parameters are provided.
@@ -263,12 +269,16 @@
         </div>
     </div>
     <div id="footer-placeholder"></div>
+    <script src="js/csv.js"></script>
     <script src="js/promiscuity-plot.js"></script>
     <!-- The structure viewer script is now loaded dynamically after the PDB file is identified -->
     <script src="js/structure-viewer.js"></script>
     <script src="js/interaction-structure-viewer.js"></script>
     <script type="module">
         import * as table from './js/table.js';
+
+        // --- Page-level state for promiscuity plot filtering ---
+        let promiscuityUseFilteredData = false;
 
         // Function to load HTML includes
         async function loadHTMLIncludes() {
@@ -545,6 +555,11 @@
         // Initialize the app when DOM is loaded
         document.addEventListener('DOMContentLoaded', async () => {
             await loadHTMLIncludes(); // Load header and footer first
+
+            // --- Fetch and cache data for the page ---
+            const proteinLengthData = await fetchAndParseCSV('all_fragments_2025.06.04.csv');
+            const interfaceData = await fetchAndParseCSV('all_interface_analysis_2025.06.05_shifted.csv');
+
             updatePageTitleWithProteinPair(); // Update title with protein pair names
             updateInteractionStatsFromURL(); // <-- Add this line
             initCollapsibleSections(); // Initialize collapsible sections
@@ -629,6 +644,10 @@
 
                 table.setOnFiltersChanged(() => {
                     table.updateActiveFilterDisplay();
+                    // If the plots are in filtered mode, update them when filters change
+                    if (promiscuityUseFilteredData) {
+                        updatePromiscuityPlots();
+                    }
                 });
 
                 await table.loadData();
@@ -641,6 +660,58 @@
                 table.initTable();
                 table.updateActiveFilterDisplay();
                 table.renderTable();
+            }
+
+            // Utility to convert table filters for the promiscuity plot
+            function convertTableFiltersToPromiscuityCriteria(activeNumericFilters) {
+                const criteria = {};
+                if (!Array.isArray(activeNumericFilters)) return criteria;
+                activeNumericFilters.forEach(filter => {
+                    if (filter.column) {
+                        criteria[filter.column] = (val) => {
+                            const numVal = Number(val);
+                            if (isNaN(numVal)) return false;
+                            let passes = true;
+                            if (filter.min !== undefined && numVal < filter.min) passes = false;
+                            if (filter.max !== undefined && numVal > filter.max) passes = false;
+                            return passes;
+                        };
+                    }
+                });
+                return criteria;
+            }
+
+            // Setup global controls for promiscuity plots
+            function setupGlobalPromiscuityControls() {
+                const placeholder = document.getElementById('promiscuity-controls-placeholder');
+                if (!placeholder) return;
+
+                const controlBar = document.createElement('div');
+                controlBar.className = 'control-bar';
+                controlBar.style.marginBottom = '20px';
+
+                const buttonGroup = document.createElement('div');
+                buttonGroup.className = 'control-button-group';
+
+                const toggleButton = document.createElement('button');
+                toggleButton.type = 'button';
+                toggleButton.className = 'control-button';
+                toggleButton.innerHTML = '<i class="fas fa-filter"></i> Show Filtered Data';
+                toggleButton.title = 'Toggle between all and filtered interaction data';
+
+                toggleButton.addEventListener('click', () => {
+                    promiscuityUseFilteredData = !promiscuityUseFilteredData;
+                    toggleButton.innerHTML = promiscuityUseFilteredData
+                        ? '<i class="fas fa-list"></i> Show All Data'
+                        : '<i class="fas fa-filter"></i> Show Filtered Data';
+                    
+                    // Redraw plots with the new setting
+                    updatePromiscuityPlots();
+                });
+
+                buttonGroup.appendChild(toggleButton);
+                controlBar.appendChild(buttonGroup);
+                placeholder.appendChild(controlBar);
             }
 
             // Promiscuity plots for each protein
@@ -658,15 +729,18 @@
                 // --- NEW: Get interaction regions from URL ---
                 const interactionRegions = getInteractionRegionsFromURL();
 
+                // --- NEW: Get filter criteria if needed ---
+                let filterCriteria = {};
+                if (promiscuityUseFilteredData) {
+                    const currentGlobalFilters = table.getAllFilters();
+                    filterCriteria = convertTableFiltersToPromiscuityCriteria(currentGlobalFilters);
+                }
+
                 // --- FIX: Clear both containers and captions before drawing ---
                 const p1Container = document.querySelector('.promiscuityPlotContainerP1');
                 const p2Container = document.querySelector('.promiscuityPlotContainerP2');
-                const p1Caption = document.querySelector('.promiscuity-plot-caption-p1');
-                const p2Caption = document.querySelector('.promiscuity-plot-caption-p2');
                 if (p1Container) p1Container.innerHTML = '';
                 if (p2Container) p2Container.innerHTML = '';
-                if (p1Caption) p1Caption.textContent = '';
-                if (p2Caption) p2Caption.textContent = '';
 
                 if (p1) {
                     if (p1Section) p1Section.style.display = '';
@@ -674,10 +748,10 @@
                     if (window.initPromiscuityPlot) {
                         window.initPromiscuityPlot({
                             containerSelector: '.promiscuityPlotContainerP1',
-                            captionSelector: '.promiscuity-plot-caption-p1',
                             proteinName: p1,
-                            interactionRegion: interactionRegions.p1
-                        });
+                            interactionRegion: interactionRegions.p1,
+                            filterCriteria: filterCriteria // Pass criteria
+                        }, proteinLengthData, interfaceData);
                     }
                 } else {
                     if (p1Section) p1Section.style.display = 'none';
@@ -689,10 +763,10 @@
                     if (window.initPromiscuityPlot) {
                         window.initPromiscuityPlot({
                             containerSelector: '.promiscuityPlotContainerP2',
-                            captionSelector: '.promiscuity-plot-caption-p2',
                             proteinName: p2,
-                            interactionRegion: interactionRegions.p2
-                        });
+                            interactionRegion: interactionRegions.p2,
+                            filterCriteria: filterCriteria // Pass criteria
+                        }, proteinLengthData, interfaceData);
                     }
                 } else {
                     if (p2Section) p2Section.style.display = 'none';
@@ -705,6 +779,7 @@
                 }
             }
 
+            setupGlobalPromiscuityControls();
             updatePromiscuityPlots();
             loadOtherInteractions();
 

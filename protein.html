@@ -107,7 +107,6 @@
                                 <div class="promiscuityPlotContainer">
                                     <!-- Plot will be rendered here by JavaScript -->
                                 </div>
-                                <p class="promiscuity-plot-caption"></p>
                             </div>
                         </div>
                     </main>
@@ -270,6 +269,7 @@
     <div id="footer-placeholder"></div>
 
     <script src="https://3dmol.org/build/3Dmol-min.js"></script>
+    <script src="js/csv.js"></script>
     <script src="js/structure-viewer.js"></script>
     <script src="js/promiscuity-plot.js"></script>
     <script src="js/domain-fragment-plot.js"></script>
@@ -768,6 +768,11 @@
         // --- DOMContentLoaded ---
         document.addEventListener('DOMContentLoaded', async () => {
             await loadHTMLIncludes();
+
+            // --- Fetch and cache data for the page ---
+            const proteinLengthData = await fetchAndParseCSV('all_fragments_2025.06.04.csv');
+            const interfaceData = await fetchAndParseCSV('all_interface_analysis_2025.06.05_shifted.csv');
+
             updatePageTitleWithProteinPair(); // This will internally set protein context for promiscuity plot
             initCollapsibleSections();
 
@@ -840,7 +845,14 @@
                 const promiscuityCriteria = convertTableFiltersToPromiscuityCriteria(currentGlobalFilters);
                 // console.log("[ProtHTML] Filters changed, updating promiscuity plot with criteria:", promiscuityCriteria);
                 if (window.initPromiscuityPlot) {
-                    window.initPromiscuityPlot(promiscuityCriteria);
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const p1 = decodeURIComponent(urlParams.get('p1') || '');
+                    window.initPromiscuityPlot({
+                        proteinName: p1,
+                        containerSelector: '.promiscuityPlotContainer',
+                        filterCriteria: promiscuityCriteria,
+                        showFilterToggle: true // Enable the toggle
+                    }, proteinLengthData, interfaceData);
                 }
                 // Update chord plot
                 const urlParams = new URLSearchParams(window.location.search);
@@ -867,7 +879,12 @@
                 // Now, trigger the first promiscuity plot draw using these initial filters.
                 const initialPromiscuityCriteria = convertTableFiltersToPromiscuityCriteria(table.getAllFilters());
                 if (window.initPromiscuityPlot) {
-                    window.initPromiscuityPlot(initialPromiscuityCriteria);
+                    window.initPromiscuityPlot({
+                        proteinName: p1,
+                        containerSelector: '.promiscuityPlotContainer',
+                        filterCriteria: initialPromiscuityCriteria,
+                        showFilterToggle: true // Enable the toggle
+                    }, proteinLengthData, interfaceData);
                 }
             } else {
                 // If no protein, clear/hide promiscuity plot and table
