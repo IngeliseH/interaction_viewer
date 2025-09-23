@@ -1,10 +1,10 @@
-.domainFragmentPlotContainer .promiscuityPlotContainer {
+.domain-fragment-plot-container .promiscuity-plot-container {
     width: 100%;
     position: relative;
     margin-bottom: 10px;
 }
 
-.domainFragmentPlotContainer,
-.promiscuityPlotContainer {
+.domain-fragment-plot-container,
+.promiscuity-plot-container {
     min-height: 100px;
 }

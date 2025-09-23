@@ -102,45 +102,6 @@ body {
     text-decoration: underline;
 }
 
-/* Styles for the new collapsible subsection */
-.collapsible-subsection {
-    margin-top: 20px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    background-color: var(--light);
-    overflow: hidden;
-    transition: all 0.3s ease-in-out;
-}
-
-.collapsible-subsection-title {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 15px;
-    cursor: pointer;
-    background-color: #f1f1f1;
-}
-
-.collapsible-subsection-title h4 {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: bold;
-}
-
-.collapsible-subsection-content {
-    padding: 15px;
-    transition: max-height 0.3s ease-out, padding 0.3s ease-out;
-    max-height: 1000px; /* Adjust as needed */
-    overflow: auto;
-}
-
-.collapsible-subsection.collapsed .collapsible-subsection-content {
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    overflow: hidden;
-}
-
 .header-main-text {
     display: block;
     margin-bottom: 5px;

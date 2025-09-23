@@ -1,6 +1,6 @@
 const csvDataCache = {};
 
-async function fetchAndParseCSV(url) {
+export async function fetchAndParseCSV(url) {
     if (csvDataCache[url]) {
         return csvDataCache[url];
     }

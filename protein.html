@@ -91,7 +91,7 @@
                                         </button>
                                     </div>
                                 </div>
-                                <div class="domainFragmentPlotContainer">
+                                <div class="domain-fragment-plot-container">
                                     <!-- Domain/Fragment Plot will be rendered here by JavaScript -->
                                 </div>
                             </div>
@@ -105,7 +105,7 @@
                             </div>
                             <div class="content-section-content">
                                 <div id="promiscuity-controls-placeholder"></div>
-                                <div class="promiscuityPlotContainer">
+                                <div class="promiscuity-plot-container">
                                     <!-- Plot will be rendered here by JavaScript -->
                                 </div>
                             </div>
@@ -270,13 +270,14 @@
     <div id="footer-placeholder"></div>
 
     <script src="https://3dmol.org/build/3Dmol-min.js"></script>
-    <script src="js/csv.js"></script>
+    <module src="js/csv.js"></module>
     <script src="js/structure-viewer.js"></script>
     <script src="js/promiscuity-plot.js"></script>
     <script src="js/domain-fragment-plot.js"></script>
     <script type="module">
         import * as table from './js/table.js';
         import { drawChordByPosition } from './js/chord-plot.js';
+        import { fetchAndParseCSV } from './js/csv.js';
 
         // --- GLOBAL ACTIVE FILTERS OBJECT ---
         window.activeFilters = {};
@@ -874,7 +875,7 @@
                 }
 
                 window.initPromiscuityPlot(
-                    '.promiscuityPlotContainer',
+                    '.promiscuity-plot-container',
                     {
                         proteinName: p1,
                         filterCriteria: filterCriteria,
@@ -940,7 +941,7 @@
 
             } else {
                 // If no protein, clear/hide promiscuity plot and table
-                const promiscuityContainer = document.querySelector('.promiscuityPlotContainer');
+                const promiscuityContainer = document.querySelector('.promiscuity-plot-container');
                 if (promiscuityContainer) promiscuityContainer.innerHTML = '<p style="text-align:center; color:grey; padding-top: 20px;">Protein not specified for plot.</p>';
                 const ppiTableContainer = document.getElementById('ppi-table');
                 if (ppiTableContainer) ppiTableContainer.style.display = 'none';

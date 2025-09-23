@@ -135,7 +135,7 @@
                                 <!-- Protein 1 Plot Section -->
                                 <div id="domain-fragment-plot-p1-section">
                                     <h3 id="protein1-name-subheading-df" class="page-subtitle">Loading Protein 1...</h3>
-                                    <div class="domainFragmentPlotContainerP1">
+                                    <div class="domain-fragment-plot-container-p1">
                                         <!-- Domain/Fragment Plot for P1 will be rendered here -->
                                     </div>
                                     <!-- Collapsible table for P1 will be generated here by JS -->
@@ -144,7 +144,7 @@
                                 <!-- Protein 2 Plot Section -->
                                 <div id="domain-fragment-plot-p2-section" style="margin-top: 30px; display: none;"> <!-- Initially hidden -->
                                     <h3 id="protein2-name-subheading-df" class="page-subtitle">Loading Protein 2...</h3>
-                                    <div class="domainFragmentPlotContainerP2">
+                                    <div class="domain-fragment-plot-container-p2">
                                         <!-- Domain/Fragment Plot for P2 will be rendered here -->
                                     </div>
                                     <!-- Collapsible table for P2 will be generated here by JS -->
@@ -180,7 +180,7 @@
                                     </div>
                                 </div>
                                 <p id="promiscuity-fallback-message" style="text-align:center; display:none; margin-top: 15px;">
-                                    Promiscuity plots will be shown here if protein parameters are provided.
+                                    Protein parameters not provided.
                                 </p>
                             </div>
                         </div>
@@ -269,7 +269,7 @@
         </div>
     </div>
     <div id="footer-placeholder"></div>
-    <script src="js/csv.js"></script>
+    <module src="js/csv.js"></module>
     <script src="js/promiscuity-plot.js"></script>
     <!-- The structure viewer script is now loaded dynamically after the PDB file is identified -->
     <script src="js/structure-viewer.js"></script>
@@ -356,7 +356,7 @@
 
                 const fallbackMessageDF = document.getElementById('fragments-fallback-message-df');
                 if(fallbackMessageDF) {
-                    fallbackMessageDF.textContent = 'Protein parameters not provided to display domain/fragment plots.';
+                    fallbackMessageDF.textContent = 'Protein parameters not provided.';
                     fallbackMessageDF.style.display = 'block';
                 }
             }
@@ -611,33 +611,13 @@
                 }
             }
 
-            // Initialize the domain/fragment plots with pre-parsed data
             const urlParams = new URLSearchParams(window.location.search);
-            const p1 = decodeURIComponent(urlParams.get('p1') || '');
-            const p2 = decodeURIComponent(urlParams.get('p2') || '');
-
-            if (p1) {
-                await _initializeInstance('p1', p1, {
-                    container: '.domainFragmentPlotContainerP1',
-                    caption: '.domain-fragment-plot-caption-p1',
-                    subheading: '#protein1-name-subheading-df',
-                }, proteinData);
-            }
-
-            if (p2) {
-                await _initializeInstance('p2', p2, {
-                    container: '.domainFragmentPlotContainerP2',
-                    caption: '.domain-fragment-plot-caption-p2',
-                    subheading: '#protein2-name-subheading-df',
-                }, proteinData);
-            }
 
             updatePageTitleWithProteinPair(); // Update title with protein pair names
             updateInteractionStatsFromURL(); // <-- Add this line
             initCollapsibleSections(); // Initialize collapsible sections
 
             // Ensure linked section is uncollapsed when navigating via sidebar links from URL
-            const urlParams = new URLSearchParams(window.location.search);
             const sectionIdFromUrl = urlParams.get('section');
             if (sectionIdFromUrl) {
                 const targetSectionDiv = document.getElementById(sectionIdFromUrl);

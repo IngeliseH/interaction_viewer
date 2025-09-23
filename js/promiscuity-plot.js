@@ -23,7 +23,7 @@ async function initPromiscuityPlot(containerSelector, options = {}, proteinLengt
 function highlightPromiscuityResidues(start, end, containerSelector = null) {
     const containers = containerSelector
         ? [document.querySelector(containerSelector)]
-        : Array.from(document.querySelectorAll('.promiscuityPlotContainer'));
+        : Array.from(document.querySelectorAll('.promiscuity-plot-container'));
 
     containers.forEach(container => {
         if (!container) return;
@@ -96,10 +96,10 @@ function _fetchRelevantInterfaces(proteinName, proteinLength, interfaceData, fil
         const key = row.Protein1 === proteinName ? 'Protein1' : 'Protein2';
         if (row.absolute_location) {
             try {
-                const fixedJson = row.absolute_location.replace(/'/g, '"').replace(/None/g, 'null');
-                const absLoc = JSON.parse(fixedJson);
-                if (Array.isArray(absLoc?.[key])) {
-                    absLoc[key].forEach(idx => {
+                const sanitizedJson = row.absolute_location.replace(/'/g, '"').replace(/None/g, 'null');
+                const absoluteLocation = JSON.parse(sanitizedJson);
+                if (Array.isArray(absoluteLocation?.[key])) {
+                    absoluteLocation[key].forEach(idx => {
                         if (idx > 0 && idx <= proteinLength) {
                             coverageArray[idx - 1]++;
                         }
@@ -165,7 +165,7 @@ function _drawPromiscuityBasePlot(proteinName, proteinLength, container, options
     const barHeight = 10;
     const yPosition = margin.top + (containerHeight - margin.top - margin.bottom) / 2;
 
-    const g = _createSvgElement("g", { "transform": `translate(${margin.left}, 0)` });
+    const svgGroup = _createSvgElement("g", { "transform": `translate(${margin.left}, 0)` });
 
     const proteinBar = _createSvgElement("rect", {
         "x": 0,
@@ -174,7 +174,7 @@ function _drawPromiscuityBasePlot(proteinName, proteinLength, container, options
         "height": barHeight,
         "fill": "#ccc"
     });
-    g.appendChild(proteinBar);
+    svgGroup.appendChild(proteinBar);
 
     if (Array.isArray(options.interactionRegion)) {
         options.interactionRegion.forEach(region => {
@@ -190,7 +190,7 @@ function _drawPromiscuityBasePlot(proteinName, proteinLength, container, options
                     "opacity": "0.55",
                     "pointer-events": "none"
                 });
-                g.appendChild(highlightRect);
+                svgGroup.appendChild(highlightRect);
             }
         });
     }
@@ -204,7 +204,7 @@ function _drawPromiscuityBasePlot(proteinName, proteinLength, container, options
         "fill": "#333"
     });
     startLabel.textContent = "1";
-    g.appendChild(startLabel);
+    svgGroup.appendChild(startLabel);
 
     const endLabel = _createSvgElement("text", {
         "x": plotWidth + 15,
@@ -215,16 +215,16 @@ function _drawPromiscuityBasePlot(proteinName, proteinLength, container, options
         "fill": "#333"
     });
     endLabel.textContent = proteinLength;
-    g.appendChild(endLabel);
+    svgGroup.appendChild(endLabel);
 
-    svg.appendChild(g);
+    svg.appendChild(svgGroup);
     container.appendChild(svg);
 
-    return { svg, g, plotWidth, margin, yPosition, barHeight, containerHeight, container, interactionRegion: options.interactionRegion };
+    return { svg, svgGroup, plotWidth, margin, yPosition, barHeight, containerHeight, container, interactionRegion: options.interactionRegion };
 }
 
 function _drawPromiscuityCoverageBars(plotElements, coverageArray) {
-    const { svg, g, plotWidth, margin, yPosition, containerHeight, interactionRegion, container } = plotElements;
+    const { svg, svgGroup, plotWidth, margin, yPosition, containerHeight, interactionRegion, container } = plotElements;
     if (!coverageArray || coverageArray.length === 0) return;
 
     const interactionRegions = Array.isArray(interactionRegion) ? interactionRegion : [];
@@ -251,7 +251,7 @@ function _drawPromiscuityCoverageBars(plotElements, coverageArray) {
             "stroke-width": t === 1.0 ? "2" : "1",
             "opacity": t === 1.0 ? "0.6" : "0.3"
         });
-        g.appendChild(line);
+        svgGroup.appendChild(line);
 
         const label = _createSvgElement("text", {
             "x": plotWidth + 8,
@@ -260,7 +260,7 @@ function _drawPromiscuityCoverageBars(plotElements, coverageArray) {
             "fill": "#888"
         });
         label.textContent = Math.round(thresholdCount);
-        g.appendChild(label);
+        svgGroup.appendChild(label);
     });
 
     const barsGroup = _createSvgElement("g", { "class": "coverage-bars" });
@@ -304,8 +304,8 @@ function _drawPromiscuityCoverageBars(plotElements, coverageArray) {
         }
     });
 
-    g.appendChild(barsGroup);
-    g.appendChild(hoverLabel);
+    svgGroup.appendChild(barsGroup);
+    svgGroup.appendChild(hoverLabel);
     setTimeout(() => _renderBarHighlights(container), 0);
 }
 
