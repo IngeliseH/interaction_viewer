@@ -106,7 +106,7 @@
                                     </div>
                                 </div>
                                 <div class="structure-viewer"
-                                   data-pdb="structures/Ana2_F1_Sas-4_F3_unrelaxed_rank_001_alphafold2_multimer_v3_model_5_seed_000.pdb"></div>
+                                   data-pdb=""></div>
                             </div>
                         </div>
                     </main>
@@ -275,6 +275,9 @@
     <script src="js/interaction-structure-viewer.js"></script>
     <script type="module">
         import * as table from './js/table.js';
+        import * as filter from './js/filter.js';
+        import * as pagination from './js/pagination.js';
+        import * as stats from './js/stats.js';
         import { fetchAndParseCSV } from './js/data.js';
 
         // --- Page-level state for promiscuity plot filtering ---
@@ -677,7 +680,7 @@
                 };
 
                 // Based on protein_pair.html
-                table.setColumnDescriptions({
+                const columnDescriptions = {
                     "query_fragment": "Query protein fragment (domain or fragment name).",
                     "partner": "Partner protein name.",
                     "partner_id": "UniProt accession ID of the partner protein.",
@@ -691,10 +694,14 @@
                     "size": "Size of the interaction interface in square Angstroms (Å²).",
                     "evenness": "How evenly distributed the interface residues are between the two proteins.",
                     "location": "Location of the interaction on each protein chain."
-                });
+                };
 
-                table.setOnFiltersChanged(() => {
-                    table.updateActiveFilterDisplay();
+                await table.loadTableData();
+                table.setColumnDescriptions(columnDescriptions);
+                filter.setColumnFilters(initialNumericFilters);
+
+                filter.setOnFiltersChanged(() => {
+                    filter.updateActiveFilterDisplay();
                     // If the plots are in filtered mode, update them when filters change
                     if (promiscuityUseFilteredData) {
                         updatePromiscuityPlots();
@@ -702,14 +709,14 @@
                 });
 
                 await table.loadTableData();
-                table.setColumnFilters(initialNumericFilters); // Apply initial filters
-                table.setSelectedProteins([p1, p2]);
+                filter.setColumnFilters(initialNumericFilters); // Apply initial filters
+                filter.setSelectedProteins([p1, p2]);
                 table.setSearchMode("pair-exact");
-                table.setCurrentPage(1);
-                table.setUpdatePaginationUI(table.updatePaginationControls);
-                table.setUpdateStatsUI(null);
+                pagination.setCurrentPage(1);
+                pagination.setUpdatePaginationUI(table.updatePaginationControls);
+                stats.setUpdateStatsUI(null);
                 table.initTable();
-                table.updateActiveFilterDisplay();
+                filter.updateActiveFilterDisplay();
                 table.renderTable();
             }
 
@@ -783,7 +790,7 @@
                 // --- NEW: Get filter criteria if needed ---
                 let filterCriteria = {};
                 if (promiscuityUseFilteredData) {
-                    const currentGlobalFilters = table.getAllFilters();
+                    const currentGlobalFilters = filter.getAllFilters();
                     filterCriteria = convertTableFiltersToPromiscuityCriteria(currentGlobalFilters);
                 }
 

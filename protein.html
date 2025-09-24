@@ -275,6 +275,9 @@
     <script  type="module" src="js/domain-fragment-plot.js"></script>
     <script type="module">
         import * as table from './js/table.js';
+        import * as filter from './js/filter.js';
+        import * as pagination from './js/pagination.js';
+        import * as stats from './js/stats.js';
         import { drawChordByPosition } from './js/chord-plot.js';
         import { fetchAndParseCSV, loadInteractionData } from './js/data.js';
 
@@ -627,11 +630,11 @@
                 await table.loadTableData();
 
                 // Do NOT change the data or filters based on expandQuery!
-                table.setSelectedProteins([proteinName]);
+                filter.setSelectedProteins([proteinName]);
                 table.setSearchMode("includes");
 
                 // Use current filters (if any) already set in table
-                const filteredData = table.getFilteredData ? table.getFilteredData() : [];
+                const filteredData = filter.getFilteredData ? filter.getFilteredData() : [];
 
                 // --- DOMAIN COLOR MAP & RANGES (from domain/fragment plot) ---
                 let domainColorMap = null;
@@ -730,14 +733,14 @@
         // --- Table initialization and filtering ---
         async function initializePPITableForProtein(proteinName) {
             await table.loadTableData();
-            table.setSelectedProteins([proteinName]);
+            filter.setSelectedProteins([proteinName]);
             table.setSearchMode("includes");
-            table.setCurrentPage(1);
-            table.setUpdatePaginationUI(table.updatePaginationControls);
-            table.setUpdateStatsUI(null); // No stats summary for this view
+            pagination.setCurrentPage(1);
+            pagination.setUpdatePaginationUI(pagination.updatePaginationControls);
+            stats.setUpdateStatsUI(null); // No stats summary for this view
             // The setOnFiltersChanged is handled in DOMContentLoaded to include promiscuity plot updates
             table.initTable();
-            table.updateActiveFilterDisplay(); // Ensure active filters (including initial ones) are displayed
+            filter.updateActiveFilterDisplay(); // Ensure active filters (including initial ones) are displayed
             table.renderTable();
         }
 
@@ -846,8 +849,8 @@
             }
 
             // Setup table filter change listener to also update promiscuity plot
-            table.setOnFiltersChanged(async () => {
-                table.updateActiveFilterDisplay(); // Update active filter tags in UI
+            filter.setOnFiltersChanged(async () => {
+                filter.updateActiveFilterDisplay(); // Update active filter tags in UI
                 
                 // Update promiscuity plot
                 updatePromiscuityPlot();
@@ -869,7 +872,7 @@
 
                 let filterCriteria = {};
                 if (promiscuityUseFilteredData) {
-                    const currentGlobalFilters = table.getAllFilters();
+                    const currentGlobalFilters = filter.getAllFilters();
                     filterCriteria = convertTableFiltersToPromiscuityCriteria(currentGlobalFilters);
                 }
 
@@ -926,7 +929,7 @@
 
             if (p1) {
                 // Apply initial filters to the table state
-                table.setColumnFilters(initialNumericFiltersForProteinPage);
+                filter.setColumnFilters(initialNumericFiltersForProteinPage);
 
                 // Initialize table (this will also render it with initial filters)
                 await initializePPITableForProtein(p1);

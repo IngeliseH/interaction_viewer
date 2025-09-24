@@ -23,7 +23,7 @@ async function initializePlotInstance(instanceId, proteinName, selectorsConfig) 
     _plotInstances[instanceId] = {
         proteinName,
         proteinLength: null,
-        fragmentIndices: null, // Changed from fragmentIndicesRaw
+        fragmentIndices: null,
         alphafoldDomains: null,
         uniprotDomains: null,
         selectors: { ...selectorsConfig }
@@ -51,7 +51,7 @@ async function initializePlotInstance(instanceId, proteinName, selectorsConfig) 
     });
 
     instance.proteinLength = proteinData.length;
-    instance.fragmentIndices = proteinData.fragmentIndices; // Use single consistent name
+    instance.fragmentIndices = proteinData.fragmentIndices;
     instance.alphafoldDomains = proteinData.alphafoldDomains;
     instance.uniprotDomains = proteinData.uniprotDomains;
 
@@ -305,7 +305,7 @@ function _renderCollapsibleTable(container, instanceId, { alphafoldDomains, unip
     titleDiv.appendChild(titleText);
 
     const icon = document.createElement('i');
-    icon.className = 'fas fa-chevron-down';
+    icon.className = 'fas fa-chevron-up';
     titleDiv.appendChild(icon);
 
     domainInfoSection.appendChild(titleDiv);

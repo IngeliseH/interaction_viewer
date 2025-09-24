@@ -223,6 +223,9 @@
 
     <script type="module">
         import * as table from './js/table.js';
+        import * as filter from './js/filter.js';
+        import * as pagination from './js/pagination.js';
+        import * as stats from './js/stats.js';
         import { drawChordByPosition } from './js/chord-plot.js';
 
         // Set up column descriptions for info tooltips
@@ -302,8 +305,8 @@
                     option.textContent = protein;
                     option.addEventListener('click', () => {
                         if (!table.selectedProteins.includes(protein)) {
-                            table.setSelectedProteins([...table.selectedProteins, protein]);
-                            table.updateActiveFilterDisplay();
+                            filter.setSelectedProteins([...table.selectedProteins, protein]);
+                            filter.updateActiveFilterDisplay();
                             table.renderTable();
                             initializeChordPlot();
                         }
@@ -333,21 +336,16 @@
                     alert('Please select a valid column and enter a numerical value');
                     return;
                 }
-                table.refineNumericFilter(column, condition, value);
-                // table.updateActiveFilterDisplay(); // Called by refineNumericFilter via onFiltersChanged
-                // table.renderTable(); // Called by refineNumericFilter
+                filter.refineNumericFilter(column, condition, value);
             });
 
-            // Sidebar filter reset
             document.getElementById('resetFilters').addEventListener('click', () => {
-                table.setColumnFilters({}); // Clear all numeric filters
-                table.setSelectedProteins([]);
+                setColumnFilters({});
+                setSelectedProteins([]);
                 document.getElementById('proteinSearch').value = '';
                 document.getElementById('filterColumn').value = '';
                 document.getElementById('filterCondition').value = 'above';
                 document.getElementById('filterValue').value = '';
-                // table.updateActiveFilterDisplay(); // Called by setColumnFilters via onFiltersChanged
-                // table.renderTable(); // Called by setColumnFilters
             });
         }
 
@@ -385,7 +383,7 @@
 
             try {
                 // table data is already loaded.
-                const filteredData = table.getFilteredData ? table.getFilteredData() : [];
+                const filteredData = filter.getFilteredData ? filter.getFilteredData() : [];
 
                 await drawChordByPosition(filteredData, containerSelector, {
                     size: 500,
@@ -436,10 +434,10 @@
             await table.loadTableData();
 
             // Set UI update hooks and filter change callback first
-            table.setUpdateStatsUI(updateStats);
-            table.setUpdatePaginationUI(table.updatePaginationControls);
-            table.setOnFiltersChanged(() => {
-                table.updateActiveFilterDisplay();
+            stats.setUpdateStatsUI(updateStats);
+            pagination.setUpdatePaginationUI(table.updatePaginationControls);
+            filter.setOnFiltersChanged(() => {
+                filter.updateActiveFilterDisplay();
                 initializeChordPlot();
             }); 
 
@@ -451,7 +449,7 @@
                 avg_pae: { max: 15 }, // avg_pae <= 15
                 rop: { min: 2 }      // rop >= 2
             };
-            table.setColumnFilters(initialNumericFilters);
+            filter.setColumnFilters(initialNumericFilters);
             
             table.initTable(); // Initializes column headers, etc.
             setupSidebarEventListeners();

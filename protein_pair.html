@@ -237,6 +237,9 @@
     <script src="js/interaction-structure-viewer.js"></script>
     <script type="module">
         import * as table from './js/table.js';
+        import * as filter from './js/filter.js';
+        import * as pagination from './js/pagination.js';
+        import * as stats from './js/stats.js';
         import { drawChordByPosition } from './js/chord-plot.js';
         import { fetchAndParseCSV, loadInteractionData } from './js/data.js';
 
@@ -505,16 +508,16 @@
         // --- Table initialization and filtering ---
         async function initializePPITableForProtein(p1, p2) {
             await table.loadTableData();
-            table.setSelectedProteins([p1, p2]);
+            filter.setSelectedProteins([p1, p2]);
             table.setSearchMode("pair-exact"); // Use the new mode for exact protein pairs
-            table.setCurrentPage(1);
-            table.setUpdatePaginationUI(table.updatePaginationControls);
-            table.setUpdateStatsUI(null); // No stats summary for this view
+            pagination.setCurrentPage(1);
+            pagination.setUpdatePaginationUI(pagination.updatePaginationControls);
+            stats.setUpdateStatsUI(null); // No stats summary for this view
             table.initTable();
-            table.updateActiveFilterDisplay(); // Ensure active filters (including initial ones) are displayed
+            filter.updateActiveFilterDisplay(); // Ensure active filters (including initial ones) are displayed
             table.renderTable();
             // After rendering, update chord plot with filtered data
-            const filteredData = table.getFilteredData();
+            const filteredData = filter.getFilteredData();
             await initializeChordPlot(filteredData, p1, p2);
         }
 
@@ -758,7 +761,7 @@
                     const p1 = decodeURIComponent(urlParams.get('p1') || '');
                     const p2 = decodeURIComponent(urlParams.get('p2') || '');
                     if (p1 && p2) {
-                        const filteredData = table.getFilteredData();
+                        const filteredData = filter.getFilteredData();
                         await initializeChordPlot(filteredData, p1, p2);
                     }
                 });
@@ -771,14 +774,14 @@
                 rop: { min: 2 }      // rop >= 2 (as per original user request for protein page)
             };
 
-            table.setOnFiltersChanged(async () => {
-                table.updateActiveFilterDisplay(); // Update active filter tags in UI
+            filter.setOnFiltersChanged(async () => {
+                filter.updateActiveFilterDisplay(); // Update active filter tags in UI
                 // The chord plot will be updated here
                 const urlParams = new URLSearchParams(window.location.search);
                 const p1 = decodeURIComponent(urlParams.get('p1') || '');
                 const p2 = decodeURIComponent(urlParams.get('p2') || '');
                 if (p1 && p2) {
-                    const filteredData = table.getFilteredData();
+                    const filteredData = filter.getFilteredData();
                     await initializeChordPlot(filteredData, p1, p2);
                 }
             });
@@ -790,7 +793,7 @@
 
             if (p1 && p2) {
                 // Apply initial filters to the table state without rendering
-                table.setColumnFilters(initialNumericFiltersForProteinPage, false); 
+                filter.setColumnFilters(initialNumericFiltersForProteinPage, false); 
                 // Initialize table (this will load data and then render with initial filters)
                 await initializePPITableForProtein(p1, p2);
                 // The initial call to initializeChordPlot is now handled inside initializePPITableForProtein.
