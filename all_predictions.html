@@ -433,7 +433,7 @@
         document.addEventListener('DOMContentLoaded', async () => {
             await loadHTMLIncludes();
             initCollapsibleSections(); // Initialize collapsible sidebar sections
-            await table.loadData();
+            await table.loadTableData();
 
             // Set UI update hooks and filter change callback first
             table.setUpdateStatsUI(updateStats);
@@ -459,6 +459,5 @@
             // table.setColumnFilters() already calls renderTable() and updates active filter display.
         });
     </script>
-    <script type="module" src="js/main.js"></script>
 </body>
 </html>

@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
     <script src="https://3dmol.org/build/3Dmol-min.js"></script>
-    <script src="js/domain-fragment-plot.js"></script>
+    <script type="module" src="js/domain-fragment-plot.js"></script>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/button.css">
     <link rel="stylesheet" href="css/collapsible-section.css">
@@ -269,14 +269,13 @@
         </div>
     </div>
     <div id="footer-placeholder"></div>
-    <module src="js/csv.js"></module>
+    <module src="js/data.js"></module>
     <script src="js/promiscuity-plot.js"></script>
-    <!-- The structure viewer script is now loaded dynamically after the PDB file is identified -->
     <script src="js/structure-viewer.js"></script>
     <script src="js/interaction-structure-viewer.js"></script>
     <script type="module">
         import * as table from './js/table.js';
-        import { fetchAndParseCSV } from './js/csv.js';
+        import { fetchAndParseCSV } from './js/data.js';
 
         // --- Page-level state for promiscuity plot filtering ---
         let promiscuityUseFilteredData = false;
@@ -702,7 +701,7 @@
                     }
                 });
 
-                await table.loadData();
+                await table.loadTableData();
                 table.setColumnFilters(initialNumericFilters); // Apply initial filters
                 table.setSelectedProteins([p1, p2]);
                 table.setSearchMode("pair-exact");

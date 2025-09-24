@@ -270,14 +270,13 @@
     <div id="footer-placeholder"></div>
 
     <script src="https://3dmol.org/build/3Dmol-min.js"></script>
-    <module src="js/csv.js"></module>
     <script src="js/structure-viewer.js"></script>
     <script src="js/promiscuity-plot.js"></script>
-    <script src="js/domain-fragment-plot.js"></script>
+    <script  type="module" src="js/domain-fragment-plot.js"></script>
     <script type="module">
         import * as table from './js/table.js';
         import { drawChordByPosition } from './js/chord-plot.js';
-        import { fetchAndParseCSV } from './js/csv.js';
+        import { fetchAndParseCSV, loadInteractionData } from './js/data.js';
 
         // --- GLOBAL ACTIVE FILTERS OBJECT ---
         window.activeFilters = {};
@@ -625,7 +624,7 @@
 
             try {
                 // Ensure table data is loaded
-                await table.loadData();
+                await table.loadTableData();
 
                 // Do NOT change the data or filters based on expandQuery!
                 table.setSelectedProteins([proteinName]);
@@ -730,7 +729,7 @@
 
         // --- Table initialization and filtering ---
         async function initializePPITableForProtein(proteinName) {
-            await table.loadData();
+            await table.loadTableData();
             table.setSelectedProteins([proteinName]);
             table.setSearchMode("includes");
             table.setCurrentPage(1);

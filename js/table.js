@@ -1,3 +1,5 @@
+import { loadInteractionData, loadProteinMetadata, parseLocation, indicesToRanges } from './data.js';
+
 // Centralized state for table, filters, sorting, pagination, etc.
 
 export let tableData = [];
@@ -262,87 +264,33 @@ export function updateActiveFilterDisplay() {
 
 // --- END NEW FUNCTIONS ---
 
-export async function loadData() {
-    const mainDataPromise = new Promise((resolve, reject) => {
-        Papa.parse('all_interface_analysis_2025.06.05_shifted.csv', {
-            download: true,
-            header: true,
-            dynamicTyping: true,
-            skipEmptyLines: true,
-            complete: (results) => {
-                if (results.errors.length) {
-                    console.error("Parsing errors for main data CSV:", results.errors);
-                    reject(results.errors);
-                } else {
-                    // Process data
-                    const data = results.data.map(row => ({
-                        ...row,
-                        Proteins: `${row.Protein1_Domain || ''}+${row.Protein2_Domain || ''}`,
-                        min_pae: parseFloat(row.min_pae) || 0,
-                        avg_pae: parseFloat(row.avg_pae) || 0,
-                        iptm: parseFloat(row.iptm) || 0,
-                        pdockq: parseFloat(row.pdockq) || 0,
-                        max_promiscuity: parseFloat(row.max_promiscuity) || 0,
-                        rop: parseFloat(row.rop) || 0,
-                        size: parseFloat(row.size) || 0,
-                        evenness: parseFloat(row.evenness) || 0
-                    }));
-                    setTableData(data);
-                    resolve(data);
-                }
-            },
-            error: (error) => reject(error)
-        });
-    });
-
-    const fragmentsMapPromise = new Promise((resolve, reject) => {
-        Papa.parse('all_fragments_2025.06.04.csv', {
-            download: true,
-            header: true,
-            skipEmptyLines: true,
-            complete: (results) => {
-                if (results.errors.length) {
-                    console.error("Parsing errors for fragments CSV:", results.errors);
-                    setProteinNameToAccessionMap({});
-                    setProteinNameToCategoryMap({});
-                    resolve({}); // Resolve with empty maps
-                } else {
-                    const accessionMap = {};
-                    const categoryMap = {};
-                    results.data.forEach(row => {
-                        if (row.name) {
-                            if (row.accession_id) {
-                                accessionMap[row.name] = row.accession_id;
-                            }
-                            if (row.category) {
-                                categoryMap[row.name] = row.category;
-                            }
-                        }
-                    });
-                    setProteinNameToAccessionMap(accessionMap);
-                    setProteinNameToCategoryMap(categoryMap);
-                    resolve({ accessionMap, categoryMap });
-                }
-            },
-            error: (error) => {
-                console.error("Error fetching fragments CSV:", error);
-                setProteinNameToAccessionMap({});
-                setProteinNameToCategoryMap({});
-                resolve({}); // Resolve with empty maps
-            }
-        });
-    });
-
+export async function loadTableData() {
     try {
-        const [mainData, fragmentsMap] = await Promise.all([mainDataPromise, fragmentsMapPromise]);
-        // Both CSVs are loaded (or attempted to load).
-        // fragmentsMap is resolved even on error (with an empty map), so mainDataPromise is the critical one for table content.
-        return mainData; // loadData's primary return is still the main table data
+        const [interactions, metadata] = await Promise.all([
+            loadInteractionData(),
+            loadProteinMetadata()
+        ]);
+        
+        setTableData(interactions);
+        
+        // Process metadata for accession and category maps
+        const accessionMap = {};
+        const categoryMap = {};
+        metadata.forEach((data, proteinName) => {
+            if (data.accessionId) accessionMap[proteinName] = data.accessionId;
+            if (data.category) categoryMap[proteinName] = data.category;
+        });
+        
+        setProteinNameToAccessionMap(accessionMap);
+        setProteinNameToCategoryMap(categoryMap);
+        
+        return interactions;
     } catch (error) {
-        console.error("Error loading main CSV file:", error);
-        setTableData([]); // Ensure tableData is empty on critical error
-        // proteinNameToAccessionMap might be populated or empty depending on fragmentsMapPromise outcome
-        return Promise.reject(error);
+        console.error('Failed to load table data:', error);
+        setTableData([]);
+        setProteinNameToAccessionMap({});
+        setProteinNameToCategoryMap({});
+        return [];
     }
 }
 
@@ -616,28 +564,6 @@ function formatNumber(value) {
     return !isNaN(num) ? num.toFixed(2) : value;
 }
 
-// Helper: Convert array of indices to compact range string (e.g., 1-4, 6)
-function indicesToRanges(indices) {
-    if (!Array.isArray(indices) || indices.length === 0) return '';
-    const sorted = Array.from(new Set(indices)).map(Number).filter(n => !isNaN(n)).sort((a, b) => a - b);
-    let result = [];
-    let start = sorted[0], end = sorted[0];
-    for (let i = 1; i <= sorted.length; i++) {
-        if (sorted[i] === end + 1) {
-            end = sorted[i];
-        } else {
-            if (start === end) {
-                result.push(`${start}`);
-            } else {
-                result.push(`${start}-${end}`);
-            }
-            start = sorted[i];
-            end = sorted[i];
-        }
-    }
-    return result.join(', ');
-}
-
 // Table rendering with filtering, sorting, and pagination
 export function renderTable() {
     const tableBody = document.querySelector('#dataTable tbody');
@@ -767,16 +693,12 @@ export function renderTable() {
                 let f1Loc = '', f2Loc = '';
                 let absLoc = {}, relLoc = {};
                 // Parse absolute_location
-                if (row.absolute_location && typeof row.absolute_location === 'string') {
-                    try {
-                        absLoc = JSON.parse(row.absolute_location.replace(/'/g, '"'));
-                    } catch {}
+                if (row.absolute_location) {
+                    absLoc = parseLocation(row.absolute_location);
                 }
                 // Parse location (fragment-relative)
-                if (row.location && typeof row.location === 'string') {
-                    try {
-                        relLoc = JSON.parse(row.location.replace(/'/g, '"'));
-                    } catch {}
+                if (row.location) {
+                    relLoc = parseLocation(row.location);
                 }
                 // Normalize keys to lowercase for both
                 const absKeys = Object.keys(absLoc).reduce((acc, k) => { acc[k.toLowerCase()] = absLoc[k]; return acc; }, {});
@@ -808,28 +730,7 @@ export function renderTable() {
                     f2_shift = absF2 - relF2;
                 }
 
-                // --- Use absolute_location for f1_loc and f2_loc in the link ---
-                // Helper: Convert array of indices to compact range string (e.g., 1-4, 6)
-                function indicesToRanges(indices) {
-                    if (!Array.isArray(indices) || indices.length === 0) return '';
-                    const sorted = Array.from(new Set(indices)).map(Number).filter(n => !isNaN(n)).sort((a, b) => a - b);
-                    let result = [];
-                    let start = sorted[0], end = sorted[0];
-                    for (let i = 1; i <= sorted.length; i++) {
-                        if (sorted[i] === end + 1) {
-                            end = sorted[i];
-                        } else {
-                            if (start === end) {
-                                result.push(`${start}`);
-                            } else {
-                                result.push(`${start}-${end}`);
-                            }
-                            start = sorted[i];
-                            end = sorted[i];
-                        }
-                    }
-                    return result.join(', ');
-                }
+                
 
                 // Set f1Loc and f2Loc to absolute_location ranges
                 if (absKeys['protein1']) {
@@ -996,9 +897,9 @@ export function renderTable() {
                         let p1LocationVal = 'N/A', p2LocationVal = 'N/A';
                         let absF1Loc = '', absF2Loc = '';
                         // --- Use absolute_location and show only protein names as labels ---
-                        if (row.absolute_location && typeof row.absolute_location === 'string') {
+                        if (row.absolute_location) {
                             try {
-                                const absLocData = JSON.parse(row.absolute_location.replace(/'/g, '"'));
+                                const absLocData = parseLocation(row.absolute_location);
                                 const keys = Object.keys(absLocData).reduce((acc, k) => { acc[k.toLowerCase()] = absLocData[k]; return acc; }, {});
                                 if (Array.isArray(keys['protein1'])) {
                                     p1LocationVal = indicesToRanges(keys['protein1']);
@@ -1047,9 +948,9 @@ export function renderTable() {
                         const protein2DomainName = row.Protein2_Domain || 'Protein 2 Domain';
                         let p1RelLocationVal = 'N/A', p2RelLocationVal = 'N/A';
 
-                        if (row.location && typeof row.location === 'string') {
+                        if (row.location) {
                             try {
-                                const relLocData = JSON.parse(row.location.replace(/'/g, '"'));
+                                const relLocData = parseLocation(row.location);
                                 const keys = Object.keys(relLocData).reduce((acc, k) => { acc[k.toLowerCase()] = relLocData[k]; return acc; }, {});
                                 
                                 const val1 = keys['protein1'] || keys['chaina'] || keys['chain a'];

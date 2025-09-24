@@ -1,3 +1,5 @@
+import { fetchProteinData } from './data.js';
+
 let _plotInstances = {};
 
 const _globalPlotToggleStates = {
@@ -16,10 +18,12 @@ let _currentColorIndex = 0;
 // Public API Functions
 // =============================================================================
 async function initializePlotInstance(instanceId, proteinName, selectorsConfig) {
+    console.log(`Initializing plot for ${proteinName} with ID ${instanceId}`);
+    
     _plotInstances[instanceId] = {
         proteinName,
         proteinLength: null,
-        fragmentIndicesRaw: null,
+        fragmentIndices: null, // Changed from fragmentIndicesRaw
         alphafoldDomains: null,
         uniprotDomains: null,
         selectors: { ...selectorsConfig }
@@ -37,9 +41,17 @@ async function initializePlotInstance(instanceId, proteinName, selectorsConfig) 
     if (statusMessageElement) statusMessageElement.textContent = `Loading data for ${proteinName}...`;
     if (container) container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">Loading data for domain/fragment plot...</p>`;
 
-    const proteinData = await _fetchProteinData(proteinName);
+    const proteinData = await fetchProteinData(proteinName);
+    console.log('Fetched protein data:', {
+        proteinName,
+        length: proteinData.length,
+        fragmentIndices: proteinData.fragmentIndices,
+        numAlphafoldDomains: proteinData?.alphafoldDomains?.length,
+        numUniprotDomains: proteinData?.uniprotDomains?.length
+    });
+
     instance.proteinLength = proteinData.length;
-    instance.fragmentIndicesRaw = proteinData.fragmentIndicesRaw;
+    instance.fragmentIndices = proteinData.fragmentIndices; // Use single consistent name
     instance.alphafoldDomains = proteinData.alphafoldDomains;
     instance.uniprotDomains = proteinData.uniprotDomains;
 
@@ -121,7 +133,7 @@ function _drawPlot(instanceId) {
         return;
     }
 
-    const { proteinName, proteinLength, fragmentIndicesRaw, alphafoldDomains, uniprotDomains } = instance;
+    const { proteinName, proteinLength, fragmentIndices, alphafoldDomains, uniprotDomains } = instance;
     const container = document.querySelector(instance.selectors.container);
 
     if (!container) {
@@ -143,7 +155,7 @@ function _drawPlot(instanceId) {
     _renderPlot(container, instanceId, {
         proteinName,
         proteinLength,
-        fragmentIndicesRaw,
+        fragmentIndices,
         alphafoldDomains,
         uniprotDomains,
     });
@@ -154,7 +166,7 @@ function _drawPlot(instanceId) {
     }, wasCollapsed);
 }
 
-function _renderPlot(container, instanceId, { proteinName, proteinLength, fragmentIndicesRaw, alphafoldDomains, uniprotDomains }) {
+function _renderPlot(container, instanceId, { proteinName, proteinLength, fragmentIndices, alphafoldDomains, uniprotDomains }) {
     const { showUniprotDomains, showAlphafoldDomains, showFragments } = _globalPlotToggleStates;
     const margin = { top: 0, right: 60, bottom: 0, left: 60 };
     const dimensions = _calculatePlotDimensions(container, margin);
@@ -207,41 +219,46 @@ function _renderPlot(container, instanceId, { proteinName, proteinLength, fragme
         });
     }
 
-    if (showFragments && proteinName && proteinLength && fragmentIndicesRaw) {
-        let fragmentIndices = [];
+    if (showFragments && proteinName && proteinLength && fragmentIndices) {
+        let parsedFragments = [];
         try {
-            let jsonStr = fragmentIndicesRaw
-                .replace(/\(/g, '[')
-                .replace(/\)/g, ']').replace(/'/g, '"');
-            fragmentIndices = JSON.parse(jsonStr);
+            if (typeof fragmentIndices === 'string') {
+                const jsonStr = fragmentIndices
+                    .replace(/'/g, '"')
+                    .replace(/\(/g, '[')
+                    .replace(/\)/g, ']')
+                    .replace(/,\s*\]/g, ']');
+                parsedFragments = JSON.parse(jsonStr);
+            } else if (Array.isArray(fragmentIndices)) {
+                parsedFragments = fragmentIndices;
+            }
+
+            if (parsedFragments.length > 0) {
+                let highlightLocations = [];
+                if (window.location.pathname.endsWith('interaction.html')) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const f1_loc = urlParams.get('f1_loc');
+                    const f2_loc = urlParams.get('f2_loc');
+                    if (instanceId === 'p1' && f1_loc) {
+                        highlightLocations = _parseRange(f1_loc);
+                    }
+                    if (instanceId === 'p2' && f2_loc) {
+                        highlightLocations = _parseRange(f2_loc);
+                    }
+                }
+
+                _renderFragments(svgGroup, parsedFragments, {
+                    proteinLength,
+                    plotWidth: dimensions.plotWidth,
+                    yPosition: dimensions.plotHeight / 2,
+                    height: dimensions.fragmentBarHeight,
+                    labelFontSize: 10,
+                    highlightLocations
+                });
+            }
         } catch (e) {
-            console.error(`Domain/Fragment Plot: Error parsing fragment_indices for ${proteinName}:`, e, "Raw string:", fragmentIndicesRaw);
-            fragmentIndices = [];
+            console.error('Fragment parsing error:', e);
         }
-
-        let highlightLocations = [];
-        if (window.location.pathname.endsWith('interaction.html')) {
-            const urlParams = new URLSearchParams(window.location.search);
-            const f1_loc = urlParams.get('f1_loc');
-            const f2_loc = urlParams.get('f2_loc');
-            if (instanceId === 'p1' && f1_loc) {
-                highlightLocations = _parseRange(f1_loc);
-            }
-            if (instanceId === 'p2' && f2_loc) {
-                highlightLocations = _parseRange(f2_loc);
-            }
-        }
-
-        _renderFragments(svgGroup, fragmentIndices,
-            {
-                proteinLength: proteinLength,
-                plotWidth: dimensions.plotWidth,
-                yPosition: dimensions.plotHeight / 2,
-                height: dimensions.fragmentBarHeight,
-                labelFontSize: 10,
-                highlightLocations
-            }
-        );
     }
 
     const startLabel = _createSvgElement("text", {
@@ -376,87 +393,8 @@ function _renderCollapsibleTable(container, instanceId, { alphafoldDomains, unip
 }
 
 // =============================================================================
-// Data Fetching & Processing
+// Data Processing
 // =============================================================================
-async function _fetchProteinData(proteinName) {
-    try {
-        const response = await fetch('all_fragments_2025.06.04.csv');
-        if (!response.ok) {
-            console.error('Domain/Fragment Plot: Failed to load CSV for protein data:', response.statusText);
-            return { length: null, fragmentIndicesRaw: null, alphafoldDomains: null, uniprotDomains: null };
-        }
-        const csvText = await response.text();
-        return new Promise((resolve) => {
-            Papa.parse(csvText, {
-                header: true,
-                skipEmptyLines: true,
-                complete: function (results) {
-                    const data = results.data;
-                    const proteinInfoRow = data.find(row => row.name === proteinName);
-                    if (proteinInfoRow) {
-                        const length = proteinInfoRow.length && !isNaN(parseInt(proteinInfoRow.length, 10)) ? parseInt(proteinInfoRow.length, 10) : null;
-                        const fragmentIndicesRaw = proteinInfoRow.fragment_indices || null;
-                        const domainsRaw = proteinInfoRow.domains || null;
-                        let parsedDomains = null;
-                        let alphafoldDomains = [];
-                        let uniprotDomains = [];
-
-                        if (domainsRaw) {
-                            try {
-                                let jsonFriendlyDomainStr = domainsRaw
-                                    .replace(/\(/g, '[')
-                                    .replace(/\)/g, ']')
-                                    .replace(/'/g, '"');
-                                parsedDomains = JSON.parse(jsonFriendlyDomainStr);
-                                parsedDomains = parsedDomains.map(domainEntry => {
-                                    if (Array.isArray(domainEntry) && domainEntry.length === 2 &&
-                                        typeof domainEntry[0] === 'string' && Array.isArray(domainEntry[1]) && domainEntry[1].length === 2) {
-                                        return {
-                                            id: domainEntry[0],
-                                            start: parseInt(domainEntry[1][0], 10),
-                                            end: parseInt(domainEntry[1][1], 10)
-                                        };
-                                    }
-                                    console.warn('Domain/Fragment Plot: Malformed domain entry:', domainEntry);
-                                    return null;
-                                }).filter(d => d !== null && !isNaN(d.start) && !isNaN(d.end) && d.start <= d.end);
-
-                                parsedDomains.forEach(domain => {
-                                    if (domain.id.startsWith('AF')) {
-                                        alphafoldDomains.push(domain);
-                                    } else {
-                                        uniprotDomains.push(domain);
-                                    }
-                                });
-
-                            } catch (e) {
-                                console.error(`Domain/Fragment Plot: Error parsing domains for ${proteinName}:`, e, "Raw string:", domainsRaw);
-                            }
-                        }
-                        alphafoldDomains = alphafoldDomains || [];
-                        uniprotDomains = uniprotDomains || [];
-
-                        if (length === null) {
-                            console.warn(`Domain/Fragment Plot: Length for ${proteinName} not found or invalid in CSV.`);
-                        }
-                        resolve({ length, fragmentIndicesRaw, alphafoldDomains, uniprotDomains });
-                    } else {
-                        console.warn(`Domain/Fragment Plot: Data for ${proteinName} not found in CSV.`);
-                        resolve({ length: null, fragmentIndicesRaw: null, alphafoldDomains: null, uniprotDomains: null });
-                    }
-                },
-                error: function (error) {
-                    console.error('Domain/Fragment Plot: Error parsing CSV for protein data:', error);
-                    resolve({ length: null, fragmentIndicesRaw: null, alphafoldDomains: null, uniprotDomains: null });
-                }
-            });
-        });
-    } catch (error) {
-        console.error('Domain/Fragment Plot: Error fetching CSV for protein data:', error);
-        return { length: null, fragmentIndicesRaw: null, alphafoldDomains: null, uniprotDomains: null };
-    }
-}
-
 function _mergeIntervals(intervals) {
     if (!intervals || intervals.length === 0) {
         return [];
