@@ -128,6 +128,10 @@ function _drawPlot(instanceId) {
         console.error(`Domain/Fragment Plot (${instanceId}): Container ${instance.selectors.container} not found.`);
         return;
     }
+
+    const collapsibleSection = container.querySelector(`#domain-info-collapsible-section-${instanceId}`);
+    const wasCollapsed = collapsibleSection?.classList.contains('collapsed');
+
     container.innerHTML = '';
 
     if (proteinLength === null || isNaN(proteinLength)) {
@@ -147,7 +151,7 @@ function _drawPlot(instanceId) {
     _renderCollapsibleTable(container, instanceId, {
         alphafoldDomains,
         uniprotDomains,
-    });
+    }, wasCollapsed);
 }
 
 function _renderPlot(container, instanceId, { proteinName, proteinLength, fragmentIndicesRaw, alphafoldDomains, uniprotDomains }) {
@@ -266,9 +270,14 @@ function _renderPlot(container, instanceId, { proteinName, proteinLength, fragme
     container.appendChild(svg);
 }
 
-function _renderCollapsibleTable(container, instanceId, { alphafoldDomains, uniprotDomains }) {
+function _renderCollapsibleTable(container, instanceId, { alphafoldDomains, uniprotDomains }, collapsed = true) {
+    const { showUniprotDomains, showAlphafoldDomains } = _globalPlotToggleStates;
+
     const domainInfoSection = document.createElement('div');
-    domainInfoSection.className = 'collapsible-subsection collapsed';
+    domainInfoSection.className = 'collapsible-subsection';
+    if (collapsed) {
+        domainInfoSection.classList.add('collapsed');
+    }
     domainInfoSection.id = `domain-info-collapsible-section-${instanceId}`;
 
     const titleDiv = document.createElement('div');
@@ -304,8 +313,8 @@ function _renderCollapsibleTable(container, instanceId, { alphafoldDomains, unip
     const tbody = table.createTBody();
 
     const allDomainsForTable = [
-        ...(alphafoldDomains || []).map((domain, index) => ({ ...domain, type: 'alphafold', originalIndex: index })),
-        ...(uniprotDomains || []).map((domain, index) => ({ ...domain, type: 'uniprot', originalIndex: index })),
+        ...(showAlphafoldDomains ? (alphafoldDomains || []).map((domain, index) => ({ ...domain, type: 'af', originalIndex: index })) : []),
+        ...(showUniprotDomains ? (uniprotDomains || []).map((domain, index) => ({ ...domain, type: 'uniprot', originalIndex: index })) : []),
     ];
 
     allDomainsForTable.sort((a, b) => a.start - b.start || a.end - b.end);
@@ -315,25 +324,44 @@ function _renderCollapsibleTable(container, instanceId, { alphafoldDomains, unip
         const domainRectId = `${domainEntry.type}-domain-${instanceId}-${domainEntry.originalIndex}`;
         const startLabelId = `${domainEntry.type}-start-label-${instanceId}-${domainEntry.originalIndex}`;
         const endLabelId = `${domainEntry.type}-end-label-${instanceId}-${domainEntry.originalIndex}`;
+        const baseIdLabelId = domainEntry.type === 'uniprot' ? `${domainEntry.type}-baseid-label-${instanceId}-${domainEntry.originalIndex}` : null;
+
+        row.id = `${domainEntry.type}-row-${instanceId}-${domainEntry.originalIndex}`;
+        row.dataset.domainType = domainEntry.type;
+        row.dataset.domainIndex = domainEntry.originalIndex;
 
         const cellName = row.insertCell();
-        cellName.textContent = domainEntry.type === 'alphafold' ? 'AlphaFold' : domainEntry.id.replace(/_/g, ' ');
+        cellName.textContent = domainEntry.type === 'af' ? 
+            'AlphaFold' : 
+            _normalizeDomainId(domainEntry.id);
 
         const cellPosition = row.insertCell();
         cellPosition.textContent = `${domainEntry.start}-${domainEntry.end}`;
 
         row.addEventListener("mouseover", () => {
-            row.classList.add('domain-table-row-hover');
-            document.getElementById(domainRectId)?.setAttribute("opacity", "1.0");
-            document.getElementById(startLabelId)?.setAttribute("visibility", "visible");
-            document.getElementById(endLabelId)?.setAttribute("visibility", "visible");
+            _handleDomainHover(
+                true,
+                domainRectId,
+                startLabelId,
+                endLabelId,
+                baseIdLabelId,
+                row,
+                domainEntry.start,
+                domainEntry.end
+            );
         });
 
         row.addEventListener("mouseout", () => {
-            row.classList.remove('domain-table-row-hover');
-            document.getElementById(domainRectId)?.setAttribute("opacity", "0.6");
-            document.getElementById(startLabelId)?.setAttribute("visibility", "hidden");
-            document.getElementById(endLabelId)?.setAttribute("visibility", "hidden");
+            _handleDomainHover(
+                false,
+                domainRectId,
+                startLabelId,
+                endLabelId,
+                baseIdLabelId,
+                row,
+                domainEntry.start,
+                domainEntry.end
+            );
         });
     });
 
@@ -403,13 +431,13 @@ async function _fetchProteinData(proteinName) {
 
                             } catch (e) {
                                 console.error(`Domain/Fragment Plot: Error parsing domains for ${proteinName}:`, e, "Raw string:", domainsRaw);
-    }
-}
+                            }
+                        }
                         alphafoldDomains = alphafoldDomains || [];
                         uniprotDomains = uniprotDomains || [];
 
                         if (length === null) {
-        console.warn(`Domain/Fragment Plot: Length for ${proteinName} not found or invalid in CSV.`);
+                            console.warn(`Domain/Fragment Plot: Length for ${proteinName} not found or invalid in CSV.`);
                         }
                         resolve({ length, fragmentIndicesRaw, alphafoldDomains, uniprotDomains });
                     } else {
@@ -431,47 +459,46 @@ async function _fetchProteinData(proteinName) {
 
 function _mergeIntervals(intervals) {
     if (!intervals || intervals.length === 0) {
-    return [];
-}
-intervals.sort((a, b) => a.start - b.start);
-
-const merged = [];
-let currentInterval = intervals[0];
-
-for (let i = 1; i < intervals.length; i++) {
-    const nextInterval = intervals[i];
-    if (nextInterval.start <= currentInterval.end) {
-        currentInterval.end = Math.max(currentInterval.end, nextInterval.end);
-    } else {
-        merged.push(currentInterval);
-        currentInterval = nextInterval;
+        return [];
     }
-}
-merged.push(currentInterval);
-return merged;
+    intervals.sort((a, b) => a.start - b.start);
+
+    const merged = [];
+    let currentInterval = intervals[0];
+
+    for (let i = 1; i < intervals.length; i++) {
+        const nextInterval = intervals[i];
+        if (nextInterval.start <= currentInterval.end) {
+            currentInterval.end = Math.max(currentInterval.end, nextInterval.end);
+        } else {
+            merged.push(currentInterval);
+            currentInterval = nextInterval;
+        }
+    }
+    merged.push(currentInterval);
+    return merged;
 }
 
 function _parseRange(rangeStr) {
-if (!rangeStr || typeof rangeStr !== 'string') return [];
-return rangeStr.split(',')
-    .map(s => s.trim())
-    .filter(Boolean)
-    .flatMap(part => {
-        if (part.includes('-')) {
-            const [start, end] = part.split('-').map(Number);
-            if (!isNaN(start) && !isNaN(end)) return [{ start, end }];
-        } else {
-            const val = Number(part);
-            if (!isNaN(val)) return [{ start: val, end: val }];
-        }
-        return [];
-    });
+    if (!rangeStr || typeof rangeStr !== 'string') return [];
+    return rangeStr.split(',')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .flatMap(part => {
+            if (part.includes('-')) {
+                const [start, end] = part.split('-').map(Number);
+                if (!isNaN(start) && !isNaN(end)) return [{ start, end }];
+            } else {
+                const val = Number(part);
+                if (!isNaN(val)) return [{ start: val, end: val }];
+            }
+            return [];
+        });
 }
 
 // =============================================================================
 // Plot Drawing
 // =============================================================================
-// These functions handle the creation of the SVG plot and its elements.
 function _calculatePlotDimensions(container, margin) {
     const containerHeight = Math.max(container.clientHeight, 130);
     const plotHeight = containerHeight - margin.top - margin.bottom;
@@ -499,7 +526,7 @@ function _renderDomains(svgGroup, domains, config) {
         if (domain.start === undefined || domain.end === undefined || domain.start > domain.end) return;
 
         const start = Math.max(1, domain.start);
-    const end = Math.min(proteinLength, domain.end);
+        const end = Math.min(proteinLength, domain.end);
         if (end < start) return;
 
         const normalizedId = _normalizeDomainId(domain.id);
@@ -558,7 +585,7 @@ function _renderDomains(svgGroup, domains, config) {
         svgGroup.appendChild(endLabel);
 
         if (type === 'uniprot') {
-        const baseIdLabel = _createSvgElement("text", {
+            const baseIdLabel = _createSvgElement("text", {
                 "id": `${type}-baseid-label-${instanceId}-${index}`,
                 "x": x1_orig + (x2_orig - x1_orig) / 2,
                 "y": yPosition - labelOffsetVertical,
@@ -573,33 +600,35 @@ function _renderDomains(svgGroup, domains, config) {
         }
 
         domainRect.addEventListener("mouseover", () => {
-            domainRect.setAttribute("opacity", "1.0");
-            startLabel.setAttribute("visibility", "visible");
-            endLabel.setAttribute("visibility", "visible");
-            if (type === 'uniprot') {
-                const baseIdLabel = document.getElementById(`${type}-baseid-label-${instanceId}-${index}`);
-            if (baseIdLabel) baseIdLabel.setAttribute("visibility", "visible");
-            }
-            document.getElementById(`${type}-row-${instanceId}-${index}`)?.classList.add('domain-table-row-hover');
-            if (window.highlightPromiscuityResidues) window.highlightPromiscuityResidues(domain.start, domain.end);
+            _handleDomainHover(
+                true,
+                `${type}-domain-${instanceId}-${index}`,
+                `${type}-start-label-${instanceId}-${index}`,
+                `${type}-end-label-${instanceId}-${index}`,
+                type === 'uniprot' ? `${type}-baseid-label-${instanceId}-${index}` : null,
+                document.getElementById(`${type}-row-${instanceId}-${index}`),
+                domain.start,
+                domain.end
+            );
         });
 
         domainRect.addEventListener("mouseout", () => {
-            domainRect.setAttribute("opacity", "0.6");
-            startLabel.setAttribute("visibility", "hidden");
-            endLabel.setAttribute("visibility", "hidden");
-            if (type === 'uniprot') {
-                const baseIdLabel = document.getElementById(`${type}-baseid-label-${instanceId}-${index}`);
-                if (baseIdLabel) baseIdLabel.setAttribute("visibility", "hidden");
-            }
-            document.getElementById(`${type}-row-${instanceId}-${index}`)?.classList.remove('domain-table-row-hover');
-            if (window.clearPromiscuityHighlight) window.clearPromiscuityHighlight();
+            _handleDomainHover(
+                false,
+                `${type}-domain-${instanceId}-${index}`,
+                `${type}-start-label-${instanceId}-${index}`,
+                `${type}-end-label-${instanceId}-${index}`,
+                type === 'uniprot' ? `${type}-baseid-label-${instanceId}-${index}` : null,
+                document.getElementById(`${type}-row-${instanceId}-${index}`),
+                domain.start,
+                domain.end
+            );
         });
     });
 }
 
 function _renderFragments(svgGroup, fragments, config) {
-    const {proteinLength, plotWidth, yPosition, height, labelFontSize, highlightLocations} = config;
+    const { proteinLength, plotWidth, yPosition, height, labelFontSize, highlightLocations } = config;
 
     fragments.forEach((frag, i) => {
         if (!Array.isArray(frag) || frag.length !== 2) return;
@@ -700,7 +729,7 @@ function _renderFragments(svgGroup, fragments, config) {
             fragmentRect.setAttribute("stroke", originalStroke);
             fragStartLabel.setAttribute("visibility", "hidden");
             fragEndLabel.setAttribute("visibility", "hidden");
-                if (window.clearPromiscuityHighlight) window.clearPromiscuityHighlight();
+            if (window.clearPromiscuityHighlight) window.clearPromiscuityHighlight();
         });
     });
 }
@@ -792,6 +821,34 @@ function _normalizeDomainId(domainId) {
         baseId = baseId.substring(0, underscoreIndex);
     }
     return baseId.replace(/_/g, ' ');
+}
+
+function _handleDomainHover(isHovering, domainRectId, startLabelId, endLabelId, baseIdLabelId, domainRow, start, end) {
+    const domainRect = document.getElementById(domainRectId);
+    if (domainRect) domainRect.setAttribute("opacity", isHovering ? "1.0" : "0.6");
+
+    const startLabel = document.getElementById(startLabelId);
+    const endLabel = document.getElementById(endLabelId);
+    if (startLabel) startLabel.setAttribute("visibility", isHovering ? "visible" : "hidden");
+    if (endLabel) endLabel.setAttribute("visibility", isHovering ? "visible" : "hidden");
+
+    const baseIdLabel = baseIdLabelId ? document.getElementById(baseIdLabelId) : null;
+    if (baseIdLabel) baseIdLabel.setAttribute("visibility", isHovering ? "visible" : "hidden");
+
+    if (domainRow) {
+        if (isHovering) {
+            domainRow.classList.add('domain-table-row-hover');
+            domainRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            domainRow.classList.remove('domain-table-row-hover');
+        }
+    }
+
+    if (isHovering && window.highlightPromiscuityResidues) {
+        window.highlightPromiscuityResidues(start, end);
+    } else if (!isHovering && window.clearPromiscuityHighlight) {
+        window.clearPromiscuityHighlight();
+    }
 }
 
 // =============================================================================

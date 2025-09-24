@@ -93,6 +93,9 @@ main.content-area.collapsed .content-section-title > i.fas,
 
 .collapsible-subsection-content {
     overflow-y: auto;
+    max-height: 300px;
+    margin-top: 20px;
+    padding-top: 0px;
 }
 
 main.content-area.collapsed .content-section-content,
