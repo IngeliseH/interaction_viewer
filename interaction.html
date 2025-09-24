@@ -563,55 +563,14 @@
         // Initialize the app when DOM is loaded
         document.addEventListener('DOMContentLoaded', async () => {
             await loadHTMLIncludes(); // Load header and footer first
-
+            
             // --- Fetch and cache data for the page ---
             const proteinLengthData = await fetchAndParseCSV('all_fragments_2025.06.04.csv');
             const interfaceData = await fetchAndParseCSV('all_interface_analysis_2025.06.05_shifted.csv');
 
-            // Fetch and parse the CSV at the page level
-            const proteinData = {};
-            const csvData = await fetchAndParseCSV('all_fragments_2025.06.04.csv');
-            if (csvData) {
-                csvData.forEach(row => {
-                    const proteinName = row.name;
-                    if (proteinName) {
-                        proteinData[proteinName] = {
-                            length: row.length ? parseInt(row.length, 10) : null,
-                            fragmentIndicesRaw: row.fragment_indices || null,
-                            alphafoldDomains: parseDomains(row.domains, 'AF'),
-                            uniprotDomains: parseDomains(row.domains, 'UniProt')
-                        };
-                    }
-                });
-            }
-
-            // Helper function to parse domains
-            function parseDomains(domainsRaw, prefix) {
-                if (!domainsRaw) return [];
-                try {
-                    const jsonFriendlyDomainStr = domainsRaw
-                        .replace(/\(/g, '[')
-                        .replace(/\)/g, ']')
-                        .replace(/'/g, '"');
-                    const parsedDomains = JSON.parse(jsonFriendlyDomainStr);
-                    return parsedDomains
-                        .map(domainEntry => {
-                            if (Array.isArray(domainEntry) && domainEntry.length === 2 &&
-                                typeof domainEntry[0] === 'string' && Array.isArray(domainEntry[1]) && domainEntry[1].length === 2) {
-                                return {
-                                    id: domainEntry[0],
-                                    start: parseInt(domainEntry[1][0], 10),
-                                    end: parseInt(domainEntry[1][1], 10)
-                                };
-                            }
-                            return null;
-                        })
-                        .filter(d => d && d.id.startsWith(prefix));
-                } catch (e) {
-                    console.error(`Error parsing domains:`, e, "Raw string:", domainsRaw);
-                    return [];
-                }
-            }
+            // Initialize pagination first
+            pagination.initPagination();
+            pagination.setUpdatePaginationUI(pagination.updatePaginationControls);
 
             const urlParams = new URLSearchParams(window.location.search);
 

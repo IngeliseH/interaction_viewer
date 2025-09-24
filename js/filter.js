@@ -1,4 +1,5 @@
 import { state, renderTable } from './table.js';
+import { setCurrentPage } from './pagination.js';
 
 export function setColumnFilters(filters, shouldRender = true) {
     state.setState({ columnFilters: filters || {} });

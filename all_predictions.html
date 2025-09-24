@@ -432,7 +432,8 @@
             await loadHTMLIncludes();
             initCollapsibleSections(); // Initialize collapsible sidebar sections
             await table.loadTableData();
-
+            pagination.initPagination();  // Initialize pagination module
+            
             // Set UI update hooks and filter change callback first
             stats.setUpdateStatsUI(updateStats);
             pagination.setUpdatePaginationUI(table.updatePaginationControls);

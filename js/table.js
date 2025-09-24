@@ -75,6 +75,12 @@ export async function loadTableData() {
 export function initTable() {
     initColumnHeaders();
     initProteinLinkListener();
+    // Initialize pagination if not already initialized
+    if (typeof state.updatePaginationUI !== 'function') {
+        import('./pagination.js').then(module => {
+            module.initPagination();
+        });
+    }
 }
 
 function initColumnHeaders() {
