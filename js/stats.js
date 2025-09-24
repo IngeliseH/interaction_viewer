@@ -1,4 +1,4 @@
-import { state, setState } from './table.js';
+import { state } from './table.js';
 
 export const statColorConfig = {
     'iptm': [[0.3, 'stat-red'], [0.55, 'stat-orange'], [0.7, 'stat-lightgreen']],

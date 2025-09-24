@@ -1,4 +1,4 @@
-import { state, setState, renderTable } from './table.js';
+import { state, renderTable } from './table.js';
 
 export function setCurrentPage(page) {
     state.setState({ currentPage: page });
@@ -16,64 +16,64 @@ export function updatePaginationUI(totalItems) {
     updatePaginationControls(totalItems);
 }
 
+function createPageButton(page, currentPage, onClick) {
+    const btn = document.createElement('button');
+    btn.className = `page-btn${page === currentPage ? ' active' : ''}`;
+    btn.textContent = page;
+    btn.addEventListener('click', onClick);
+    return btn;
+}
+
+function createNavigationButton(icon, isDisabled, onClick) {
+    const btn = document.createElement('button');
+    btn.className = 'page-btn';
+    btn.innerHTML = `<i class="fas fa-chevron-${icon}"></i>`;
+    btn.disabled = isDisabled;
+    btn.addEventListener('click', onClick);
+    return btn;
+}
+
+function getPageRange(currentPage, totalPages) {
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, start + 4);
+    start = Math.max(1, end - 4);
+    return { start, end };
+}
+
 function updatePaginationControls(totalRows) {
     const pagination = document.getElementById('pagination');
     if (!pagination) return;
     pagination.innerHTML = '';
 
-    const rowsPerPage = state.rowsPerPage;
-    const currentPage = state.currentPage;
+    const { currentPage, rowsPerPage } = state;
     const totalPages = Math.ceil(totalRows / rowsPerPage);
 
-    const prevBtn = document.createElement('button');
-    prevBtn.className = 'page-btn';
-    prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
-    prevBtn.disabled = currentPage === 1;
-    prevBtn.addEventListener('click', () => {
-        if (state.currentPage > 1) {
-            setCurrentPage(state.currentPage - 1);
+    pagination.appendChild(createNavigationButton('left', currentPage === 1, () => {
+        if (currentPage > 1) {
+            setCurrentPage(currentPage - 1);
             renderTable();
         }
-    });
-    pagination.appendChild(prevBtn);
+    }));
 
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, currentPage + 2);
-    if (endPage - startPage < 4) {
-        if (startPage === 1) endPage = Math.min(5, totalPages);
-        if (endPage === totalPages) startPage = Math.max(1, totalPages - 4);
-    }
-    for (let i = startPage; i <= endPage; i++) {
-        const pageBtn = document.createElement('button');
-        pageBtn.className = `page-btn${i === currentPage ? ' active' : ''}`;
-        pageBtn.textContent = i;
-        pageBtn.addEventListener('click', () => {
+    const { start, end } = getPageRange(currentPage, totalPages);
+    for (let i = start; i <= end; i++) {
+        pagination.appendChild(createPageButton(i, currentPage, () => {
             setCurrentPage(i);
             renderTable();
-        });
-        pagination.appendChild(pageBtn);
+        }));
     }
 
-    const nextBtn = document.createElement('button');
-    nextBtn.className = 'page-btn';
-    nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
-    nextBtn.disabled = currentPage === totalPages || totalPages === 0;
-    nextBtn.addEventListener('click', () => {
-        if (state.currentPage < totalPages) {
-            setCurrentPage(state.currentPage + 1);
+    pagination.appendChild(createNavigationButton('right', currentPage === totalPages || totalPages === 0, () => {
+        if (currentPage < totalPages) {
+            setCurrentPage(currentPage + 1);
             renderTable();
         }
-    });
-    pagination.appendChild(nextBtn);
+    }));
 
-    const pageInfo = document.createElement('div');
+        const pageInfo = document.createElement('div');
     pageInfo.className = 'page-info';
-    if (totalRows > 0) {
-        const startIdx = Math.min((currentPage - 1) * rowsPerPage + 1, totalRows);
-        const endIdx = Math.min(currentPage * rowsPerPage, totalRows);
-        pageInfo.textContent = `Showing ${startIdx}-${endIdx} of ${totalRows}`;
-    } else {
-        pageInfo.textContent = `Showing 0-0 of 0`;
-    }
+    const startIdx = totalRows > 0 ? Math.min((currentPage - 1) * rowsPerPage + 1, totalRows) : 0;
+    const endIdx = Math.min(currentPage * rowsPerPage, totalRows);
+    pageInfo.textContent = `Showing ${startIdx}-${endIdx} of ${totalRows}`;
     pagination.appendChild(pageInfo);
 }
