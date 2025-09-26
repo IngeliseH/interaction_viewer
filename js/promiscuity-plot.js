@@ -1,4 +1,4 @@
-import { createSvgElement, createProteinLengthLabel, createHoverLabel } from './utility.js';
+import { createSvgElement, createProteinLengthLabel, createHoverLabel } from './plot-utility.js';
 
 // =============================================================================
 // Public API Functions

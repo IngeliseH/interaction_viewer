@@ -1,5 +1,5 @@
 import { fetchProteinData } from './data.js';
-import { createSvgElement, createProteinLengthLabel, createHoverLabel } from './utility.js';
+import { createSvgElement, createProteinLengthLabel, createHoverLabel } from './plot-utility.js';
 
 let _plotInstances = {};
 
@@ -89,21 +89,17 @@ async function initializeAllPlots() {
 
         if (fallbackMessageDF) fallbackMessageDF.style.display = 'none';
 
-        // Initialize p1 plot
         await initializePlotInstance('p1', p1, {
             container: '#domain-fragment-plot-container-p1',
             statusMessage: '.domain-fragment-plot-status-p1',
             subheading: '#p1-name-subheading-df'
         });
 
-        // Handle p2 plot initialization
         if (p2 && p1 !== p2) {
             const p2Section = document.getElementById('domain-fragment-plot-p2-section');
             if (p2Section) {
-                // Ensure p2 section is visible
                 p2Section.style.display = 'block';
-                
-                // Initialize p2 plot
+
                 await initializePlotInstance('p2', p2, {
                     container: '#domain-fragment-plot-container-p2',
                     statusMessage: '.domain-fragment-plot-status-p2',
