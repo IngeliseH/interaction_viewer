@@ -687,7 +687,8 @@
                             showDomainsOnArcs: chordPlotShowDomains,
                             domainColorMap,
                             domainRanges,
-                            expandQuery: chordPlotExpandQuery // <-- pass this option
+                            arcColoringMode: 'domains',
+                            expandQuery: chordPlotExpandQuery
                         });
                     } else if (attempt < 10) {
                         setTimeout(() => tryDrawChordPlotWithDomains(attempt + 1), 100);

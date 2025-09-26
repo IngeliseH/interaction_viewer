@@ -13,6 +13,7 @@ export const state = {
     rowsPerPage: 25,
     proteinNameToAccessionMap: {},
     proteinNameToCategoryMap: {},
+    uniqueProteins: new Set(),
     updatePaginationUI: null,
     updateStatsUI: null,
     onFiltersChanged: null,
@@ -42,6 +43,10 @@ export function setCurrentPage(page) { state.setState({ currentPage: page }); }
 export function setProteinNameToAccessionMap(map) { state.setState({ proteinNameToAccessionMap: map }); }
 export function setProteinNameToCategoryMap(map) { state.setState({ proteinNameToCategoryMap: map }); }
 
+export function getUniqueProteins() {
+    return Array.from(state.uniqueProteins);
+}
+
 export async function loadTableData() {
     try {
         const [interactions, metadata] = await Promise.all([
@@ -50,6 +55,15 @@ export async function loadTableData() {
         ]);
         
         setTableData(interactions);
+        
+        // Update unique proteins set
+        state.uniqueProteins.clear();
+        interactions.forEach(row => {
+            if (row.Protein1) state.uniqueProteins.add(row.Protein1);
+            if (row.Protein2) state.uniqueProteins.add(row.Protein2);
+            if (row.Protein1_Domain) state.uniqueProteins.add(row.Protein1_Domain);
+            if (row.Protein2_Domain) state.uniqueProteins.add(row.Protein2_Domain);
+        });
         
         // Process metadata for accession and category maps
         const accessionMap = {};
@@ -68,6 +82,7 @@ export async function loadTableData() {
         setTableData([]);
         setProteinNameToAccessionMap({});
         setProteinNameToCategoryMap({});
+        state.uniqueProteins.clear();
         return [];
     }
 }

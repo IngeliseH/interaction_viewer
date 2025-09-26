@@ -38,6 +38,7 @@
                             <div class="search-container">
                                 <i class="fas fa-search search-icon"></i>
                                 <input type="text" class="search-input" id="proteinSearch" placeholder="Search proteins...">
+                                <ul id="proteinList" class="protein-dropdown"></ul>
                             </div>
                             
                             <div class="search-mode">
@@ -283,41 +284,6 @@
 
         // --- Sidebar Event Listeners ---
         function setupSidebarEventListeners() {
-            // Protein search
-            const proteinSearch = document.getElementById('proteinSearch');
-            proteinSearch.addEventListener('input', () => {
-                const searchTerm = proteinSearch.value.trim().toLowerCase();
-                const dropdown = document.querySelector('.protein-dropdown');
-                if (dropdown) dropdown.remove();
-                if (searchTerm.length < 2) return;
-                const uniqueProteins = [...new Set([
-                    ...table.tableData.map(row => row.Protein1),
-                    ...table.tableData.map(row => row.Protein2),
-                    ...table.tableData.map(row => row.Protein1_Domain),
-                    ...table.tableData.map(row => row.Protein2_Domain)
-                ])];
-                const matches = uniqueProteins.filter(protein => protein && protein.toLowerCase().includes(searchTerm));
-                const dropdownContainer = document.createElement('div');
-                dropdownContainer.className = 'protein-dropdown';
-                matches.forEach(protein => {
-                    const option = document.createElement('div');
-                    option.className = 'dropdown-option';
-                    option.textContent = protein;
-                    option.addEventListener('click', () => {
-                        if (!table.selectedProteins.includes(protein)) {
-                            filter.setSelectedProteins([...table.selectedProteins, protein]);
-                            filter.updateActiveFilterDisplay();
-                            table.renderTable();
-                            initializeChordPlot();
-                        }
-                        dropdownContainer.remove();
-                        proteinSearch.value = '';
-                    });
-                    dropdownContainer.appendChild(option);
-                });
-                proteinSearch.parentNode.appendChild(dropdownContainer);
-            });
-
             // Search mode
             document.querySelectorAll('input[name="searchMode"]').forEach(input => {
                 input.addEventListener('change', function() {
@@ -401,9 +367,6 @@
             }
         }
 
-        // --- Initial active filters ---
-        // Removed: const initialSidebarFilters = [...]
-
         // --- Collapsible sections ---
         function initCollapsibleSections() {
             document.querySelectorAll('.sidebar-section .sidebar-title').forEach(title => {
@@ -427,6 +390,49 @@
             });
         }
 
+        // --- Protein Search ---
+        function setupProteinSearch() {
+            const proteinSearch = document.getElementById('proteinSearch');
+            const proteinList = document.getElementById('proteinList');
+            
+            if (!proteinSearch || !proteinList) return;
+
+            proteinSearch.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                const uniqueProteins = table.getUniqueProteins();
+                
+                const filteredProteins = uniqueProteins
+                    .filter(protein => protein.toLowerCase().includes(searchTerm))
+                    .sort();
+
+                proteinList.innerHTML = '';
+                filteredProteins.forEach(protein => {
+                    const li = document.createElement('li');
+                    li.textContent = protein;
+                    li.addEventListener('click', () => {
+                        const currentSelected = filter.getSelectedProteins();
+                        const updatedProteins = [...currentSelected];
+                        if (!updatedProteins.includes(protein)) {
+                            updatedProteins.push(protein);
+                            filter.setSelectedProteins(updatedProteins);
+                            filter.updateActiveFilterDisplay();
+                            table.renderTable();
+                        }
+                        proteinSearch.value = '';
+                        proteinList.innerHTML = '';
+                    });
+                    proteinList.appendChild(li);
+                });
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!proteinSearch.contains(e.target) && !proteinList.contains(e.target)) {
+                    proteinList.innerHTML = '';
+                }
+            });
+        }
+
         // --- Initialize everything ---
         document.addEventListener('DOMContentLoaded', async () => {
             await loadHTMLIncludes();
@@ -442,6 +448,8 @@
                 initializeChordPlot();
             }); 
 
+            setupProteinSearch(); // Add this line
+
             // Set initial numeric filters directly using setColumnFilters
             // This will now trigger onFiltersChanged (and thus updateActiveFilterDisplay)
             // and also call renderTable internally.
@@ -454,8 +462,6 @@
             
             table.initTable(); // Initializes column headers, etc.
             setupSidebarEventListeners();
-            // The table.renderTable() call is removed from here as 
-            // table.setColumnFilters() already calls renderTable() and updates active filter display.
         });
     </script>
 </body>

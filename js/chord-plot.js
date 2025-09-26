@@ -84,6 +84,13 @@ async function fetchAllProteinLengths() {
 
 // Main function
 export async function drawChordByPosition(data, containerSelector, opts = {}) {
+  console.log("[ChordPlot] Options received:", {
+    showDomainsOnArcs: opts.showDomainsOnArcs,
+    domainColorMap: opts.domainColorMap,
+    domainRanges: opts.domainRanges,
+    arcColoringMode: opts.arcColoringMode
+  });
+
   // Defensive: Ensure data is an array
   if (!Array.isArray(data)) {
     const container = document.querySelector(containerSelector);
@@ -275,18 +282,31 @@ export async function drawChordByPosition(data, containerSelector, opts = {}) {
   const arcOuter = size * 0.38;
   const arcInner = size * 0.32;
 
-  // Draw protein arcs and labels
+  // Helper to get domains for a protein from the global domain plot data
+  function getDomainsForProtein(proteinName) {
+    if (!window.domainPlotInstancesData) return null;
+    
+    for (const instanceId of Object.keys(window.domainPlotInstancesData)) {
+      const instance = window.domainPlotInstancesData[instanceId];
+      if (instance && instance.proteinName === proteinName) {
+        // Combine AlphaFold and UniProt domains into one array with type information
+        const domains = [
+          ...(instance.alphafoldDomains || []).map(d => ({...d, type: 'alphafold'})),
+          ...(instance.uniprotDomains || []).map(d => ({...d, type: 'uniprot'}))
+        ];
+        return domains;
+      }
+    }
+    return null;
+  }
+
+  // When drawing protein arcs, get domains and colors
   namesOrdered.forEach(name => {
     const { start, end } = angles[name];
-    let color;
-    if (arcColoringMode === 'distinct') {
-      const greyPalettes = ['#aaaaaa', '#cccccc'];
-      color = greyPalettes[names.indexOf(name) % greyPalettes.length];
-    } else {
-      color = palettes[names.indexOf(name) % palettes.length];
-    }
-
-    // --- Always draw underlying grey arc for the whole protein ---
+    const domains = getDomainsForProtein(name);
+    
+    // Draw base arc
+    const baseArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     const arcStartRad = start * Math.PI / 180;
     const arcEndRad = end * Math.PI / 180;
     const arcLargeArc = end - start <= 180 ? 0 : 1;
@@ -300,8 +320,6 @@ export async function drawChordByPosition(data, containerSelector, opts = {}) {
     const arcInnerX2 = Math.cos(arcEndRad) * arcInner;
     const arcInnerY2 = Math.sin(arcEndRad) * arcInner;
 
-    // Draw the full grey arc as a base
-    const baseArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     baseArc.setAttribute('d', `
       M ${arcOuterX1} ${arcOuterY1}
       A ${arcOuter} ${arcOuter} 0 ${arcLargeArc} 1 ${arcOuterX2} ${arcOuterY2}
@@ -309,193 +327,83 @@ export async function drawChordByPosition(data, containerSelector, opts = {}) {
       A ${arcInner} ${arcInner} 0 ${arcLargeArc} 0 ${arcInnerX1} ${arcInnerY1}
       Z
     `);
-    baseArc.setAttribute('fill', '#cccccc');
-    baseArc.setAttribute('opacity', '0.7');
-    baseArc.setAttribute('stroke', 'none');
+
+    if (!showDomainsOnArcs || !domains || domains.length === 0) {
+      if (arcColoringMode === 'greyOnly') {
+        // Use different shades of grey for the two proteins
+        const greyShade = namesOrdered.indexOf(name) === 0 ? '#888888' : '#CCCCCC';
+        baseArc.setAttribute('fill', greyShade);
+      } else {
+        // Use distinct colors for proteins when not showing domains
+        const proteinColor = palettes[namesOrdered.indexOf(name) % palettes.length];
+        baseArc.setAttribute('fill', proteinColor);
+      }
+      baseArc.setAttribute('opacity', '0.85');
+    } else {
+      // Use grey base for domain coloring mode
+      baseArc.setAttribute('fill', '#cccccc');
+      baseArc.setAttribute('opacity', '0.7');
+    }
     g.appendChild(baseArc);
 
-    // --- DOMAIN ARC SEGMENTS (AlphaFold below, then UniProt/other) ---
-    if (showDomainsOnArcs && domainColorMap && domainRanges && domainRanges[name] && domainRanges[name].length > 0) {
-      const domains = domainRanges[name];
-      const seqLen = seqLens[name];
-      const arcSpan = angles[name].end - angles[name].start;
+    // Draw domain segments if available
+    if (showDomainsOnArcs && domains && domains.length > 0) {
+        domains.forEach(domain => {
+            if (!domain.start || !domain.end) return;
+            
+            const dStart = Math.max(1, domain.start);
+            const dEnd = Math.min(seqLens[name], domain.end);
+            if (dEnd < dStart) return;
 
-      // --- AlphaFold domains (type: 'alphafold' or id starts with 'AF') ---
-      let afDomains = domains.filter(domain =>
-        domain.type === 'alphafold' || (domain.id && domain.id.startsWith('AF'))
-      );
-      // If not found, try to get from global domainPlotInstancesData
-      if (afDomains.length === 0 && window.domainPlotInstancesData) {
-        for (const k of Object.keys(window.domainPlotInstancesData)) {
-          const inst = window.domainPlotInstancesData[k];
-          if (inst && inst.proteinName === name && inst.alphafoldDomains && Array.isArray(inst.alphafoldDomains)) {
-            afDomains = inst.alphafoldDomains.map(d => ({
-              ...d,
-              type: 'alphafold'
-            }));
-            break;
-          }
-        }
-      }
+            const arcSpan = end - start;
+            const denominator = seqLens[name] > 1 ? seqLens[name] - 1 : 1;
+            const segStart = start + ((dStart - 1) / denominator) * arcSpan;
+            const segEnd = start + ((dEnd - 1) / denominator) * arcSpan;
 
-      // --- UniProt ("other") domains (draw above AlphaFold) ---
-      const otherDomains = domains.filter(domain => domain.type === 'other' || !domain.type);
-      // Draw AlphaFold domains (below)
-      afDomains.forEach(domain => {
-        const dStart = Math.max(1, domain.start);
-        const dEnd = Math.min(seqLen, domain.end);
-        if (dEnd < dStart) return;
-        const denominator = seqLen > 1 ? seqLen - 1 : 1;
-        const segStart = angles[name].start + ((dStart - 1) / denominator) * arcSpan;
-        const segEnd = angles[name].start + ((dEnd - 1) / denominator) * arcSpan;
-        const segColor = '#8ecae6'; // Light blue for AlphaFold domains
+            // Get color based on domain type
+            let segColor;
+            if (domain.type === 'alphafold') {
+                segColor = '#8ecae6'; // Light blue for AlphaFold domains
+            } else {
+                const baseId = domain.id ? domain.id.replace(/_\d+$/, '').replace(/_/g, ' ') : '';
+                segColor = window.domainPlot_domainBaseIdToColor[baseId] || '#cccccc';
+            }
+            
+            // Create domain segment path
+            const segPath = _createDomainArcPath(segStart, segEnd, arcInner, arcOuter);
+            segPath.setAttribute('fill', segColor);
+            segPath.setAttribute('opacity', '0.6');
 
-        const segStartRad = segStart * Math.PI / 180;
-        const segEndRad = segEnd * Math.PI / 180;
-        const largeArcSeg = segEnd - segStart <= 180 ? 0 : 1;
+            // Add hover effects
+            const hoverLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            hoverLabel.setAttribute('visibility', 'hidden');
+            hoverLabel.setAttribute('font-size', '10');
+            hoverLabel.setAttribute('fill', '#222');
+            hoverLabel.setAttribute('font-weight', 'bold');
+            hoverLabel.setAttribute('text-anchor', 'middle');
+            const labelAngle = (segStart + segEnd) / 2;
+            const [labelX, labelY] = polar(labelAngle, arcInner - 15);
+            hoverLabel.setAttribute('x', labelX);
+            hoverLabel.setAttribute('y', labelY);
+            const domainText = domain.type === 'alphafold' ? 
+                `AlphaFold ${dStart}-${dEnd}` : 
+                `${domain.id.replace(/_\d+$/, '').replace(/_/g, ' ')} ${dStart}-${dEnd}`;
+            hoverLabel.textContent = domainText;
 
-        const outerX1s = Math.cos(segStartRad) * arcOuter;
-        const outerY1s = Math.sin(segStartRad) * arcOuter;
-        const innerX1s = Math.cos(segStartRad) * arcInner;
-        const innerY1s = Math.sin(segStartRad) * arcInner;
-        const outerX2s = Math.cos(segEndRad) * arcOuter;
-        const outerY2s = Math.sin(segEndRad) * arcOuter;
-        const innerX2s = Math.cos(segEndRad) * arcInner;
-        const innerY2s = Math.sin(segEndRad) * arcInner;
+            segPath.addEventListener('mouseover', () => {
+                segPath.setAttribute('opacity', '0.9');
+                hoverLabel.setAttribute('visibility', 'visible');
+                g.appendChild(hoverLabel);  // Move label to front
+            });
 
-        const arcSeg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        arcSeg.setAttribute('d', `
-          M ${outerX1s} ${outerY1s}
-          A ${arcOuter} ${arcOuter} 0 ${largeArcSeg} 1 ${outerX2s} ${outerY2s}
-          L ${innerX2s} ${innerY2s}
-          A ${arcInner} ${arcInner} 0 ${largeArcSeg} 0 ${innerX1s} ${innerY1s}
-          Z
-        `);
-        arcSeg.setAttribute('fill', segColor);
-        arcSeg.setAttribute('opacity', '0.5'); // Reduced opacity
-        arcSeg.setAttribute('stroke', 'none');
-        g.appendChild(arcSeg);
+            segPath.addEventListener('mouseout', () => {
+                segPath.setAttribute('opacity', '0.6');
+                hoverLabel.setAttribute('visibility', 'hidden');
+            });
 
-        // --- DOMAIN NAME HOVER LABEL ---
-        // Compute mid-angle for label
-        const midAngle = (segStart + segEnd) / 2;
-        const [labelX, labelY] = polar(midAngle, (arcOuter + arcInner) / 2);
-        let domainLabelText = domain.name || domain.id || '';
-        // Remove trailing _number and replace underscores with spaces
-        domainLabelText = domainLabelText.replace(/_\d+$/, '').replace(/_/g, ' ');
-        const domainLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        domainLabel.setAttribute('x', labelX);
-        domainLabel.setAttribute('y', labelY);
-        domainLabel.setAttribute('text-anchor', 'middle');
-        domainLabel.setAttribute('dominant-baseline', 'middle');
-        domainLabel.setAttribute('font-size', '11');
-        domainLabel.setAttribute('font-weight', 'bold');
-        domainLabel.setAttribute('fill', '#222');
-        domainLabel.setAttribute('visibility', 'hidden');
-        domainLabel.textContent = domainLabelText;
-        g.appendChild(domainLabel);
-
-        arcSeg.addEventListener('mouseover', () => {
-          g.appendChild(domainLabel); // Move label to top
-          domainLabel.setAttribute('visibility', 'visible');
+            g.appendChild(segPath);
+            g.appendChild(hoverLabel);
         });
-        arcSeg.addEventListener('mouseout', () => {
-          domainLabel.setAttribute('visibility', 'hidden');
-        });
-      });
-
-      // Draw UniProt/other domains (above)
-      otherDomains.forEach(domain => {
-        const dStart = Math.max(1, domain.start);
-        const dEnd = Math.min(seqLen, domain.end);
-        if (dEnd < dStart) return;
-        const denominator = seqLen > 1 ? seqLen - 1 : 1;
-        const segStart = angles[name].start + ((dStart - 1) / denominator) * arcSpan;
-        const segEnd = angles[name].start + ((dEnd - 1) / denominator) * arcSpan;
-        const segColor = domainColorMap[domain.baseId || domain.id] || color;
-
-        const segStartRad = segStart * Math.PI / 180;
-        const segEndRad = segEnd * Math.PI / 180;
-        const largeArcSeg = segEnd - segStart <= 180 ? 0 : 1;
-
-        const outerX1s = Math.cos(segStartRad) * arcOuter;
-        const outerY1s = Math.sin(segStartRad) * arcOuter;
-        const innerX1s = Math.cos(segStartRad) * arcInner;
-        const innerY1s = Math.sin(segStartRad) * arcInner;
-        const outerX2s = Math.cos(segEndRad) * arcOuter;
-        const outerY2s = Math.sin(segEndRad) * arcOuter;
-        const innerX2s = Math.cos(segEndRad) * arcInner;
-        const innerY2s = Math.sin(segEndRad) * arcInner;
-
-        const arcSeg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        arcSeg.setAttribute('d', `
-          M ${outerX1s} ${outerY1s}
-          A ${arcOuter} ${arcOuter} 0 ${largeArcSeg} 1 ${outerX2s} ${outerY2s}
-          L ${innerX2s} ${innerY2s}
-          A ${arcInner} ${arcInner} 0 ${largeArcSeg} 0 ${innerX1s} ${innerY1s}
-          Z
-        `);
-        arcSeg.setAttribute('fill', segColor);
-        arcSeg.setAttribute('opacity', '0.5'); // Reduced opacity
-        arcSeg.setAttribute('stroke', 'none');
-        g.appendChild(arcSeg);
-
-        // --- DOMAIN NAME HOVER LABEL ---
-        // Compute mid-angle for label
-        const midAngle = (segStart + segEnd) / 2;
-        const [labelX, labelY] = polar(midAngle, (arcOuter + arcInner) / 2);
-        let domainLabelText = domain.name || domain.id || '';
-        // Remove trailing _number and replace underscores with spaces
-        domainLabelText = domainLabelText.replace(/_\d+$/, '').replace(/_/g, ' ');
-        const domainLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        domainLabel.setAttribute('x', labelX);
-        domainLabel.setAttribute('y', labelY);
-        domainLabel.setAttribute('text-anchor', 'middle');
-        domainLabel.setAttribute('dominant-baseline', 'middle');
-        domainLabel.setAttribute('font-size', '11');
-        domainLabel.setAttribute('font-weight', 'bold');
-        domainLabel.setAttribute('fill', '#222');
-        domainLabel.setAttribute('visibility', 'hidden');
-        domainLabel.textContent = domainLabelText;
-        g.appendChild(domainLabel);
-
-        arcSeg.addEventListener('mouseover', () => {
-          g.appendChild(domainLabel); // Move label to top
-          domainLabel.setAttribute('visibility', 'visible');
-        });
-        arcSeg.addEventListener('mouseout', () => {
-          domainLabel.setAttribute('visibility', 'hidden');
-        });
-      });
-    }
-
-    // Arc path (narrower, fallback if no domains or not showing domains)
-    const startRad = start * Math.PI / 180;
-    const endRad = end * Math.PI / 180;
-    const largeArc = end - start <= 180 ? 0 : 1;
-
-    const outerX1 = Math.cos(startRad) * arcOuter;
-    const outerY1 = Math.sin(startRad) * arcOuter;
-    const innerX1 = Math.cos(startRad) * arcInner;
-    const innerY1 = Math.sin(startRad) * arcInner;
-    const outerX2 = Math.cos(endRad) * arcOuter;
-    const outerY2 = Math.sin(endRad) * arcOuter;
-    const innerX2 = Math.cos(endRad) * arcInner;
-    const innerY2 = Math.sin(endRad) * arcInner;
-
-    // Only draw the fallback arc if not showing domains or no domains for this protein
-    if (!(showDomainsOnArcs && domainColorMap && domainRanges && domainRanges[name] && domainRanges[name].length > 0)) {
-      const arc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      arc.setAttribute('d', `
-        M ${outerX1} ${outerY1}
-        A ${arcOuter} ${arcOuter} 0 ${largeArc} 1 ${outerX2} ${outerY2}
-        L ${innerX2} ${innerY2}
-        A ${arcInner} ${arcInner} 0 ${largeArc} 0 ${innerX1} ${innerY1}
-        Z
-      `);
-      arc.setAttribute('fill', color);
-      arc.setAttribute('opacity', '0.8');
-      g.appendChild(arc);
     }
 
     // Determine label placement and orientation
@@ -537,6 +445,32 @@ export async function drawChordByPosition(data, containerSelector, opts = {}) {
     endLabel.textContent = seqLens[name];
     g.appendChild(endLabel);
   });
+
+  // Helper function to create domain arc paths
+  function _createDomainArcPath(startAngle, endAngle, innerRadius, outerRadius) {
+    const segStartRad = startAngle * Math.PI / 180;
+    const segEndRad = endAngle * Math.PI / 180;
+    const largeArcFlag = endAngle - startAngle <= 180 ? 0 : 1;
+
+    const x1 = Math.cos(segStartRad) * outerRadius;
+    const y1 = Math.sin(segStartRad) * outerRadius;
+    const x2 = Math.cos(segEndRad) * outerRadius;
+    const y2 = Math.sin(segEndRad) * outerRadius;
+    const x3 = Math.cos(segEndRad) * innerRadius;
+    const y3 = Math.sin(segEndRad) * innerRadius;
+    const x4 = Math.cos(segStartRad) * innerRadius;
+    const y4 = Math.sin(segStartRad) * innerRadius;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', `
+      M ${x1} ${y1}
+      A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${x2} ${y2}
+      L ${x3} ${y3}
+      A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4}
+      Z
+    `);
+    return path;
+  }
 
   // Draw chords (interaction bands)
   const chordRadius = size * 0; // control point radius for curve

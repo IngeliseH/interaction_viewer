@@ -1,6 +1,12 @@
 import { state, renderTable } from './table.js';
 import { setCurrentPage } from './pagination.js';
 
+// Track selected proteins locally
+const filterState = {
+    selectedProteins: [],
+    searchMode: "includes"
+};
+
 export function setColumnFilters(filters, shouldRender = true) {
     state.setState({ columnFilters: filters || {} });
     if (shouldRender) {
@@ -8,7 +14,24 @@ export function setColumnFilters(filters, shouldRender = true) {
     }
 }
 
-export function setSelectedProteins(proteins) { state.setState({ selectedProteins: proteins }); }
+export function setSelectedProteins(proteins) { 
+    filterState.selectedProteins = proteins || [];
+    state.setState({ selectedProteins: filterState.selectedProteins }); 
+}
+
+export function getSelectedProteins() {
+    return filterState.selectedProteins;
+}
+
+export function setSearchMode(mode) {
+    filterState.searchMode = mode;
+    state.setState({ searchMode: mode });
+}
+
+export function getSearchMode() {
+    return filterState.searchMode;
+}
+
 export function setOnFiltersChanged(fn) { state.setState({ onFiltersChanged: fn }); }
 export function setOnFilteredDataUpdated(fn) { state.setState({ onFilteredDataUpdated: fn }); }
 
@@ -17,21 +40,19 @@ export function updateActiveFilterDisplay() {
     if (!activeFilters) return;
     activeFilters.innerHTML = '';
 
-    let proteinsToHide = [];
-    if (state.searchMode === "pair-exact" && state.selectedProteins && state.selectedProteins.length === 2) {
-        proteinsToHide = [state.selectedProteins[0], state.selectedProteins[1]];
-    } else if (state.selectedProteins && state.selectedProteins.length === 1 && state.searchMode === "includes") {
-        proteinsToHide = [state.selectedProteins[0]];
-    }
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryP1 = decodeURIComponent(urlParams.get('p1') || '');
+    const queryP2 = decodeURIComponent(urlParams.get('p2') || '');
+    const proteinsFromUrl = [queryP1, queryP2].filter(Boolean);
 
-    if (state.selectedProteins && Array.isArray(state.selectedProteins)) {
-        state.selectedProteins.forEach(protein => {
-            if (proteinsToHide.includes(protein)) return;
+    if (filterState.selectedProteins && Array.isArray(filterState.selectedProteins)) {
+        filterState.selectedProteins.forEach(protein => {
+            if (proteinsFromUrl.includes(protein)) return;
             const tag = document.createElement('div');
             tag.className = 'filter-tag protein-tag-active';
             tag.innerHTML = `Protein: ${protein} <span class="remove-tag" data-type="protein" data-value="${protein}">&times;</span>`;
             tag.querySelector('.remove-tag').addEventListener('click', () => {
-                setSelectedProteins(state.selectedProteins.filter(p => p !== protein));
+                setSelectedProteins(filterState.selectedProteins.filter(p => p !== protein));
                 setCurrentPage(1);
                 renderTable();
                 if (typeof state.onFiltersChanged === 'function') state.onFiltersChanged();
@@ -131,10 +152,10 @@ export function getAllFilters() {
 
 export function getFilteredData() {
     let filteredData = [...state.tableData];
-    if (state.selectedProteins && state.selectedProteins.length > 0) {
+    if (filterState.selectedProteins && filterState.selectedProteins.length > 0) {
         if (state.searchMode === "includes") {
             filteredData = filteredData.filter(row =>
-                state.selectedProteins.some(sP =>
+                filterState.selectedProteins.some(sP =>
                     (row.Protein1 && sP === row.Protein1) ||
                     (row.Protein2 && sP === row.Protein2) ||
                     (row.Protein1_Domain && sP === row.Protein1_Domain) ||
@@ -143,18 +164,18 @@ export function getFilteredData() {
             );
         } else if (state.searchMode === "only") {
             filteredData = filteredData.filter(row => {
-                const p1 = state.selectedProteins.some(sP =>
+                const p1 = filterState.selectedProteins.some(sP =>
                     (row.Protein1 && sP === row.Protein1) ||
                     (row.Protein1_Domain && sP === row.Protein1_Domain)
                 );
-                const p2 = state.selectedProteins.some(sP =>
+                const p2 = filterState.selectedProteins.some(sP =>
                     (row.Protein2 && sP === row.Protein2) ||
                     (row.Protein2_Domain && sP === row.Protein2_Domain)
                 );
                 return p1 && p2;
             });
-        } else if (state.searchMode === "pair-exact" && state.selectedProteins.length === 2) {
-            const [pA, pB] = state.selectedProteins;
+        } else if (state.searchMode === "pair-exact" && filterState.selectedProteins.length === 2) {
+            const [pA, pB] = filterState.selectedProteins;
             filteredData = filteredData.filter(row => {
                 if (pA === pB) {
                     return (

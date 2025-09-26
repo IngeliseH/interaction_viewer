@@ -70,21 +70,20 @@
 
                                 <!-- Protein 1 Plot Section -->
                                 <div id="domain-fragment-plot-p1-section">
-                                    <h3 id="protein1-name-subheading-df" class="page-subtitle">Loading Protein 1...</h3>
-                                    <div class="domain-fragment-plot-container-p1">
+                                    <h3 id="p1-name-subheading-df" class="page-subtitle">Loading Protein 1...</h3>
+                                    <div id="domain-fragment-plot-container-p1" class="domain-fragment-plot-container">
                                         <!-- Domain/Fragment Plot for P1 will be rendered here -->
                                     </div>
                                     <!-- Collapsible table for P1 will be generated here by JS -->
                                 </div>
 
                                 <!-- Protein 2 Plot Section -->
-                                <div id="domain-fragment-plot-p2-section" style="margin-top: 30px; display: none;"> <!-- Initially hidden -->
-                                    <h3 id="protein2-name-subheading-df" class="page-subtitle">Loading Protein 2...</h3>
-                                    <div class="domain-fragment-plot-container-p2">
-                                        <!-- Domain/Fragment Plot for P2 will be rendered here -->
-                                    </div>
-                                    <!-- Collapsible table for P2 will be generated here by JS -->
+                                <div id="domain-fragment-plot-p2-section">
+                                    <h3 id="p2-name-subheading-df" class="page-subtitle">Loading Protein 2...</h3>
+                                    <div class="domain-fragment-plot-status"></div>
+                                    <div id="domain-fragment-plot-container-p2" class="domain-fragment-plot-container"></div>
                                 </div>
+                                
                                 <p id="fragments-fallback-message-df" style="text-align:center; display:none; margin-top: 15px;">
                                     Information about domains and fragments will be shown here if available.
                                 </p>
@@ -302,8 +301,8 @@
             // const f2_loc = decodeURIComponent(urlParams.get('f2_loc') || ''); // Not used for title yet
 
             const pageTitleElement = document.querySelector('.page-main-heading');
-            const protein1DFSubheading = document.getElementById('protein1-name-subheading-df');
-            const protein2DFSubheading = document.getElementById('protein2-name-subheading-df');
+            const p1DFSubheading = document.getElementById('p1-name-subheading-df');
+            const p2DFSubheading = document.getElementById('p2-name-subheading-df');
 
             if (p1 && p2) {
                 const p1Display = f1_id ? `${p1} (Fragments: ${f1_id.replace(/,/g, ', ')})` : p1;
@@ -314,8 +313,8 @@
                 if (pageTitleElement) {
                     pageTitleElement.textContent = title;
                 }
-                if (protein1DFSubheading) protein1DFSubheading.textContent = `Protein 1: ${p1}`;
-                if (protein2DFSubheading) protein2DFSubheading.textContent = `Protein 2: ${p2}`;
+                if (p1DFSubheading) p1DFSubheading.textContent = `${p1}`;
+                if (p2DFSubheading) p2DFSubheading.textContent = `${p2}`;
 
                 // Domain/fragment plot initialization is now handled by domain-fragment-plot.js
                 // It will also manage showing/hiding the P2 plot section.
@@ -377,6 +376,7 @@
         }
 
         // --- Chord Plot ---
+        // Initialize chord plot with grey-only coloring for protein pair page
         async function initializeChordPlot(data, protein1Name, protein2Name) {
             const containerSelector = '#chord-plot-container';
             const containerEl = document.querySelector(containerSelector);
@@ -388,103 +388,30 @@
                 return;
             }
 
-            // --- Ensure correct fields for chord plot ---
-            const mappedData = data.map(row => {
-                // Try to map location/absolute_location fields
-                let absolute_location = row.absolute_location;
-                if (!absolute_location && row.location) {
-                    absolute_location = row.location;
-                }
-                return {
-                    ...row,
-                    Protein1: row.Protein1 || row.protein1,
-                    Protein2: row.Protein2 || row.protein2,
-                    absolute_location
-                };
-            });
-
-            // --- DOMAIN COLOR MAP & RANGES (from domain/fragment plot) ---
-            let showDomainsOnArcs = chordPlotShowDomains;
-            let domainColorMap = null;
-            let domainRanges = null;
+            // Map data for chord plot
+            const mappedData = data.map(row => ({
+                ...row,
+                Protein1: row.Protein1 || row.protein1,
+                Protein2: row.Protein2 || row.protein2,
+                absolute_location: row.absolute_location || row.location
+            }));
 
             // Wait for domain plot globals to be available before drawing chord plot
             async function tryDrawChordPlotWithDomains(attempt = 0) {
-                // These are set by domain-fragment-plot.js
-                if (
-                    window.domainPlot_domainBaseIdToColor &&
-                    window.domainPlotInstancesData &&
-                    Object.keys(window.domainPlot_domainBaseIdToColor).length > 0 &&
-                    Object.keys(window.domainPlotInstancesData).length > 0
-                ) {
-                    // Build color map (baseId -> color)
-                    domainColorMap = { ...window.domainPlot_domainBaseIdToColor };
-                    // Build domainRanges: { proteinName: [ {id, start, end, baseId} ] }
-                    domainRanges = {};
-                    proteins.forEach(pname => {
-                        // Find instance for this protein (main, p1, p2)
-                        let instance = null;
-                        for (const k of Object.keys(window.domainPlotInstancesData)) {
-                            const inst = window.domainPlotInstancesData[k];
-                            if (inst && inst.proteinName === pname) {
-                                instance = inst;
-                                break;
-                            }
-                        }
-                        if (instance) {
-                            const otherD = (instance.otherDomains || []).map(d => ({...d, type: 'other'}));
-                            const afD = (instance.alphafoldDomains || []).map(d => ({...d, type: 'alphafold'}));
-                            const allD = [...otherD, ...afD];
-
-                            if (allD.length > 0) {
-                                domainRanges[pname] = allD.map(domain => {
-                                    let baseId = domain.id;
-                                    if (domain.type === 'other') {
-                                        const underscoreIndex = baseId.lastIndexOf('_');
-                                        if (underscoreIndex > -1 && /^\d+$/.test(baseId.substring(underscoreIndex + 1))) {
-                                            baseId = baseId.substring(0, underscoreIndex);
-                                        }
-                                        baseId = baseId.replace(/_/g, ' ');
-                                    }
-                                    return {
-                                        ...domain,
-                                        baseId
-                                    };
-                                });
-                            }
-                        }
-                    });
-                    try {
-                        await drawChordByPosition(mappedData, containerSelector, {
-                            size: 500,
-                            proteinNamesForEmptyMessage: proteins.join(' & '),
-                            coloringMode: 'varied',
-                            showDomainsOnArcs,
-                            domainColorMap,
-                            domainRanges,
-                            arcColoringMode: 'distinct'
-                        });
-                    } catch (error) {
-                        console.error('Error initializing chord plot:', error);
-                        containerEl.innerHTML = `<p style="text-align:center; color:red; padding-top: 20px;">Could not load chord plot: ${error.message}</p>`;
-                    }
-                } else if (attempt < 10) {
-                    // Try again after a short delay (wait for domain plot globals to be set)
-                    setTimeout(() => tryDrawChordPlotWithDomains(attempt + 1), 100);
-                } else {
-                    // Fallback: draw without domains
-                    showDomainsOnArcs = false;
-                    domainColorMap = null;
-                    domainRanges = null;
+                const arcColoringMode = window.location.pathname.endsWith('protein_pair.html') ? 'greyOnly' : 'distinct';
+                try {
                     await drawChordByPosition(mappedData, containerSelector, {
                         size: 500,
                         proteinNamesForEmptyMessage: proteins.join(' & '),
                         coloringMode: 'varied',
-                        showDomainsOnArcs,
-                        domainColorMap,
-                        domainRanges,
-                        arcColoringMode: 'distinct'
+                        showDomainsOnArcs: chordPlotShowDomains,
+                        domainColorMap: window.domainPlot_domainBaseIdToColor,
+                        domainRanges: window.domainPlotInstancesData,
+                        arcColoringMode: arcColoringMode
                     });
+                } catch (error) {
+                    console.error('Error initializing chord plot:', error);
+                    containerEl.innerHTML = `<p style="text-align:center; color:red; padding-top: 20px;">Could not load chord plot: ${error.message}</p>`;
                 }
             }
 

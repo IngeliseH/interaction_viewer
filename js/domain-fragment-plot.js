@@ -18,8 +18,11 @@ let _currentColorIndex = 0;
 // Public API Functions
 // =============================================================================
 async function initializePlotInstance(instanceId, proteinName, selectorsConfig) {
-    console.log(`Initializing plot for ${proteinName} with ID ${instanceId}`);
-    
+    if (!proteinName) {
+        console.error(`Domain/Fragment Plot: No protein name provided for instance ${instanceId}`);
+        return;
+    }
+
     _plotInstances[instanceId] = {
         proteinName,
         proteinLength: null,
@@ -35,27 +38,20 @@ async function initializePlotInstance(instanceId, proteinName, selectorsConfig) 
     const subheadingElement = instance.selectors.subheading ? document.querySelector(instance.selectors.subheading) : null;
 
     if (subheadingElement) {
-        subheadingElement.textContent = proteinName || 'Protein not specified';
+        subheadingElement.textContent = proteinName;
     }
 
     if (statusMessageElement) statusMessageElement.textContent = `Loading data for ${proteinName}...`;
     if (container) container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">Loading data for domain/fragment plot...</p>`;
 
     const proteinData = await fetchProteinData(proteinName);
-    console.log('Fetched protein data:', {
-        proteinName,
-        length: proteinData.length,
-        fragmentIndices: proteinData.fragmentIndices,
-        numAlphafoldDomains: proteinData?.alphafoldDomains?.length,
-        numUniprotDomains: proteinData?.uniprotDomains?.length
-    });
-
+    
     instance.proteinLength = proteinData.length;
     instance.fragmentIndices = proteinData.fragmentIndices;
     instance.alphafoldDomains = proteinData.alphafoldDomains;
     instance.uniprotDomains = proteinData.uniprotDomains;
 
-    if (statusMessageElement && statusMessageElement.textContent.startsWith('Loading data')) {
+    if (statusMessageElement) {
         statusMessageElement.textContent = '';
     }
 
@@ -87,38 +83,34 @@ async function initializeAllPlots() {
                 fallbackMessageDF.textContent = 'Protein 1 parameter not provided.';
                 fallbackMessageDF.style.display = 'block';
             }
-            const p1Section = document.getElementById('domain-fragment-plot-p1-section');
-            const p2Section = document.getElementById('domain-fragment-plot-p2-section');
-            if (p1Section) p1Section.style.display = 'none';
-            if (p2Section) p2Section.style.display = 'none';
             return;
         }
 
         if (fallbackMessageDF) fallbackMessageDF.style.display = 'none';
 
+        // Initialize p1 plot
         await initializePlotInstance('p1', p1, {
-            container: '.domain-fragment-plot-container-p1',
+            container: '#domain-fragment-plot-container-p1',
             statusMessage: '.domain-fragment-plot-status-p1',
-            subheading: '#protein1-name-subheading-df',
+            subheading: '#p1-name-subheading-df'
         });
 
-        const p2Section = document.getElementById('domain-fragment-plot-p2-section');
+        // Handle p2 plot initialization
         if (p2 && p1 !== p2) {
-            if (p2Section) p2Section.style.display = 'block';
-            await initializePlotInstance('p2', p2, {
-                container: '.domain-fragment-plot-container-p2',
-                statusMessage: '.domain-fragment-plot-status-p2',
-                subheading: '#protein2-name-subheading-df',
-                plotSection: '#domain-fragment-plot-p2-section'
-            });
-        } else {
-            if (p2Section) p2Section.style.display = 'none';
-            if (p1 === p2 && p2Section) {
-                const p2Container = document.querySelector('.domain-fragment-plot-container-p2');
-                const p2StatusMessage = document.querySelector('.domain-fragment-plot-status-p2');
-                if (p2Container) p2Container.innerHTML = '';
-                if (p2StatusMessage) p2StatusMessage.textContent = '';
+            const p2Section = document.getElementById('domain-fragment-plot-p2-section');
+            if (p2Section) {
+                // Ensure p2 section is visible
+                p2Section.style.display = 'block';
+                
+                // Initialize p2 plot
+                await initializePlotInstance('p2', p2, {
+                    container: '#domain-fragment-plot-container-p2',
+                    statusMessage: '.domain-fragment-plot-status-p2',
+                    subheading: '#p2-name-subheading-df'
+                });
             }
+        } else if (p2Section) {
+            p2Section.style.display = 'none';
         }
     }
 }
@@ -133,11 +125,15 @@ function _drawPlot(instanceId) {
         return;
     }
 
-    const { proteinName, proteinLength, fragmentIndices, alphafoldDomains, uniprotDomains } = instance;
-    const container = document.querySelector(instance.selectors.container);
+    const { proteinName, proteinLength, fragmentIndices, alphafoldDomains, uniprotDomains, selectors } = instance;
+    if (!selectors || !selectors.container) {
+        console.error(`Domain/Fragment Plot: No container selector defined for instance ${instanceId}`);
+        return;
+    }
 
+    const container = document.querySelector(selectors.container);
     if (!container) {
-        console.error(`Domain/Fragment Plot (${instanceId}): Container ${instance.selectors.container} not found.`);
+        console.error(`Domain/Fragment Plot: Container not found using selector "${selectors.container}" for instance ${instanceId}`);
         return;
     }
 
@@ -460,6 +456,11 @@ function _calculatePlotDimensions(container, margin) {
 
 function _renderDomains(svgGroup, domains, config) {
     const { instanceId, proteinLength, plotWidth, yPosition, type, domainHeight, labelFontSize } = config;
+    
+    // Expose domain color map globally for chord plot
+    window.domainPlot_domainBaseIdToColor = _domainColorMap;
+    window.domainPlotInstancesData = _plotInstances;
+
     domains.forEach((domain, index) => {
         if (domain.start === undefined || domain.end === undefined || domain.start > domain.end) return;
 
@@ -792,8 +793,21 @@ function _handleDomainHover(isHovering, domainRectId, startLabelId, endLabelId, 
 // =============================================================================
 // Event Listeners
 // =============================================================================
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(initializeAllPlots, 100);
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize p2 section containers early, ensuring they exist before plot initialization
+    const p2Section = document.getElementById('domain-fragment-plot-p2-section');
+    if (p2Section) {
+        if (!p2Section.querySelector('#domain-fragment-plot-container-p2')) {
+            p2Section.innerHTML = `
+                <h3 id="protein2-name-subheading-df" class="page-subtitle">Loading Protein 2...</h3>
+                <div class="domain-fragment-plot-status-p2"></div>
+                <div class="domain-fragment-plot-container-p2"></div>
+            `;
+        }
+    }
+
+    // Initialize plots after ensuring containers exist
+    await initializeAllPlots();
 
     let resizeDebounceTimer;
     window.addEventListener('resize', () => {

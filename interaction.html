@@ -134,7 +134,7 @@
 
                                 <!-- Protein 1 Plot Section -->
                                 <div id="domain-fragment-plot-p1-section">
-                                    <h3 id="protein1-name-subheading-df" class="page-subtitle">Loading Protein 1...</h3>
+                                    <h3 id="p1-name-subheading-df" class="page-subtitle">Loading Protein 1...</h3>
                                     <div class="domain-fragment-plot-container-p1">
                                         <!-- Domain/Fragment Plot for P1 will be rendered here -->
                                     </div>
@@ -143,7 +143,7 @@
 
                                 <!-- Protein 2 Plot Section -->
                                 <div id="domain-fragment-plot-p2-section" style="margin-top: 30px; display: none;"> <!-- Initially hidden -->
-                                    <h3 id="protein2-name-subheading-df" class="page-subtitle">Loading Protein 2...</h3>
+                                    <h3 id="p2-name-subheading-df" class="page-subtitle">Loading Protein 2...</h3>
                                     <div class="domain-fragment-plot-container-p2">
                                         <!-- Domain/Fragment Plot for P2 will be rendered here -->
                                     </div>
@@ -166,7 +166,7 @@
                                 <div id="promiscuity-controls-placeholder"></div>
                                 <!-- Protein 1 Plot Section -->
                                 <div id="promiscuity-plot-p1-section" style="margin-bottom: 30px;">
-                                    <h3 id="protein1-name-subheading-promiscuity" class="page-subtitle">Loading...</h3>
+                                    <h3 id="p1-name-subheading-promiscuity" class="page-subtitle">Loading...</h3>
                                     <div id="promiscuity-plot-p1" class="promiscuityPlotContainer">
                                         <!-- Plot will be rendered here by JavaScript -->
                                     </div>
@@ -174,7 +174,7 @@
 
                                 <!-- Protein 2 Plot Section -->
                                 <div id="promiscuity-plot-p2-section">
-                                    <h3 id="protein2-name-subheading-promiscuity" class="page-subtitle">Loading...</h3>
+                                    <h3 id="p2-name-subheading-promiscuity" class="page-subtitle">Loading...</h3>
                                     <div id="promiscuity-plot-p2" class="promiscuityPlotContainer">
                                         <!-- Plot will be rendered here by JavaScript -->
                                     </div>
@@ -335,8 +335,8 @@
 
             // Update main page title and subheadings for domain/fragment plots
             const pageTitleElement = document.querySelector('.page-main-heading');
-            const protein1DFSubheading = document.getElementById('protein1-name-subheading-df');
-            const protein2DFSubheading = document.getElementById('protein2-name-subheading-df');
+            const p1DFSubheading = document.getElementById('p1-name-subheading-df');
+            const p2DFSubheading = document.getElementById('p2-name-subheading-df');
 
             if (p1 && p2) {
                 const p1Display = f1_id ? `${p1} (Fragment ${f1_id})` : p1;
@@ -352,8 +352,8 @@
                 console.warn('Protein pair parameters not found in URL.');
                 document.title = 'Centrosome Interaction Data Explorer';
                 if (pageTitleElement) pageTitleElement.textContent = 'Centrosome Interaction Data Explorer';
-                if (protein1DFSubheading) protein1DFSubheading.textContent = 'Protein 1 not specified';
-                if (protein2DFSubheading) protein2DFSubheading.style.display = 'none';
+                if (p1DFSubheading) p1DFSubheading.textContent = 'Protein 1 not specified';
+                if (p2DFSubheading) p2DFSubheading.style.display = 'none';
 
 
                 const fallbackMessageDF = document.getElementById('fragments-fallback-message-df');
@@ -740,8 +740,8 @@
                 const p1Section = document.getElementById('promiscuity-plot-p1-section');
                 const p2Section = document.getElementById('promiscuity-plot-p2-section');
                 const fallbackMsg = document.getElementById('promiscuity-fallback-message');
-                const p1Subheading = document.getElementById('protein1-name-subheading-promiscuity');
-                const p2Subheading = document.getElementById('protein2-name-subheading-promiscuity');
+                const p1Subheading = document.getElementById('p1-name-subheading-promiscuity');
+                const p2Subheading = document.getElementById('p2-name-subheading-promiscuity');
 
                 // --- NEW: Get interaction regions from URL ---
                 const interactionRegions = getInteractionRegionsFromURL();
