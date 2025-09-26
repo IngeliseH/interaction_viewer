@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
     <script src="https://3dmol.org/build/3Dmol-min.js"></script>
     <script type="module" src="js/domain-fragment-plot.js"></script>
+    <script type="module" src="js/promiscuity-plot.js"></script>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/button.css">
     <link rel="stylesheet" href="css/collapsible-section.css">
@@ -135,7 +136,7 @@
                                 <!-- Protein 1 Plot Section -->
                                 <div id="domain-fragment-plot-p1-section">
                                     <h3 id="p1-name-subheading-df" class="page-subtitle">Loading Protein 1...</h3>
-                                    <div class="domain-fragment-plot-container-p1">
+                                    <div id="domain-fragment-plot-container-p1" class="domain-fragment-plot-container">
                                         <!-- Domain/Fragment Plot for P1 will be rendered here -->
                                     </div>
                                     <!-- Collapsible table for P1 will be generated here by JS -->
@@ -144,7 +145,7 @@
                                 <!-- Protein 2 Plot Section -->
                                 <div id="domain-fragment-plot-p2-section" style="margin-top: 30px; display: none;"> <!-- Initially hidden -->
                                     <h3 id="p2-name-subheading-df" class="page-subtitle">Loading Protein 2...</h3>
-                                    <div class="domain-fragment-plot-container-p2">
+                                    <div id="domain-fragment-plot-container-p2" class="domain-fragment-plot-container">
                                         <!-- Domain/Fragment Plot for P2 will be rendered here -->
                                     </div>
                                     <!-- Collapsible table for P2 will be generated here by JS -->
@@ -270,7 +271,7 @@
     </div>
     <div id="footer-placeholder"></div>
     <module src="js/data.js"></module>
-    <script src="js/promiscuity-plot.js"></script>
+    <script type="module" src="js/promiscuity-plot.js"></script>
     <script src="js/structure-viewer.js"></script>
     <script src="js/interaction-structure-viewer.js"></script>
     <script type="module">

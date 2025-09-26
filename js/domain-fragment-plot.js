@@ -1,4 +1,5 @@
 import { fetchProteinData } from './data.js';
+import { createSvgElement, createProteinLengthLabel, createHoverLabel } from './utility.js';
 
 let _plotInstances = {};
 
@@ -167,13 +168,13 @@ function _renderPlot(container, instanceId, { proteinName, proteinLength, fragme
     const margin = { top: 0, right: 60, bottom: 0, left: 60 };
     const dimensions = _calculatePlotDimensions(container, margin);
 
-    const svg = _createSvgElement("svg", {
+    const svg = createSvgElement("svg", {
         "width": "100%",
         "height": dimensions.containerHeight,
         "viewBox": `0 0 ${container.clientWidth} ${dimensions.containerHeight}`
     });
 
-    const svgGroup = _createSvgElement("g", {
+    const svgGroup = createSvgElement("g", {
         "transform": `translate(${margin.left}, ${margin.top})`
     });
 
@@ -181,7 +182,7 @@ function _renderPlot(container, instanceId, { proteinName, proteinLength, fragme
         const rectY = dimensions.plotHeight / 2 - (dimensions.barHeight / 2);
         const rectHeight = dimensions.barHeight;
 
-        const proteinBar = _createSvgElement("rect", {
+        const proteinBar = createSvgElement("rect", {
             "x": 0,
             "y": rectY,
             "width": dimensions.plotWidth,
@@ -257,26 +258,10 @@ function _renderPlot(container, instanceId, { proteinName, proteinLength, fragme
         }
     }
 
-    const startLabel = _createSvgElement("text", {
-        "x": -15,
-        "y": dimensions.plotHeight / 2,
-        "dy": "0.35em",
-        "text-anchor": "end",
-        "font-size": "12px",
-        "fill": "#333"
-    });
-    startLabel.textContent = "1";
+    const startLabel = createProteinLengthLabel("1", -15, dimensions.plotHeight / 2, "end");
     svgGroup.appendChild(startLabel);
 
-    const endLabel = _createSvgElement("text", {
-        "x": dimensions.plotWidth + 15,
-        "y": dimensions.plotHeight / 2,
-        "dy": "0.35em",
-        "text-anchor": "start",
-        "font-size": "12px",
-        "fill": "#333"
-    });
-    endLabel.textContent = proteinLength;
+    const endLabel = createProteinLengthLabel(proteinLength, dimensions.plotWidth + 15, dimensions.plotHeight / 2, "start");
     svgGroup.appendChild(endLabel);
 
     svg.appendChild(svgGroup);
@@ -391,28 +376,6 @@ function _renderCollapsibleTable(container, instanceId, { alphafoldDomains, unip
 // =============================================================================
 // Data Processing
 // =============================================================================
-function _mergeIntervals(intervals) {
-    if (!intervals || intervals.length === 0) {
-        return [];
-    }
-    intervals.sort((a, b) => a.start - b.start);
-
-    const merged = [];
-    let currentInterval = intervals[0];
-
-    for (let i = 1; i < intervals.length; i++) {
-        const nextInterval = intervals[i];
-        if (nextInterval.start <= currentInterval.end) {
-            currentInterval.end = Math.max(currentInterval.end, nextInterval.end);
-        } else {
-            merged.push(currentInterval);
-            currentInterval = nextInterval;
-        }
-    }
-    merged.push(currentInterval);
-    return merged;
-}
-
 function _parseRange(rangeStr) {
     if (!rangeStr || typeof rangeStr !== 'string') return [];
     return rangeStr.split(',')
@@ -477,7 +440,7 @@ function _renderDomains(svgGroup, domains, config) {
         const domainWidth = Math.max(1, x2_orig - x1_orig + 1);
         const fillColor = type === 'uniprot' ? _getDomainColor(normalizedId) : 'lightblue';
 
-        const domainRect = _createSvgElement("rect", {
+        const domainRect = createSvgElement("rect", {
             "id": `${type}-domain-${instanceId}-${index}`,
             "x": rect_x,
             "y": yPosition,
@@ -490,51 +453,24 @@ function _renderDomains(svgGroup, domains, config) {
         const labelOffsetVertical = 5;
         const labelOffsetHorizontal = 2;
 
-        const title = _createSvgElement("title");
+        const title = createSvgElement("title");
         title.textContent = `${domain.id}: ${domain.start}-${domain.end}`;
         domainRect.appendChild(title);
         svgGroup.appendChild(domainRect);
 
         const labelYPos = yPosition + domainHeight + labelOffsetVertical;
 
-        const startLabel = _createSvgElement("text", {
-            "id": `${type}-start-label-${instanceId}-${index}`,
-            "x": x1_orig - labelOffsetHorizontal,
-            "y": labelYPos,
-            "dy": "0.35em",
-            "text-anchor": "end",
-            "font-size": `${labelFontSize}px`,
-            "fill": "#333333",
-            "visibility": "hidden"
-        });
-        startLabel.textContent = domain.start;
+        const startLabel = createHoverLabel(domain.start, x1_orig - labelOffsetHorizontal, labelYPos, "end");
+        startLabel.id = `${type}-start-label-${instanceId}-${index}`;
         svgGroup.appendChild(startLabel);
 
-        const endLabel = _createSvgElement("text", {
-            "id": `${type}-end-label-${instanceId}-${index}`,
-            "x": x2_orig + labelOffsetHorizontal,
-            "y": labelYPos,
-            "dy": "0.35em",
-            "text-anchor": "start",
-            "font-size": `${labelFontSize}px`,
-            "fill": "#333",
-            "visibility": "hidden"
-        });
-        endLabel.textContent = domain.end;
+        const endLabel = createHoverLabel(domain.end, x2_orig + labelOffsetHorizontal, labelYPos, "start");
+        endLabel.id = `${type}-end-label-${instanceId}-${index}`;
         svgGroup.appendChild(endLabel);
 
         if (type === 'uniprot') {
-            const baseIdLabel = _createSvgElement("text", {
-                "id": `${type}-baseid-label-${instanceId}-${index}`,
-                "x": x1_orig + (x2_orig - x1_orig) / 2,
-                "y": yPosition - labelOffsetVertical,
-                "dy": "0em",
-                "text-anchor": "middle",
-                "font-size": `${labelFontSize}px`,
-                "fill": "#333",
-                "visibility": "hidden"
-            });
-            baseIdLabel.textContent = normalizedId;
+            const baseIdLabel = createHoverLabel(normalizedId, x1_orig + (x2_orig - x1_orig) / 2, yPosition - labelOffsetVertical,);
+            baseIdLabel.id = `${type}-baseid-label-${instanceId}-${index}`;
             svgGroup.appendChild(baseIdLabel);
         }
 
@@ -593,7 +529,7 @@ function _renderFragments(svgGroup, fragments, config) {
         const hoverFill = "red";
         const hoverStroke = "black";
 
-        const fragmentRect = _createSvgElement("rect", {
+        const fragmentRect = createSvgElement("rect", {
             "x": rect_x,
             "y": yRect,
             "width": width,
@@ -614,7 +550,7 @@ function _renderFragments(svgGroup, fragments, config) {
                     const x2_hl = ((overlapEnd - 1) / denominator) * plotWidth;
                     const rect_x_hl = x1_hl - 0.5;
                     const highlightWidth = Math.max(1, x2_hl - x1_hl + 1);
-                    const highlightRect = _createSvgElement("rect", {
+                    const highlightRect = createSvgElement("rect", {
                         "x": rect_x_hl,
                         "y": yRect,
                         "width": highlightWidth,
@@ -632,28 +568,10 @@ function _renderFragments(svgGroup, fragments, config) {
         const labelYPos = yRect + height / 2;
         const labelOffset = 1;
 
-        const fragStartLabel = _createSvgElement("text", {
-            "x": x1_orig - labelOffset,
-            "y": labelYPos,
-            "dy": "0.35em",
-            "text-anchor": "end",
-            "font-size": `${labelFontSize}px`,
-            "fill": "#333",
-            "visibility": "hidden"
-        });
-        fragStartLabel.textContent = start;
+        const fragStartLabel = createHoverLabel(start, x1_orig - labelOffset, labelYPos, "end");
         svgGroup.appendChild(fragStartLabel);
 
-        const fragEndLabel = _createSvgElement("text", {
-            "x": x2_orig + labelOffset,
-            "y": labelYPos,
-            "dy": "0.35em",
-            "text-anchor": "start",
-            "font-size": `${labelFontSize}px`,
-            "fill": "#333",
-            "visibility": "hidden"
-        });
-        fragEndLabel.textContent = end;
+        const fragEndLabel = createHoverLabel(end, x2_orig + labelOffset, labelYPos, "start");
         svgGroup.appendChild(fragEndLabel);
 
         fragmentRect.addEventListener("mouseover", () => {
@@ -744,15 +662,6 @@ function _getDomainColor(baseId) {
     return _domainColorMap[baseId];
 }
 
-function _createSvgElement(tag, attributes = {}) {
-    const svgNS = "http://www.w3.org/2000/svg";
-    const element = document.createElementNS(svgNS, tag);
-    for (const [key, value] of Object.entries(attributes)) {
-        element.setAttribute(key, value);
-    }
-    return element;
-}
-
 function _normalizeDomainId(domainId) {
     let baseId = domainId;
     const underscoreIndex = baseId.lastIndexOf('_');
@@ -799,7 +708,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (p2Section) {
         if (!p2Section.querySelector('#domain-fragment-plot-container-p2')) {
             p2Section.innerHTML = `
-                <h3 id="protein2-name-subheading-df" class="page-subtitle">Loading Protein 2...</h3>
+                <h3 id="p2-name-subheading-df" class="page-subtitle">Loading Protein 2...</h3>
                 <div class="domain-fragment-plot-status-p2"></div>
                 <div class="domain-fragment-plot-container-p2"></div>
             `;

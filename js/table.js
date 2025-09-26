@@ -55,8 +55,7 @@ export async function loadTableData() {
         ]);
         
         setTableData(interactions);
-        
-        // Update unique proteins set
+
         state.uniqueProteins.clear();
         interactions.forEach(row => {
             if (row.Protein1) state.uniqueProteins.add(row.Protein1);
@@ -64,8 +63,7 @@ export async function loadTableData() {
             if (row.Protein1_Domain) state.uniqueProteins.add(row.Protein1_Domain);
             if (row.Protein2_Domain) state.uniqueProteins.add(row.Protein2_Domain);
         });
-        
-        // Process metadata for accession and category maps
+
         const accessionMap = {};
         const categoryMap = {};
         metadata.forEach((data, proteinName) => {

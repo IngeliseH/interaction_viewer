@@ -6,7 +6,7 @@ function isValidDomainRanges(ranges) {
             !isNaN(r.start) && !isNaN(r.end) && r.start > 0 && r.end >= r.start);
 }
 
-function getDomainColor(atom, useDomainColoring, ranges) {
+function _getDomainColor(atom, useDomainColoring, ranges) {
     if (useDomainColoring && atom.chain === 'A' && Array.isArray(ranges)) {
         for (const range of ranges) {
             if (atom.resi >= range.start && atom.resi <= range.end) {
@@ -99,7 +99,7 @@ function displayStructureInViewer(container, pdbPath, options = {}) {
             } else {
                 let colorFunc;
                 if (colorMode === 'alphafold') {
-                    colorFunc = atom => getDomainColor(atom, useDomainColoring, domainRangesArray);
+                    colorFunc = atom => _getDomainColor(atom, useDomainColoring, domainRangesArray);
                 } else { // 'chain'
                     colorFunc = baseChainColorFunc || (atom => atom.chain === 'A' ? 'lightcoral' : 'lightskyblue');
                 }

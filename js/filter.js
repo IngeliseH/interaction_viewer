@@ -1,7 +1,6 @@
 import { state, renderTable } from './table.js';
 import { setCurrentPage } from './pagination.js';
 
-// Track selected proteins locally
 const filterState = {
     selectedProteins: [],
     searchMode: "includes"
