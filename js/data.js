@@ -126,14 +126,33 @@ export async function fetchAndParseCSV(url) {
 // =============================================================================
 export function parseLocation(locationString) {
     if (!locationString || typeof locationString !== 'string') return {};
-    
+
     try {
         const parsed = JSON.parse(locationString.replace(/'/g, '"'));
         return Object.keys(parsed).reduce((acc, k) => {
-            acc[k.toLowerCase()] = parsed[k];
+            const key = k.toLowerCase();
+            const value = parsed[k];
+
+            if (typeof value === 'string') {
+                acc[key] = value.split(',').flatMap(range => {
+                    const [start, end] = range.split('-').map(Number);
+                    if (!isNaN(start) && !isNaN(end)) {
+                        return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+                    } else if (!isNaN(start)) {
+                        return [start];
+                    }
+                    return [];
+                });
+            } else if (Array.isArray(value)) {
+                acc[key] = value;
+            } else {
+                acc[key] = [value];
+            }
+
             return acc;
         }, {});
-    } catch {
+    } catch (e) {
+        console.error('Error parsing location string:', locationString, e);
         return {};
     }
 }

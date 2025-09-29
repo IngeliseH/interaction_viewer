@@ -10,36 +10,26 @@ export function createSvgElement(tag, attributes = {}, textContent = '') {
     return element;
 }
 
-export function createProteinLabel(text, x, y, angle = 0, fontSize = '13') {
-    const label = createSvgElement('text', {
-        'x': x,
-        'y': y,
-        'text-anchor': 'middle',
-        'dominant-baseline': 'middle',
-        'font-size': fontSize
-    }, text);
-    
-    if (angle !== 0) {
-        label.setAttribute('transform', `rotate(${angle} ${x} ${y})`);
-    }
-    
-    return label;
-}
-
-export function createProteinLengthLabel(value, x, y, textAnchor = "middle") {
+export function createProteinLabel(value, x, y, { fontSize = 12, textAnchor = "middle", bold = false, angle = 0 } = {}) {
     const label = createSvgElement("text", {
         "x": x,
         "y": y,
         "dy": "0.35em",
         "text-anchor": textAnchor,
-        "font-size": "12px",
-        "fill": "#333"
+        'dominant-baseline': 'middle',
+        "font-size": `${fontSize}px`,
+        "font-weight": bold ? "bold" : "normal",
     });
     label.textContent = value.toString();
+
+    if (angle !== 0) {
+        label.setAttribute('transform', `rotate(${angle} ${x} ${y})`);
+    }
+
     return label;
 }
 
-export function createHoverLabel(value, x, y, textAnchor = "middle") {
+export function createHoverLabel(value, x, y, { textAnchor = "middle", bold = false } = {}) {
     const label = createSvgElement("text", {
         "x": x,
         "y": y,
@@ -47,7 +37,8 @@ export function createHoverLabel(value, x, y, textAnchor = "middle") {
         "text-anchor": textAnchor,
         "font-size": "10px",
         "fill": "#333",
-        "visibility": "hidden"
+        "visibility": "hidden",
+        "font-weight": bold ? "bold" : "normal",
     });
     label.textContent = value.toString();
     return label;
@@ -118,14 +109,19 @@ export function createGradient(id, x1, y1, x2, y2, color1, color2) {
     return gradient;
 }
 
-export function setupHoverInteraction(path, labels) {
-    path.addEventListener('mouseover', () => {
-        path.setAttribute('opacity', '0.85');
-        labels.forEach(label => label.setAttribute('visibility', 'visible'));
+export function setupHoverEffect(element, labels, parentGroup = null) {
+    element.addEventListener('mouseover', () => {
+        element.setAttribute('opacity', '1.0');
+        labels.forEach(label => {
+            label.setAttribute('visibility', 'visible');
+            if (parentGroup) {
+                parentGroup.appendChild(label);
+            }
+        });
     });
-    
-    path.addEventListener('mouseout', () => {
-        path.setAttribute('opacity', '0.5');
+
+    element.addEventListener('mouseout', () => {
+        element.setAttribute('opacity', '0.6');
         labels.forEach(label => label.setAttribute('visibility', 'hidden'));
     });
 }
@@ -172,34 +168,6 @@ export function getArcAngles(names, seqLens, options = {}) {
     });
 
     return { angles, namesOrdered };
-}
-
-export function setupDomainHoverInteraction(segPath, hoverLabel, parentGroup) {
-    segPath.addEventListener('mouseover', () => {
-        segPath.setAttribute('opacity', '1.0');
-        hoverLabel.setAttribute('visibility', 'visible');
-        parentGroup.appendChild(hoverLabel);
-    });
-
-    segPath.addEventListener('mouseout', () => {
-        segPath.setAttribute('opacity', '0.6');
-        hoverLabel.setAttribute('visibility', 'hidden');
-    });
-}
-
-export function createChordStyle() {
-    const style = createSvgElement('style');
-    style.textContent = `
-        .chord-shape:hover {
-            cursor: pointer;
-            opacity: 0.85 !important;
-        }
-        svg, svg * {
-            cursor: default !important;
-        }
-    `;
-    style.id = 'chord-plot-style';
-    return style;
 }
 
 export function createChordGroup(startPoints, endPoints, controlPoint, color, opacity = 0.5) {

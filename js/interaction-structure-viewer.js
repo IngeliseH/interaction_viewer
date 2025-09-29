@@ -21,11 +21,11 @@ function getInteractionViewerOptions() {
     }
 
     const urlParams = new URLSearchParams(window.location.search);
-    const f1_shift = parseInt(urlParams.get('f1_shift') || "0", 10);
-    const f2_shift = parseInt(urlParams.get('f2_shift') || "0", 10);
+    const f1_shift = parseInt(urlParams.get('f1_shift'));
+    const f2_shift = parseInt(urlParams.get('f2_shift'));
     const f1_loc = parseResidueLocations(urlParams.get('f1_loc'), f1_shift);
     const f2_loc = parseResidueLocations(urlParams.get('f2_loc'), f2_shift);
-
+    
     const f1_selection = f1_loc ? {resi: f1_loc, chain: 'A'} : null;
     const f2_selection = f2_loc ? {resi: f2_loc, chain: 'B'} : null;
     const zoomSelection = (f1_selection && f2_selection) ? {or: [f1_selection, f2_selection]} : (f1_selection || f2_selection);

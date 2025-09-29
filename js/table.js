@@ -273,40 +273,32 @@ export function renderTable() {
                 const f1Id = p1DomainParts.length > 1 ? `F${p1DomainParts[1]}` : '';
                 const p2DomainParts = protein2Domain.split('_F');
                 const f2Id = p2DomainParts.length > 1 ? `F${p2DomainParts[1]}` : '';
-                
-                let absLoc = {}, relLoc = {};
-                let f1Loc = '', f2Loc = '';
-                let f1_shift = '', f2_shift = '';
 
                 if (row.absolute_location) {
                     absLoc = parseLocation(row.absolute_location);
-                }
+                                        }
+
                 if (row.location) {
                     relLoc = parseLocation(row.location);
-                }
+                                    }
 
-                if (absLoc.protein1) {
-                    f1Loc = indicesToRanges(absLoc.protein1);
-                } else if (absLoc.chainA) {
-                    f1Loc = indicesToRanges(absLoc.chainA);
-                }
-                if (absLoc.protein2) {
-                    f2Loc = indicesToRanges(absLoc.protein2);
-                } else if (absLoc.chainB) {
-                    f2Loc = indicesToRanges(absLoc.chainB);
-                }
+                console.log("Parsed locations:", { absLoc, relLoc });
 
                 const absF1 = absLoc.protein1?.[0] || absLoc.chainA?.[0];
                 const absF2 = absLoc.protein2?.[0] || absLoc.chainB?.[0];
                 const relF1 = relLoc.protein1?.[0] || relLoc.chainA?.[0];
                 const relF2 = relLoc.protein2?.[0] || relLoc.chainB?.[0];
 
+                let f1_shift = '', f2_shift = '';
                 if (absF1 !== undefined && relF1 !== undefined) {
                     f1_shift = absF1 - relF1;
                 }
                 if (absF2 !== undefined && relF2 !== undefined) {
                     f2_shift = absF2 - relF2;
                 }
+
+                const f1Loc = indicesToRanges(absLoc.protein1 || absLoc.chainA || []);
+                const f2Loc = indicesToRanges(absLoc.protein2 || absLoc.chainB || []);
 
                 const interactionLink = `interaction.html?&p1=${encodeURIComponent(p1Base)}` +
                     `&p2=${encodeURIComponent(p2Base)}` +

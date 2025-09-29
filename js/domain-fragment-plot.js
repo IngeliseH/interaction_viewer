@@ -1,5 +1,5 @@
 import { fetchProteinData } from './data.js';
-import { createSvgElement, createProteinLengthLabel, createHoverLabel } from './plot-utility.js';
+import { createSvgElement, createProteinLabel, createHoverLabel, setupHoverEffect } from './plot-utility.js';
 
 let _plotInstances = {};
 
@@ -254,10 +254,10 @@ function _renderPlot(container, instanceId, { proteinName, proteinLength, fragme
         }
     }
 
-    const startLabel = createProteinLengthLabel("1", -15, dimensions.plotHeight / 2, "end");
+    const startLabel = createProteinLabel("1", -15, dimensions.plotHeight / 2, { textAnchor: "end" });
     svgGroup.appendChild(startLabel);
 
-    const endLabel = createProteinLengthLabel(proteinLength, dimensions.plotWidth + 15, dimensions.plotHeight / 2, "start");
+    const endLabel = createProteinLabel(proteinLength, dimensions.plotWidth + 15, dimensions.plotHeight / 2, { textAnchor: "start" });
     svgGroup.appendChild(endLabel);
 
     svg.appendChild(svgGroup);
@@ -415,8 +415,7 @@ function _calculatePlotDimensions(container, margin) {
 
 function _renderDomains(svgGroup, domains, config) {
     const { instanceId, proteinLength, plotWidth, yPosition, type, domainHeight, labelFontSize } = config;
-    
-    // Expose domain color map globally for chord plot
+
     window.domainPlot_domainBaseIdToColor = _domainColorMap;
     window.domainPlotInstancesData = _plotInstances;
 
@@ -449,25 +448,17 @@ function _renderDomains(svgGroup, domains, config) {
         const labelOffsetVertical = 5;
         const labelOffsetHorizontal = 2;
 
-        const title = createSvgElement("title");
-        title.textContent = `${domain.id}: ${domain.start}-${domain.end}`;
-        domainRect.appendChild(title);
-        svgGroup.appendChild(domainRect);
-
-        const labelYPos = yPosition + domainHeight + labelOffsetVertical;
-
-        const startLabel = createHoverLabel(domain.start, x1_orig - labelOffsetHorizontal, labelYPos, "end");
+        const startLabel = createHoverLabel(domain.start, x1_orig - labelOffsetHorizontal, yPosition + domainHeight + labelOffsetVertical, {textAnchor: "end"});
         startLabel.id = `${type}-start-label-${instanceId}-${index}`;
-        svgGroup.appendChild(startLabel);
 
-        const endLabel = createHoverLabel(domain.end, x2_orig + labelOffsetHorizontal, labelYPos, "start");
+        const endLabel = createHoverLabel(domain.end, x2_orig + labelOffsetHorizontal, yPosition + domainHeight + labelOffsetVertical, {textAnchor: "start"});
         endLabel.id = `${type}-end-label-${instanceId}-${index}`;
-        svgGroup.appendChild(endLabel);
 
+        const labels = [startLabel, endLabel];
         if (type === 'uniprot') {
-            const baseIdLabel = createHoverLabel(normalizedId, x1_orig + (x2_orig - x1_orig) / 2, yPosition - labelOffsetVertical,);
+            const baseIdLabel = createHoverLabel(normalizedId, x1_orig + (x2_orig - x1_orig) / 2, yPosition - labelOffsetVertical);
             baseIdLabel.id = `${type}-baseid-label-${instanceId}-${index}`;
-            svgGroup.appendChild(baseIdLabel);
+            labels.push(baseIdLabel);
         }
 
         domainRect.addEventListener("mouseover", () => {
@@ -495,6 +486,9 @@ function _renderDomains(svgGroup, domains, config) {
                 domain.end
             );
         });
+
+        svgGroup.appendChild(domainRect);
+        labels.forEach(label => svgGroup.appendChild(label));
     });
 }
 
@@ -564,10 +558,10 @@ function _renderFragments(svgGroup, fragments, config) {
         const labelYPos = yRect + height / 2;
         const labelOffset = 1;
 
-        const fragStartLabel = createHoverLabel(start, x1_orig - labelOffset, labelYPos, "end");
+        const fragStartLabel = createHoverLabel(start, x1_orig - labelOffset, labelYPos, {textAnchor: "end"});
         svgGroup.appendChild(fragStartLabel);
 
-        const fragEndLabel = createHoverLabel(end, x2_orig + labelOffset, labelYPos, "start");
+        const fragEndLabel = createHoverLabel(end, x2_orig + labelOffset, labelYPos, {textAnchor: "start"});
         svgGroup.appendChild(fragEndLabel);
 
         fragmentRect.addEventListener("mouseover", () => {

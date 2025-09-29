@@ -1,8 +1,7 @@
 import { indicesToRanges } from './data.js';
-import { createSvgElement, createProteinLengthLabel, createHoverLabel, createArcPath, 
-         createGradient, setupHoverInteraction, getArcAngles,
-         setupDomainHoverInteraction, createChordStyle, createDomainPath,
-         calculateChordAngles, createLabelGroup, createChordGroup } from './plot-utility.js';
+import { createSvgElement, createProteinLabel, createHoverLabel, createArcPath, 
+         createGradient, setupHoverEffect, getArcAngles,
+         createDomainPath, calculateChordAngles, createLabelGroup, createChordGroup } from './plot-utility.js';
 
 const palettes = [
   "#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f", "#e5c494", "#b3b3b3",
@@ -147,7 +146,6 @@ export async function drawChordByPosition(data, containerSelector, opts = {}) {
     acc[p.name] = p.length || 100;
     return acc;
   }, {});
-  const totalLen = proteinList.reduce((sum, p) => sum + seqLens[p.name], 0);
 
   const ifaceData = data.map(row => {
     const p1 = row.Protein1 || row.protein1;
@@ -250,9 +248,9 @@ export async function drawChordByPosition(data, containerSelector, opts = {}) {
             const midAngle = (segStart + segEnd) / 2;
             const [labelX, labelY] = polar(midAngle, (arcOuter + arcInner) / 2);
             const domainText = (domain.name || domain.id || '').replace(/_\d+$/, '').replace(/_/g, ' ');
-            const label = createHoverLabel(domainText, labelX, labelY);
+            const label = createHoverLabel(domainText, labelX, labelY, { bold: true });
 
-            setupDomainHoverInteraction(segPath, label, g);
+            setupHoverEffect(segPath, [label], g);
             g.appendChild(segPath);
             g.appendChild(label);
         });
@@ -260,24 +258,20 @@ export async function drawChordByPosition(data, containerSelector, opts = {}) {
 
     const manyProteins = namesOrdered.length > 20;
     const midAngle = (start + end) / 2;
-    const labelRadius = arcOuter + (manyProteins ? 28 : 28);
-    const endLabelRadius = arcOuter + (manyProteins ? 10 : 8);
+    const labelRadius = arcOuter + (manyProteins ? 25 : 20);
 
     const [lx, ly] = polar(midAngle, labelRadius);
     const labelAngle = manyProteins ? (midAngle > 90 && midAngle < 270 ? midAngle + 180 : midAngle) : 0;
-    const label = createProteinLengthLabel(name, lx, ly);
-    label.setAttribute('transform', `rotate(${labelAngle} ${lx} ${ly})`);
+    const label = createProteinLabel(name, lx, ly, { angle: labelAngle, fontSize: manyProteins ? 12 : 15 });
     g.appendChild(label);
 
     const [ex, ey] = polar(end, arcOuter + 1);
-    const endLabel = createProteinLengthLabel(seqLens[name], ex, ey);
-    // TODO: if manyProteins, reduce font size to 7
+    const endLabel = createProteinLabel(seqLens[name], ex, ey, { fontSize: manyProteins ? 7 : 12 });
     // TODO: make labels higher layer than arcs
     g.appendChild(endLabel);
   });
 
   const chordElements = [];
-  const hoverLabels = [];
 
   ifaceData.forEach((iface, i) => {
     const { protein1, protein2, res1, res2 } = iface;
@@ -329,10 +323,10 @@ export async function drawChordByPosition(data, containerSelector, opts = {}) {
     const path = createChordGroup(startPoints, endPoints, controlPoint, chordColor);
 
     const labelElems = [
-      createHoverLabel(res1[0], ...polar(label1StartAngle, arcInner)),
-      createHoverLabel(res1[1], ...polar(label1EndAngle, arcInner)),
-      createHoverLabel(res2[0], ...polar(label2StartAngle, arcInner)),
-      createHoverLabel(res2[1], ...polar(label2EndAngle, arcInner))
+      createHoverLabel(res1[0], ...polar(label1StartAngle, arcInner), { bold: true }),
+      createHoverLabel(res1[1], ...polar(label1EndAngle, arcInner), { bold: true }),
+      createHoverLabel(res2[0], ...polar(label2StartAngle, arcInner), { bold: true }),
+      createHoverLabel(res2[1], ...polar(label2EndAngle, arcInner), { bold: true })
     ];
 
     
@@ -439,12 +433,8 @@ export async function drawChordByPosition(data, containerSelector, opts = {}) {
     interactionGroup.appendChild(path);
     labelElems.forEach(label => interactionGroup.appendChild(label));
   
-    setupHoverInteraction(path, labelElems);
+    setupHoverEffect(path, labelElems);
     g.appendChild(interactionGroup);
     chordElements.push(path);
   });
-
-  if (!document.getElementById('chord-plot-style')) {
-    defs.appendChild(createChordStyle());
-  }
 }

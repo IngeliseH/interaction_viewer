@@ -1,4 +1,4 @@
-import { createSvgElement, createProteinLengthLabel, createHoverLabel } from './plot-utility.js';
+import { createSvgElement, createProteinLabel, createHoverLabel, setupHoverEffect } from './plot-utility.js';
 
 // =============================================================================
 // Public API Functions
@@ -197,10 +197,10 @@ function _drawPromiscuityBasePlot(proteinName, proteinLength, container, options
         });
     }
 
-    const startLabel = createProteinLengthLabel("1", -15, yPosition, "end");
+    const startLabel = createProteinLabel("1", -15, yPosition, { textAnchor: "end" });
     svgGroup.appendChild(startLabel);
 
-    const endLabel = createProteinLengthLabel(proteinLength.toString(), plotWidth + 15, yPosition, "start");
+    const endLabel = createProteinLabel(proteinLength.toString(), plotWidth + 15, yPosition, { textAnchor: "start" });
     svgGroup.appendChild(endLabel);
 
     svg.appendChild(svgGroup);
@@ -250,10 +250,7 @@ function _drawPromiscuityCoverageBars(plotElements, coverageArray) {
     });
 
     const barsGroup = createSvgElement("g", { "class": "coverage-bars" });
-
-    const hoverLabel = createHoverLabel('', 0, 0);
-    hoverLabel.setAttribute("style", "font-weight: bold;");
-    svgGroup.appendChild(hoverLabel);
+    svgGroup.appendChild(barsGroup);
 
     coverageArray.forEach((count, i) => {
         if (count > 0) {
@@ -270,23 +267,13 @@ function _drawPromiscuityCoverageBars(plotElements, coverageArray) {
                 "data-residue-idx": i + 1
             });
 
-            rect.addEventListener("mouseenter", () => {
-                rect.setAttribute("opacity", "1.0");
-                hoverLabel.textContent = `Residue ${i + 1}: ${count}`;
-                hoverLabel.setAttribute("x", (i + 0.5) * residueWidth);
-                hoverLabel.setAttribute("y", rectY - 8);
-                hoverLabel.setAttribute("visibility", "visible");
-            });
-            rect.addEventListener("mouseleave", () => {
-                _renderBarHighlights(container);
-                hoverLabel.setAttribute("visibility", "hidden");
-            });
+            const hoverLabel = createHoverLabel(`Residue ${i + 1}: ${count}`, (i + 0.5) * residueWidth, rectY - 8, { bold: true });
+            setupHoverEffect(rect, [hoverLabel], svgGroup);
+
             barsGroup.appendChild(rect);
         }
     });
 
-    svgGroup.appendChild(barsGroup);
-    svgGroup.appendChild(hoverLabel);
     setTimeout(() => _renderBarHighlights(container), 0);
 }
 
