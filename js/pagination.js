@@ -16,6 +16,12 @@ export function updatePaginationUI(totalItems) {
     updatePaginationControls(totalItems);
 }
 
+export function paginateData(data, currentPage, rowsPerPage) {
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = Math.min(start + rowsPerPage, data.length);
+    return data.slice(start, end);
+}
+
 function createPageButton(page, currentPage, onClick) {
     const btn = document.createElement('button');
     btn.className = `page-btn${page === currentPage ? ' active' : ''}`;

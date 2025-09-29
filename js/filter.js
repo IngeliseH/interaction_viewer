@@ -149,67 +149,6 @@ export function getAllFilters() {
     return filters;
 }
 
-export function getFilteredData() {
-    let filteredData = [...state.tableData];
-    if (filterState.selectedProteins && filterState.selectedProteins.length > 0) {
-        if (state.searchMode === "includes") {
-            filteredData = filteredData.filter(row =>
-                filterState.selectedProteins.some(sP =>
-                    (row.Protein1 && sP === row.Protein1) ||
-                    (row.Protein2 && sP === row.Protein2) ||
-                    (row.Protein1_Domain && sP === row.Protein1_Domain) ||
-                    (row.Protein2_Domain && sP === row.Protein2_Domain)
-                )
-            );
-        } else if (state.searchMode === "only") {
-            filteredData = filteredData.filter(row => {
-                const p1 = filterState.selectedProteins.some(sP =>
-                    (row.Protein1 && sP === row.Protein1) ||
-                    (row.Protein1_Domain && sP === row.Protein1_Domain)
-                );
-                const p2 = filterState.selectedProteins.some(sP =>
-                    (row.Protein2 && sP === row.Protein2) ||
-                    (row.Protein2_Domain && sP === row.Protein2_Domain)
-                );
-                return p1 && p2;
-            });
-        } else if (state.searchMode === "pair-exact" && filterState.selectedProteins.length === 2) {
-            const [pA, pB] = filterState.selectedProteins;
-            filteredData = filteredData.filter(row => {
-                if (pA === pB) {
-                    return (
-                        (row.Protein1 === pA && row.Protein2 === pB) ||
-                        (row.Protein1 === pB && row.Protein2 === pA)
-                    );
-                } else {
-                    return (
-                        (row.Protein1 === pA && row.Protein2 === pB) ||
-                        (row.Protein1 === pB && row.Protein2 === pA)
-                    );
-                }
-            });
-        }
-    }
-    if (state.columnFilters) {
-        Object.entries(state.columnFilters).forEach(([columnName, filter]) => {
-            filteredData = filteredData.filter(row => {
-                const value = parseFloat(row[columnName]);
-                if (isNaN(value)) return false;
-
-                let passes = true;
-                if (filter.min !== undefined && value < filter.min) {
-                    passes = false;
-                }
-                if (filter.max !== undefined && value > filter.max) {
-                    passes = false;
-                }
-                return passes;
-            });
-        });
-    }
-    return filteredData;
-}
-
 export function showColumnFilterPopup(column, targetIcon) {
     document.querySelectorAll('.filter-popup').forEach(p => p.remove());
     const current = (state.columnFilters && state.columnFilters[column]) || {};
@@ -258,4 +197,72 @@ export function showColumnFilterPopup(column, targetIcon) {
         }
     };
     setTimeout(() => document.addEventListener('click', clickOutsideHandler, true), 0);
+}
+
+export function applyFiltersToData(data) {
+    let filteredData = [...data];
+
+    if (state.selectedProteins && state.selectedProteins.length > 0) {
+        if (state.searchMode === "includes") {
+            filteredData = filteredData.filter(row =>
+                state.selectedProteins.some(sP =>
+                    (row.Protein1 && sP === row.Protein1) ||
+                    (row.Protein2 && sP === row.Protein2) ||
+                    (row.Protein1_Domain && sP === row.Protein1_Domain) ||
+                    (row.Protein2_Domain && sP === row.Protein2_Domain)
+                )
+            );
+        } else if (state.searchMode === "only") {
+            filteredData = filteredData.filter(row => {
+                const p1 = state.selectedProteins.some(sP =>
+                    (row.Protein1 && sP === row.Protein1) ||
+                    (row.Protein1_Domain && sP === row.Protein1_Domain)
+                );
+                const p2 = state.selectedProteins.some(sP =>
+                    (row.Protein2 && sP === row.Protein2) ||
+                    (row.Protein2_Domain && sP === row.Protein2_Domain)
+                );
+                return p1 && p2;
+            });
+        } else if (state.searchMode === "pair-exact" && state.selectedProteins.length === 2) {
+            const [pA, pB] = state.selectedProteins;
+            filteredData = filteredData.filter(row => {
+                if (pA === pB) {
+                    return (
+                        (row.Protein1 === pA && row.Protein2 === pB) ||
+                        (row.Protein1 === pB && row.Protein2 === pA)
+                    );
+                } else {
+                    return (
+                        (row.Protein1 === pA && row.Protein2 === pB) ||
+                        (row.Protein1 === pB && row.Protein2 === pA)
+                    );
+                }
+            });
+        }
+    }
+
+    if (state.columnFilters) {
+        Object.entries(state.columnFilters).forEach(([columnName, filter]) => {
+            filteredData = filteredData.filter(row => {
+                const value = parseFloat(row[columnName]);
+                if (isNaN(value)) return false;
+
+                let passes = true;
+                if (filter.min !== undefined && value < filter.min) {
+                    passes = false;
+                }
+                if (filter.max !== undefined && value > filter.max) {
+                    passes = false;
+                }
+                return passes;
+            });
+        });
+    }
+
+    return filteredData;
+}
+
+export function getFilteredData() {
+    return applyFiltersToData(state.tableData);
 }

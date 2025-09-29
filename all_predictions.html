@@ -399,7 +399,8 @@
 
             proteinSearch.addEventListener('input', (e) => {
                 const searchTerm = e.target.value.toLowerCase();
-                const uniqueProteins = table.getUniqueProteins();
+
+                const uniqueProteins = Array.from(table.state.uniqueProteins);
                 
                 const filteredProteins = uniqueProteins
                     .filter(protein => protein.toLowerCase().includes(searchTerm))
