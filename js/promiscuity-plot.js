@@ -43,6 +43,94 @@ export function clearPromiscuityHighlight(containerSelector = null) {
     highlightPromiscuityResidues(null, null, containerSelector);
 }
 
+export function updatePromiscuityPlot(proteinName, promiscuityUseFilteredData, filter, proteinLengthData, interfaceData, containerSelector = '.promiscuity-plot-container') {
+    if (!proteinName || !window.initPromiscuityPlot) return;
+
+    const container = document.querySelector(containerSelector);
+    if (!container) {
+        console.error(`Container not found: ${containerSelector}`);
+        return;
+    }
+
+    let filterCriteria = {};
+    if (promiscuityUseFilteredData) {
+        const currentGlobalFilters = filter.getAllFilters();
+        filterCriteria = convertTableFiltersToPromiscuityCriteria(currentGlobalFilters);
+    }
+
+    window.initPromiscuityPlot(
+        containerSelector,
+        {
+            proteinName: proteinName,
+            filterCriteria: filterCriteria,
+        }, 
+        proteinLengthData, 
+        interfaceData
+    );
+}
+
+export function convertTableFiltersToPromiscuityCriteria(activeNumericFilters) {
+    const criteria = {};
+    if (!Array.isArray(activeNumericFilters)) return criteria;
+
+    activeNumericFilters.forEach(filter => {
+        if (filter.column) {
+            criteria[filter.column] = (val) => {
+                const numVal = Number(val);
+                if (isNaN(numVal)) return false;
+
+                let passes = true;
+                if (filter.min !== undefined && numVal < filter.min) {
+                    passes = false;
+                }
+                if (filter.max !== undefined && numVal > filter.max) {
+                    passes = false;
+                }
+                return passes;
+            };
+        }
+    });
+    return criteria;
+}
+
+export function setupPromiscuityControls(placeholder, promiscuityUseFilteredData, updatePromiscuityPlot, toggleCallback) {
+    if (!placeholder) return;
+
+    placeholder.innerHTML = '';
+
+    const controlBar = document.createElement('div');
+    controlBar.className = 'control-bar';
+    controlBar.style.marginBottom = '20px';
+
+    const buttonGroup = document.createElement('div');
+    buttonGroup.className = 'control-button-group';
+
+    const toggleButton = document.createElement('button');
+    toggleButton.type = 'button';
+    toggleButton.className = 'control-button';
+    toggleButton.innerHTML = promiscuityUseFilteredData
+        ? '<i class="fas fa-list"></i> Show All Data'
+        : '<i class="fas fa-filter"></i> Show Filtered Data';
+    toggleButton.title = 'Toggle between all and filtered interaction data';
+
+    toggleButton.addEventListener('click', () => {
+        promiscuityUseFilteredData = !promiscuityUseFilteredData;
+        toggleButton.innerHTML = promiscuityUseFilteredData
+            ? '<i class="fas fa-list"></i> Show All Data'
+            : '<i class="fas fa-filter"></i> Show Filtered Data';
+
+        if (typeof toggleCallback === 'function') {
+            toggleCallback(promiscuityUseFilteredData);
+        }
+
+        updatePromiscuityPlot();
+    });
+
+    buttonGroup.appendChild(toggleButton);
+    controlBar.appendChild(buttonGroup);
+    placeholder.appendChild(controlBar);
+}
+
 // =============================================================================
 // Core Logic
 // =============================================================================
@@ -56,8 +144,9 @@ function _drawPlotWithData(container, options, proteinLengthData, interfaceData,
 
     const filterCriteria = useFilteredData ? options.filterCriteria : {};
 
-    const { proteinLength, coverageArray } = _fetchPlotData(proteinName, filterCriteria, proteinLengthData, interfaceData);
-
+    const proteinInfoRow = proteinLengthData.find(row => row.name === proteinName);
+    const proteinLength = parseInt(proteinInfoRow?.length, 10);
+    const { coverageArray } = _fetchRelevantInterfaces(proteinName, proteinLength, interfaceData, filterCriteria);
     const plotElements = _drawPromiscuityBasePlot(proteinName, proteinLength, container, options);
 
     if (plotElements) {
@@ -68,16 +157,6 @@ function _drawPlotWithData(container, options, proteinLengthData, interfaceData,
 // =============================================================================
 // Data Fetching & Processing
 // =============================================================================
-
-function _fetchPlotData(proteinName, filterCriteria, proteinLengthData, interfaceData) {
-    const proteinLength = _fetchProteinLength(proteinName, proteinLengthData);
-    if (proteinLength === null) {
-        return { proteinLength: null, coverageArray: [] };
-    }
-    const { coverageArray } = _fetchRelevantInterfaces(proteinName, proteinLength, interfaceData, filterCriteria);
-    return { proteinLength, coverageArray };
-}
-
 function _fetchRelevantInterfaces(proteinName, proteinLength, interfaceData, filterCriteria = {}) {
     const coverageArray = Array(proteinLength).fill(0);
     const emptyResult = { filtered: [], coverageArray };
@@ -113,21 +192,6 @@ function _fetchRelevantInterfaces(proteinName, proteinLength, interfaceData, fil
         }
     });
     return { filtered, coverageArray };
-}
-
-function _fetchProteinLength(proteinName, proteinLengthData) {
-    if (!proteinLengthData) {
-        console.error('Promiscuity Plot: Protein length data not provided.');
-        return null;
-    }
-    const proteinInfoRow = proteinLengthData.find(row => row.name === proteinName);
-    const length = parseInt(proteinInfoRow?.length, 10);
-    if (!isNaN(length)) {
-        return length;
-    } else {
-        console.warn(`Promiscuity Plot: Length for ${proteinName} not found or invalid in CSV.`);
-        return null;
-    }
 }
 
 // =============================================================================

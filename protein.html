@@ -24,7 +24,6 @@
 
 <body>
     <script>
-        // Debug: This should always show in the console when the page loads
         console.log("protein.html loaded - debug marker");
     </script>
     <div id="header-placeholder"></div>
@@ -280,15 +279,15 @@
         import * as stats from './js/stats.js';
         import { drawChordByPosition } from './js/chord-plot.js';
         import { fetchAndParseCSV, loadInteractionData } from './js/data.js';
+        import { updatePromiscuityPlot, convertTableFiltersToPromiscuityCriteria, setupPromiscuityControls } from './js/promiscuity-plot.js';
 
         // --- GLOBAL ACTIVE FILTERS OBJECT ---
         window.activeFilters = {};
 
         let chordPlotShowDomains = true;
         let chordPlotExpandQuery = false;
-        let promiscuityUseFilteredData = true; // Start with filtered data
+        let promiscuityUseFilteredData = true;
 
-        // Function to load HTML includes
         async function loadHTMLIncludes() {
             const headerPlaceholder = document.getElementById('header-placeholder');
             const footerPlaceholder = document.getElementById('footer-placeholder');
@@ -298,7 +297,6 @@
                     const response = await fetch('_header.html');
                     if (response.ok) {
                         headerPlaceholder.innerHTML = await response.text();
-                        // Set active nav link for protein.html
                         document.querySelectorAll('nav a').forEach(link => link.classList.remove('active'));
                         const navProteinPairs = document.getElementById('navProteins');
                         if (navProteinPairs) {
@@ -330,15 +328,12 @@
             }
         }
 
-        // Function to update page title and H1 based on URL parameters
         function updatePageTitleWithProteinPair() {
             const urlParams = new URLSearchParams(window.location.search);
             const p1 = decodeURIComponent(urlParams.get('p1') || '');
             const p2 = decodeURIComponent(urlParams.get('p2') || '');
             const f1_id = decodeURIComponent(urlParams.get('f1_id') || '');
             const f2_id = decodeURIComponent(urlParams.get('f2_id') || '');
-            // const f1_loc = decodeURIComponent(urlParams.get('f1_loc') || ''); // Not used for title yet
-            // const f2_loc = decodeURIComponent(urlParams.get('f2_loc') || ''); // Not used for title yet
 
             const pageTitleElement = document.querySelector('.page-main-heading');
             const fragmentImageElement = document.getElementById('fragment-image');
@@ -348,7 +343,6 @@
                 if (pageTitleElement) {
                     pageTitleElement.textContent = p1;
                 }
-                // Update document title to be more specific if p2 also exists
                 if (p2) {
                     const p1Display = f1_id ? `${p1} ${f1_id}` : p1;
                     const p2Display = f2_id ? `${p2} ${f2_id}` : p2;
@@ -356,14 +350,13 @@
                 } else {
                     document.title = p1;
                 }
-                loadAndDisplayProteinInfo(p1); // Load accession ID
+                loadAndDisplayProteinInfo(p1);
 
                 if (fragmentImageElement) {
                     fragmentImageElement.src = `fragment_images/${p1}fragments.png`;
                     fragmentImageElement.alt = `${p1} fragments`;
-                    // Optional: Add a caption or handle image loading errors
                     fragmentImageElement.onerror = function () {
-                        this.style.display = 'none'; // Hide image if it fails to load
+                        this.style.display = 'none';
                         if (fragmentImageCaptionElement) {
                             fragmentImageCaptionElement.textContent = `Image for ${p1} fragments not found.`;
                         }
@@ -374,7 +367,6 @@
                 }
 
             } else {
-                // Fallback if p1 is not provided
                 if (pageTitleElement) {
                     pageTitleElement.textContent = "Centrosome Predicted Interaction Data Explorer";
                 }
@@ -389,7 +381,7 @@
                     subheadingElement.textContent = 'Protein not specified';
                 }
                 if (fragmentImageElement) {
-                    fragmentImageElement.style.display = 'none'; // Hide image if no protein
+                    fragmentImageElement.style.display = 'none';
                 }
                 if (fragmentImageCaptionElement) {
                     fragmentImageCaptionElement.textContent = 'Protein not specified for fragment image.';
@@ -398,7 +390,6 @@
         }
 
         async function loadAndDisplayProteinInfo(proteinName) {
-            // console.log("[ProtHTML] loadAndDisplayProteinInfo called for proteinName:", proteinName);
             const accessionElement = document.getElementById('uniprot-accession');
             const subheadingElement = document.getElementById('uniprot-accession-subheading');
             if (!accessionElement || !subheadingElement) {
@@ -421,9 +412,8 @@
                     header: true,
                     skipEmptyLines: true,
                     complete: function (results) {
-                        const allFragmentsData = results.data; // Store all fragments data
+                        const allFragmentsData = results.data;
                         const proteinInfoRow = allFragmentsData.find(row => row.name === proteinName);
-                        // console.log("[ProtHTML] proteinInfoRow from CSV:", proteinInfoRow);
 
                         if (proteinInfoRow && proteinInfoRow.accession_id) {
                             const accessionId = proteinInfoRow.accession_id;
@@ -431,9 +421,7 @@
                             subheadingElement.innerHTML = `<a href="https://www.uniprot.org/uniprotkb/${accessionId}/entry" target="_blank" rel="noopener noreferrer">${accessionId}</a>`;
 
                             let afDomainRanges = [];
-                            // Read from the 'domains' column which has a Python-like string format
                             const domainDataString = proteinInfoRow.domains;
-                            // console.log("[ProtHTML] Raw 'domains' string from CSV:", domainDataString);
 
                             if (domainDataString && typeof domainDataString === 'string') {
                                 try {
@@ -444,9 +432,6 @@
                                         if (!isNaN(start) && !isNaN(end) && start > 0 && end >= start) {
                                             afDomainRanges.push({ start, end });
                                         }
-                                    }
-                                    if (afDomainRanges.length > 0) {
-                                        // console.log("[ProtHTML] Fallback parsing of 'domains' string yielded:", afDomainRanges);
                                     }
                                 } catch (e) {
                                     console.error("[ProtHTML] Error parsing 'domains' string with regex:", e);
@@ -584,36 +569,6 @@
                     viewerElement.innerHTML = `<p id="structure-viewer-fallback-protein" style="text-align:center; padding-top:50px; color:red;">Failed to load structure: ${error.message}.</p>`;
                 }
                 if (controlsElement) controlsElement.style.display = 'none';
-            }
-        }
-
-        // Helper function to format numbers
-        function formatNumber(value, isInt = false) {
-            const num = parseFloat(value);
-            if (isNaN(num)) return 'N/A';
-            if (isInt) return Math.round(num);
-            return num.toFixed(2);
-        }
-
-        // Helper function to parse location string
-        function parseLocationDisplay(locationString, p1FragName, p2FragName) {
-            if (!locationString || typeof locationString !== 'string') {
-                return `${p1FragName}: N/A<br>${p2FragName}: N/A`;
-            }
-            try {
-                const parsableLocationString = locationString.replace(/'/g, '"');
-                const locationData = JSON.parse(parsableLocationString);
-                const keys = Object.keys(locationData).reduce((acc, k) => {
-                    acc[k.toLowerCase()] = locationData[k];
-                    return acc;
-                }, {});
-
-                const loc1 = keys['protein1'] || keys['chaina'] || keys['chain a'] || 'N/A';
-                const loc2 = keys['protein2'] || keys['chainb'] || keys['chain b'] || 'N/A';
-                return `${p1FragName}: ${loc1}<br>${p2FragName}: ${loc2}`;
-            } catch (e) {
-                console.warn('Failed to parse location string:', locationString, e);
-                return `${p1FragName}: Error<br>${p2FragName}: Error`;
             }
         }
 
@@ -823,40 +778,11 @@
                 rop: { min: 2 }      // rop >= 2 (as per original user request for protein page)
             };
 
-            // Utility function to convert table filters to promiscuity plot criteria
-            function convertTableFiltersToPromiscuityCriteria(activeNumericFilters) { // activeNumericFilters is array from table.getAllFilters()
-                const criteria = {};
-                if (!Array.isArray(activeNumericFilters)) return criteria;
-
-                activeNumericFilters.forEach(filter => {
-                    // filter is { column, min?, max? }
-                    if (filter.column) {
-                        criteria[filter.column] = (val) => {
-                            const numVal = Number(val);
-                            if (isNaN(numVal)) return false;
-
-                            let passes = true;
-                            if (filter.min !== undefined && numVal < filter.min) {
-                                passes = false;
-                            }
-                            if (filter.max !== undefined && numVal > filter.max) {
-                                passes = false;
-                            }
-                            return passes;
-                        };
-                    }
-                });
-                return criteria;
-            }
-
-            // Setup table filter change listener to also update promiscuity plot
             filter.setOnFiltersChanged(async () => {
-                filter.updateActiveFilterDisplay(); // Update active filter tags in UI
-                
-                // Update promiscuity plot
-                updatePromiscuityPlot();
+                filter.updateActiveFilterDisplay();
 
-                // Update chord plot
+                updatePromiscuityPlotWrapper();
+
                 const urlParams = new URLSearchParams(window.location.search);
                 const p1 = decodeURIComponent(urlParams.get('p1') || '');
                 if (p1) {
@@ -864,65 +790,29 @@
                 }
             });
 
-            // Function to update the promiscuity plot based on current filters
-            function updatePromiscuityPlot() {
+                        function updatePromiscuityPlotWrapper() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const p1 = decodeURIComponent(urlParams.get('p1') || '');
 
-                if (!p1 || !window.initPromiscuityPlot) return;
+                if (!p1) return;
 
-                let filterCriteria = {};
-                if (promiscuityUseFilteredData) {
-                    const currentGlobalFilters = filter.getAllFilters();
-                    filterCriteria = convertTableFiltersToPromiscuityCriteria(currentGlobalFilters);
-                }
-
-                window.initPromiscuityPlot(
-                    '.promiscuity-plot-container',
-                    {
-                        proteinName: p1,
-                        filterCriteria: filterCriteria,
-                    }, 
-                    proteinLengthData, 
+                updatePromiscuityPlot(
+                    p1,
+                    promiscuityUseFilteredData,
+                    filter,
+                    proteinLengthData,
                     interfaceData
                 );
             }
 
-            // Setup global controls for promiscuity plots
-            function setupPromiscuityControls() {
-                const placeholder = document.getElementById('promiscuity-controls-placeholder');
-                if (!placeholder) return;
-
-                placeholder.innerHTML = ''; // Clear existing controls
-
-                const controlBar = document.createElement('div');
-                controlBar.className = 'control-bar';
-                controlBar.style.marginBottom = '20px';
-
-                const buttonGroup = document.createElement('div');
-                buttonGroup.className = 'control-button-group';
-
-                const toggleButton = document.createElement('button');
-                toggleButton.type = 'button';
-                toggleButton.className = 'control-button';
-                toggleButton.innerHTML = promiscuityUseFilteredData
-                    ? '<i class="fas fa-list"></i> Show All Data'
-                    : '<i class="fas fa-filter"></i> Show Filtered Data';
-                toggleButton.title = 'Toggle between all and filtered interaction data';
-
-                toggleButton.addEventListener('click', () => {
-                    promiscuityUseFilteredData = !promiscuityUseFilteredData;
-                    toggleButton.innerHTML = promiscuityUseFilteredData
-                        ? '<i class="fas fa-list"></i> Show All Data'
-                        : '<i class="fas fa-filter"></i> Show Filtered Data';
-                    
-                    updatePromiscuityPlot();
-                });
-
-                buttonGroup.appendChild(toggleButton);
-                controlBar.appendChild(buttonGroup);
-                placeholder.appendChild(controlBar);
-            }
+            setupPromiscuityControls(
+                document.getElementById('promiscuity-controls-placeholder'),
+                promiscuityUseFilteredData,
+                updatePromiscuityPlotWrapper,
+                (newState) => {
+                    promiscuityUseFilteredData = newState;
+                }
+            );
 
             // Get protein name from URL
             const urlParams = new URLSearchParams(window.location.search);
@@ -938,12 +828,9 @@
                 // Initialize Chord Plot
                 await initializeChordPlot(p1);
 
-                // Setup controls and draw initial promiscuity plot
-                setupPromiscuityControls();
-                updatePromiscuityPlot();
+                updatePromiscuityPlotWrapper();
 
             } else {
-                // If no protein, clear/hide promiscuity plot and table
                 const promiscuityContainer = document.querySelector('.promiscuity-plot-container');
                 if (promiscuityContainer) promiscuityContainer.innerHTML = '<p style="text-align:center; color:grey; padding-top: 20px;">Protein not specified for plot.</p>';
                 const ppiTableContainer = document.getElementById('ppi-table');
@@ -953,7 +840,6 @@
                 console.warn("Protein p1 not provided, table and promiscuity plot not fully initialized.");
             }
 
-            // Ensure linked section is uncollapsed when navigating via sidebar links
             document.querySelectorAll('.sidebar .sidebar-section ul li a').forEach(link => {
                 link.addEventListener('click', function (event) {
                     const targetId = this.getAttribute('href').substring(1);
@@ -966,7 +852,7 @@
                     }
                 });
             });
-        }); // End DOMContentLoaded
+        });
     </script>
 </body>
 </html>
