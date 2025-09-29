@@ -1,6 +1,4 @@
-// Structure viewer module for 3Dmol.js
-
-function isValidDomainRanges(ranges) {
+function _isValidDomainRanges(ranges) {
     return Array.isArray(ranges) && ranges.length > 0 &&
         ranges.every(r => r && typeof r.start === 'number' && typeof r.end === 'number' &&
             !isNaN(r.start) && !isNaN(r.end) && r.start > 0 && r.end >= r.start);
@@ -32,7 +30,7 @@ function displayStructureInViewer(container, pdbPath, options = {}) {
         surfaceColors
     } = options;
 
-    const useDomainColoring = isValidDomainRanges(domainRangesArray);
+    const useDomainColoring = _isValidDomainRanges(domainRangesArray);
     const fallbackId = "structure-viewer-fallback-protein";
     let fallback = container.querySelector(`#${fallbackId}`) || container.querySelector('p');
     if (!window.$3Dmol) {

@@ -1,7 +1,7 @@
-import { indicesToRanges } from './data.js';
 import { createSvgElement, createProteinLabel, createHoverLabel, createArcPath, 
          createGradient, setupHoverEffect, getArcAngles,
          createDomainPath, calculateChordAngles, createLabelGroup, createChordGroup } from './plot-utility.js';
+import { createInteractionLink } from './table.js';
 
 const palettes = [
   "#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f", "#e5c494", "#b3b3b3",
@@ -55,13 +55,6 @@ async function fetchAllProteinLengths() {
 }
 
 export async function drawChordByPosition(data, containerSelector, opts = {}) {
-  console.log("[ChordPlot] Options received:", {
-    showDomainsOnArcs: opts.showDomainsOnArcs,
-    domainColorMap: opts.domainColorMap,
-    domainRanges: opts.domainRanges,
-    arcColoringMode: opts.arcColoringMode
-  });
-
   if (!Array.isArray(data)) {
     const container = document.querySelector(containerSelector);
     if (container) {
@@ -202,22 +195,6 @@ export async function drawChordByPosition(data, containerSelector, opts = {}) {
   const arcInner = size * 0.32;
   const chordRadius = size * 0;
 
-  function getDomainsForProtein(proteinName) {
-    if (!window.domainPlotInstancesData) return null;
-    
-    for (const instanceId of Object.keys(window.domainPlotInstancesData)) {
-      const instance = window.domainPlotInstancesData[instanceId];
-      if (instance && instance.proteinName === proteinName) {
-        const domains = [
-          ...(instance.alphafoldDomains || []).map(d => ({...d, type: 'alphafold'})),
-          ...(instance.uniprotDomains || []).map(d => ({...d, type: 'uniprot'}))
-        ];
-        return domains;
-      }
-    }
-    return null;
-  }
-
   namesOrdered.forEach(name => {
     const { start, end } = angles[name];
     const domains = getDomainsForProtein(name);
@@ -278,7 +255,7 @@ export async function drawChordByPosition(data, containerSelector, opts = {}) {
 
     const chordAngles = calculateChordAngles(protein1, protein2, res1, res2, angles, seqLens);
     const { label1StartAngle, label1EndAngle, label2StartAngle, label2EndAngle } = 
-      createLabelGroup(chordAngles, arcInner);
+      createLabelGroup(chordAngles);
 
     const [x1s, y1s] = polar(chordAngles.pos1Start, arcInner);
     const [x1e, y1e] = polar(chordAngles.pos1End, arcInner);
@@ -328,8 +305,6 @@ export async function drawChordByPosition(data, containerSelector, opts = {}) {
       createHoverLabel(res2[0], ...polar(label2StartAngle, arcInner), { bold: true }),
       createHoverLabel(res2[1], ...polar(label2EndAngle, arcInner), { bold: true })
     ];
-
-    
   
     let row = data.find(r => {
       const p1 = r.Protein1 || r.protein1;
@@ -353,76 +328,7 @@ export async function drawChordByPosition(data, containerSelector, opts = {}) {
       );
     }) || {};
 
-    const protein1Domain = row.Protein1_Domain || "";
-    const protein2Domain = row.Protein2_Domain || "";
-    const p1Base = protein1;
-    const p2Base = protein2;
-    const p1DomainParts = protein1Domain.split('_F');
-    const f1Id = p1DomainParts.length > 1 ? `F${p1DomainParts[1]}` : '';
-    const p2DomainParts = protein2Domain.split('_F');
-    const f2Id = p2DomainParts.length > 1 ? `F${p2DomainParts[1]}` : '';
-
-    let absLoc = {};
-    if (row.absolute_location && typeof row.absolute_location === 'string') {
-      try {
-        absLoc = JSON.parse(row.absolute_location.replace(/'/g, '"'));
-      } catch {}
-    }
-    const absKeys = Object.keys(absLoc).reduce((acc, k) => { acc[k.toLowerCase()] = absLoc[k]; return acc; }, {});
-    let f1Loc = '';
-    let f2Loc = '';
-    if (absKeys['protein1']) {
-      f1Loc = indicesToRanges(absKeys['protein1']);
-    } else if (absKeys['chaina']) {
-      f1Loc = indicesToRanges(absKeys['chaina']);
-    } else if (absKeys['chain a']) {
-      f1Loc = indicesToRanges(absKeys['chain a']);
-    }
-    if (absKeys['protein2']) {
-      f2Loc = indicesToRanges(absKeys['protein2']);
-    } else if (absKeys['chainb']) {
-      f2Loc = indicesToRanges(absKeys['chainb']);
-    } else if (absKeys['chain b']) {
-      f2Loc = indicesToRanges(absKeys['chain b']);
-    }
-
-    function round2(val) {
-      const num = Number(val);
-      return isNaN(num) ? '' : num.toFixed(2);
-    }
-    const pdockq2 = round2(row.pdockq);
-    const iptm2 = round2(row.iptm);
-    const min_pae2 = round2(row.min_pae);
-    const avg_pae2 = round2(row.avg_pae);
-
-    let relLoc = {};
-    if (row.location && typeof row.location === 'string') {
-      try {
-        relLoc = JSON.parse(row.location.replace(/'/g, '"'));
-      } catch {}
-    }
-    const relKeys = Object.keys(relLoc).reduce((acc, k) => { acc[k.toLowerCase()] = relLoc[k]; return acc; }, {});
-    function getFirstVal(val) {
-      if (Array.isArray(val) && val.length > 0) return Number(val[0]);
-      if (typeof val === 'string') {
-        const match = val.match(/^(\d+)/);
-        if (match) return Number(match[1]);
-      }
-      return undefined;
-    }
-    let absF1 = getFirstVal(absKeys['protein1'] || absKeys['chaina'] || absKeys['chain a']);
-    let absF2 = getFirstVal(absKeys['protein2'] || absKeys['chainb'] || absKeys['chain b']);
-    let relF1 = getFirstVal(relKeys['protein1'] || relKeys['chaina'] || relKeys['chain a']);
-    let relF2 = getFirstVal(relKeys['protein2'] || relKeys['chainb'] || relKeys['chain b']);
-    let f1_shift = '', f2_shift = '';
-    if (typeof absF1 === 'number' && typeof relF1 === 'number') {
-      f1_shift = absF1 - relF1;
-    }
-    if (typeof absF2 === 'number' && typeof relF2 === 'number') {
-      f2_shift = absF2 - relF2;
-    }
-
-    const interactionLink = `interaction.html?&p1=${encodeURIComponent(p1Base)}&p2=${encodeURIComponent(p2Base)}&f1_id=${encodeURIComponent(f1Id)}&f2_id=${encodeURIComponent(f2Id)}&f1_loc=${encodeURIComponent(f1Loc)}&f2_loc=${encodeURIComponent(f2Loc)}&iptm=${encodeURIComponent(iptm2)}&min_pae=${encodeURIComponent(min_pae2)}&avg_pae=${encodeURIComponent(avg_pae2)}&rop=${encodeURIComponent(row.rop)}&pdockq=${encodeURIComponent(pdockq2)}&f1_shift=${encodeURIComponent(f1_shift)}&f2_shift=${encodeURIComponent(f2_shift)}`;
+    const interactionLink = createInteractionLink(row)
 
     path.style.cursor = "pointer";
     path.addEventListener('click', () => {
@@ -437,4 +343,20 @@ export async function drawChordByPosition(data, containerSelector, opts = {}) {
     g.appendChild(interactionGroup);
     chordElements.push(path);
   });
+}
+
+function getDomainsForProtein(proteinName) {
+  if (!window.domainPlotInstancesData) return null;
+  
+  for (const instanceId of Object.keys(window.domainPlotInstancesData)) {
+    const instance = window.domainPlotInstancesData[instanceId];
+    if (instance && instance.proteinName === proteinName) {
+      const domains = [
+        ...(instance.alphafoldDomains || []).map(d => ({...d, type: 'alphafold'})),
+        ...(instance.uniprotDomains || []).map(d => ({...d, type: 'uniprot'}))
+      ];
+      return domains;
+    }
+  }
+  return null;
 }

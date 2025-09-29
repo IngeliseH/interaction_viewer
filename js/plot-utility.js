@@ -1,3 +1,6 @@
+// =============================================================================
+// General SVG Utility Functions
+// =============================================================================
 export function createSvgElement(tag, attributes = {}, textContent = '') {
     const svgNS = "http://www.w3.org/2000/svg";
     const element = document.createElementNS(svgNS, tag);
@@ -10,6 +13,9 @@ export function createSvgElement(tag, attributes = {}, textContent = '') {
     return element;
 }
 
+// =============================================================================
+// Generic Protein Plot Utility Functions
+// =============================================================================
 export function createProteinLabel(value, x, y, { fontSize = 12, textAnchor = "middle", bold = false, angle = 0 } = {}) {
     const label = createSvgElement("text", {
         "x": x,
@@ -44,71 +50,6 @@ export function createHoverLabel(value, x, y, { textAnchor = "middle", bold = fa
     return label;
 }
 
-export function createArcPath(startAngle, endAngle, innerRadius, outerRadius) {
-    const segStartRad = startAngle * Math.PI / 180;
-    const segEndRad = endAngle * Math.PI / 180;
-    const largeArcFlag = endAngle - startAngle <= 180 ? 0 : 1;
-
-    const x1 = Math.cos(segStartRad) * outerRadius;
-    const y1 = Math.sin(segStartRad) * outerRadius;
-    const x2 = Math.cos(segEndRad) * outerRadius;
-    const y2 = Math.sin(segEndRad) * outerRadius;
-    const x3 = Math.cos(segEndRad) * innerRadius;
-    const y3 = Math.sin(segEndRad) * innerRadius;
-    const x4 = Math.cos(segStartRad) * innerRadius;
-    const y4 = Math.sin(segStartRad) * innerRadius;
-
-    return createSvgElement('path', {
-        'd': `M ${x1} ${y1}
-        A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${x2} ${y2}
-        L ${x3} ${y3}
-        A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4}
-        Z`
-    });
-}
-
-export function createChordPath(startPoints, endPoints, controlPoint) {
-    const [x1s, y1s] = startPoints[0];
-    const [x1e, y1e] = startPoints[1];
-    const [x2s, y2s] = endPoints[0];
-    const [x2e, y2e] = endPoints[1];
-    const [cx, cy] = controlPoint;
-
-    return createSvgElement('path', {
-        'd': `M ${x1s} ${y1s}
-        Q ${cx} ${cy} ${x2e} ${y2e}
-        L ${x2s} ${y2s}
-        Q ${cx} ${cy} ${x1e} ${y1e}
-        Z`
-    });
-}
-
-export function createGradient(id, x1, y1, x2, y2, color1, color2) {
-    const gradient = createSvgElement('linearGradient', {
-        'id': id,
-        'gradientUnits': 'userSpaceOnUse',
-        'x1': x1,
-        'y1': y1,
-        'x2': x2,
-        'y2': y2
-    });
-
-    const stop1 = createSvgElement('stop', {
-        'offset': '0%',
-        'stop-color': color1
-    });
-
-    const stop2 = createSvgElement('stop', {
-        'offset': '100%',
-        'stop-color': color2
-    });
-
-    gradient.appendChild(stop1);
-    gradient.appendChild(stop2);
-    
-    return gradient;
-}
-
 export function setupHoverEffect(element, labels, parentGroup = null) {
     element.addEventListener('mouseover', () => {
         element.setAttribute('opacity', '1.0');
@@ -126,6 +67,9 @@ export function setupHoverEffect(element, labels, parentGroup = null) {
     });
 }
 
+// =============================================================================
+// Chord Plot Specific Functions
+// =============================================================================
 export function getArcAngles(names, seqLens, options = {}) {
     const { padAngle = 2, queryProtein = null, expandQuery = false } = options;
     const angles = {};
@@ -170,48 +114,27 @@ export function getArcAngles(names, seqLens, options = {}) {
     return { angles, namesOrdered };
 }
 
-export function createChordGroup(startPoints, endPoints, controlPoint, color, opacity = 0.5) {
-    const path = createChordPath(startPoints, endPoints, controlPoint);
-    path.setAttribute('fill', color);
-    path.setAttribute('opacity', opacity);
-    path.setAttribute('stroke', 'none');
-    path.classList.add('chord-shape');
-    return path;
-}
+export function createArcPath(startAngle, endAngle, innerRadius, outerRadius) {
+    const segStartRad = startAngle * Math.PI / 180;
+    const segEndRad = endAngle * Math.PI / 180;
+    const largeArcFlag = endAngle - startAngle <= 180 ? 0 : 1;
 
-export function createLabelGroup(angles, arcInner, minLabelAngle = 8) {
-    const { pos1Start, pos1End, pos2Start, pos2End } = angles;
-    
-    let label1StartAngle = pos1Start, label1EndAngle = pos1End;
-    if (Math.abs(pos1End - pos1Start) < minLabelAngle) {
-        const mid = (pos1Start + pos1End) / 2;
-        label1StartAngle = mid - minLabelAngle / 2;
-        label1EndAngle = mid + minLabelAngle / 2;
-    }
-    
-    let label2StartAngle = pos2Start, label2EndAngle = pos2End;
-    if (Math.abs(pos2End - pos2Start) < minLabelAngle) {
-        const mid = (pos2Start + pos2End) / 2;
-        label2StartAngle = mid - minLabelAngle / 2;
-        label2EndAngle = mid + minLabelAngle / 2;
-    }
-    
-    return { label1StartAngle, label1EndAngle, label2StartAngle, label2EndAngle };
-}
+    const x1 = Math.cos(segStartRad) * outerRadius;
+    const y1 = Math.sin(segStartRad) * outerRadius;
+    const x2 = Math.cos(segEndRad) * outerRadius;
+    const y2 = Math.sin(segEndRad) * outerRadius;
+    const x3 = Math.cos(segEndRad) * innerRadius;
+    const y3 = Math.sin(segEndRad) * innerRadius;
+    const x4 = Math.cos(segStartRad) * innerRadius;
+    const y4 = Math.sin(segStartRad) * innerRadius;
 
-export function calculateChordAngles(protein1, protein2, res1, res2, angles, seqLens) {
-    const angle1 = angles[protein1];
-    const angle2 = angles[protein2];
-    
-    const arcSpan1 = angle1.end - angle1.start;
-    const arcSpan2 = angle2.end - angle2.start;
-    
-    return {
-        pos1Start: angle1.start + ((res1[0] / seqLens[protein1]) * arcSpan1),
-        pos1End: angle1.start + ((res1[1] / seqLens[protein1]) * arcSpan1),
-        pos2Start: angle2.start + ((res2[0] / seqLens[protein2]) * arcSpan2),
-        pos2End: angle2.start + ((res2[1] / seqLens[protein2]) * arcSpan2)
-    };
+    return createSvgElement('path', {
+        'd': `M ${x1} ${y1}
+        A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${x2} ${y2}
+        L ${x3} ${y3}
+        A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4}
+        Z`
+    });
 }
 
 export function createDomainPath(domain, start, end, seqLen, arcInner, arcOuter, baseColor = '#cccccc') {
@@ -233,3 +156,90 @@ export function createDomainPath(domain, start, end, seqLen, arcInner, arcOuter,
     
     return { path: segPath, start: segStart, end: segEnd };
 }
+
+export function calculateChordAngles(protein1, protein2, res1, res2, angles, seqLens) {
+    const angle1 = angles[protein1];
+    const angle2 = angles[protein2];
+    
+    const arcSpan1 = angle1.end - angle1.start;
+    const arcSpan2 = angle2.end - angle2.start;
+    
+    return {
+        pos1Start: angle1.start + ((res1[0] / seqLens[protein1]) * arcSpan1),
+        pos1End: angle1.start + ((res1[1] / seqLens[protein1]) * arcSpan1),
+        pos2Start: angle2.start + ((res2[0] / seqLens[protein2]) * arcSpan2),
+        pos2End: angle2.start + ((res2[1] / seqLens[protein2]) * arcSpan2)
+    };
+}
+
+export function createChordPath(startPoints, endPoints, controlPoint) {
+    const [x1s, y1s] = startPoints[0];
+    const [x1e, y1e] = startPoints[1];
+    const [x2s, y2s] = endPoints[0];
+    const [x2e, y2e] = endPoints[1];
+    const [cx, cy] = controlPoint;
+
+    return createSvgElement('path', {
+        'd': `M ${x1s} ${y1s}
+        Q ${cx} ${cy} ${x2e} ${y2e}
+        L ${x2s} ${y2s}
+        Q ${cx} ${cy} ${x1e} ${y1e}
+        Z`
+    });
+}
+
+export function createChordGroup(startPoints, endPoints, controlPoint, color, opacity = 0.5) {
+    const path = createChordPath(startPoints, endPoints, controlPoint);
+    path.setAttribute('fill', color);
+    path.setAttribute('opacity', opacity);
+    path.setAttribute('stroke', 'none');
+    path.classList.add('chord-shape');
+    return path;
+}
+
+export function createGradient(id, x1, y1, x2, y2, color1, color2) {
+    const gradient = createSvgElement('linearGradient', {
+        'id': id,
+        'gradientUnits': 'userSpaceOnUse',
+        'x1': x1,
+        'y1': y1,
+        'x2': x2,
+        'y2': y2
+    });
+
+    const stop1 = createSvgElement('stop', {
+        'offset': '0%',
+        'stop-color': color1
+    });
+
+    const stop2 = createSvgElement('stop', {
+        'offset': '100%',
+        'stop-color': color2
+    });
+
+    gradient.appendChild(stop1);
+    gradient.appendChild(stop2);
+    
+    return gradient;
+}
+
+export function createLabelGroup(angles, minLabelAngle = 8) {
+    const { pos1Start, pos1End, pos2Start, pos2End } = angles;
+    
+    let label1StartAngle = pos1Start, label1EndAngle = pos1End;
+    if (Math.abs(pos1End - pos1Start) < minLabelAngle) {
+        const mid = (pos1Start + pos1End) / 2;
+        label1StartAngle = mid - minLabelAngle / 2;
+        label1EndAngle = mid + minLabelAngle / 2;
+    }
+    
+    let label2StartAngle = pos2Start, label2EndAngle = pos2End;
+    if (Math.abs(pos2End - pos2Start) < minLabelAngle) {
+        const mid = (pos2Start + pos2End) / 2;
+        label2StartAngle = mid - minLabelAngle / 2;
+        label2EndAngle = mid + minLabelAngle / 2;
+    }
+    
+    return { label1StartAngle, label1EndAngle, label2StartAngle, label2EndAngle };
+}
+

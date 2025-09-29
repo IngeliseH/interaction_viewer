@@ -214,3 +214,8 @@ function _parseDomainString(domainsRaw) {
         return { alphafoldDomains: [], uniprotDomains: [] };
     }
 }
+
+export function formatNumber(value) {
+    const num = parseFloat(value);
+    return !isNaN(num) ? num.toFixed(2) : value;
+}

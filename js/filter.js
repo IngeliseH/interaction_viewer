@@ -6,6 +6,9 @@ const filterState = {
     searchMode: "includes"
 };
 
+// =============================================================================
+// Public API Functions
+// =============================================================================
 export function setColumnFilters(filters, shouldRender = true) {
     state.setState({ columnFilters: filters || {} });
     if (shouldRender) {
@@ -27,12 +30,7 @@ export function setSearchMode(mode) {
     state.setState({ searchMode: mode });
 }
 
-export function getSearchMode() {
-    return filterState.searchMode;
-}
-
 export function setOnFiltersChanged(fn) { state.setState({ onFiltersChanged: fn }); }
-export function setOnFilteredDataUpdated(fn) { state.setState({ onFilteredDataUpdated: fn }); }
 
 export function updateActiveFilterDisplay() {
     const activeFilters = document.getElementById('activeFilters');
@@ -80,30 +78,10 @@ export function updateActiveFilterDisplay() {
         
         tag.innerHTML = `${text} <span class="remove-tag" data-type="numeric-column" data-column="${filter.column}">&times;</span>`;
         tag.querySelector('.remove-tag').addEventListener('click', () => {
-            clearColumnFilter(filter.column);
+            _clearColumnFilter(filter.column);
         });
         activeFilters.appendChild(tag);
     });
-}
-
-export function applyColumnFilter(column, min, max) {
-    if (!state.columnFilters) state.columnFilters = {};
-    const newFilter = {};
-    const minVal = parseFloat(min);
-    const maxVal = parseFloat(max);
-
-    if (!isNaN(minVal) && min !== '') newFilter.min = minVal;
-    if (!isNaN(maxVal) && max !== '') newFilter.max = maxVal;
-
-    if (Object.keys(newFilter).length > 0) {
-        state.columnFilters[column] = newFilter;
-    } else {
-        delete state.columnFilters[column];
-    }
-    
-    setCurrentPage(1);
-    renderTable();
-    if (typeof state.onFiltersChanged === 'function') state.onFiltersChanged();
 }
 
 export function refineNumericFilter(column, condition, value) {
@@ -126,27 +104,6 @@ export function refineNumericFilter(column, condition, value) {
     setCurrentPage(1);
     renderTable();
     if (typeof state.onFiltersChanged === 'function') state.onFiltersChanged();
-}
-
-export function clearColumnFilter(column) {
-    if (state.columnFilters && column in state.columnFilters) {
-        delete state.columnFilters[column];
-    }
-    setCurrentPage(1);
-    renderTable();
-    if (typeof state.onFiltersChanged === 'function') state.onFiltersChanged();
-}
-
-export function getAllFilters() {
-    const filters = [];
-    if (state.columnFilters && typeof state.columnFilters === 'object') {
-        Object.entries(state.columnFilters).forEach(([col, val]) => {
-            if (val && (val.min !== undefined || val.max !== undefined)) {
-                filters.push({ column: col, min: val.min, max: val.max });
-            }
-        });
-    }
-    return filters;
 }
 
 export function showColumnFilterPopup(column, targetIcon) {
@@ -183,11 +140,11 @@ export function showColumnFilterPopup(column, targetIcon) {
     popup.querySelector('.apply-column-filter').addEventListener('click', () => {
         const min = popup.querySelector('.filter-min').value;
         const max = popup.querySelector('.filter-max').value;
-        applyColumnFilter(column, min === '' ? undefined : min, max === '' ? undefined : max);
+        _applyColumnFilter(column, min === '' ? undefined : min, max === '' ? undefined : max);
         popup.remove();
     });
     popup.querySelector('.clear-column-filter').addEventListener('click', () => {
-        clearColumnFilter(column);
+        _clearColumnFilter(column);
         popup.remove();
     });
     const clickOutsideHandler = (event) => {
@@ -265,4 +222,48 @@ export function applyFiltersToData(data) {
 
 export function getFilteredData() {
     return applyFiltersToData(state.tableData);
+}
+
+export function getAllFilters() {
+    const filters = [];
+    if (state.columnFilters && typeof state.columnFilters === 'object') {
+        Object.entries(state.columnFilters).forEach(([col, val]) => {
+            if (val && (val.min !== undefined || val.max !== undefined)) {
+                filters.push({ column: col, min: val.min, max: val.max });
+            }
+        });
+    }
+    return filters;
+}
+
+// =============================================================================
+// Core Logic
+// =============================================================================
+function _applyColumnFilter(column, min, max) {
+    if (!state.columnFilters) state.columnFilters = {};
+    const newFilter = {};
+    const minVal = parseFloat(min);
+    const maxVal = parseFloat(max);
+
+    if (!isNaN(minVal) && min !== '') newFilter.min = minVal;
+    if (!isNaN(maxVal) && max !== '') newFilter.max = maxVal;
+
+    if (Object.keys(newFilter).length > 0) {
+        state.columnFilters[column] = newFilter;
+    } else {
+        delete state.columnFilters[column];
+    }
+    
+    setCurrentPage(1);
+    renderTable();
+    if (typeof state.onFiltersChanged === 'function') state.onFiltersChanged();
+}
+
+export function _clearColumnFilter(column) {
+    if (state.columnFilters && column in state.columnFilters) {
+        delete state.columnFilters[column];
+    }
+    setCurrentPage(1);
+    renderTable();
+    if (typeof state.onFiltersChanged === 'function') state.onFiltersChanged();
 }

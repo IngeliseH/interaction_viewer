@@ -1,5 +1,3 @@
-// Structure viewer module used in interaction.html and protein_pair.html
-
 function getInteractionViewerOptions() {
     function parseResidueLocations(locStr, shift) {
         if (!locStr) return null;
