@@ -223,6 +223,7 @@
     <div id="footer-placeholder"></div>
 
     <script type="module">
+        import { loadHTMLIncludes } from './js/header-footer.js';
         import * as table from './js/table.js';
         import * as filter from './js/filter.js';
         import * as pagination from './js/pagination.js';
@@ -243,44 +244,6 @@
             "location": "Location of the regions involved in this predicted interaction in each full length protein. This is not necessarily every interacting region between these proteins or these fragments.",
             "relative_location": "The interacting residue ranges within the protein fragments used for prediction. Useful for mapping to the predicted structure."
         });
-
-        // Load header and footer includes
-        async function loadHTMLIncludes() {
-            const headerPlaceholder = document.getElementById('header-placeholder');
-            const footerPlaceholder = document.getElementById('footer-placeholder');
-
-            if (headerPlaceholder) {
-                try {
-                    const response = await fetch('_header.html');
-                    if (response.ok) {
-                        headerPlaceholder.innerHTML = await response.text();
-                        // Set active nav link
-                        document.querySelectorAll('nav a').forEach(link => link.classList.remove('active'));
-                        const navAllPredictions = document.getElementById('navAllPredictions');
-                        if (navAllPredictions) {
-                            navAllPredictions.classList.add('active');
-                        }
-                    } else {
-                        headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
-                    }
-                } catch (error) {
-                    headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
-                }
-            }
-
-            if (footerPlaceholder) {
-                try {
-                    const response = await fetch('_footer.html');
-                    if (response.ok) {
-                        footerPlaceholder.innerHTML = await response.text();
-                    } else {
-                        footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
-                    }
-                } catch (error) {
-                    footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
-                }
-            }
-        }
 
         // --- Sidebar Event Listeners ---
         function setupSidebarEventListeners() {
@@ -439,7 +402,7 @@
 
         // --- Initialize everything ---
         document.addEventListener('DOMContentLoaded', async () => {
-            await loadHTMLIncludes();
+            await loadHTMLIncludes('navAllPredictions');
             initCollapsibleSections(); // Initialize collapsible sidebar sections
             await table.loadTableData();
             pagination.initPagination();  // Initialize pagination module

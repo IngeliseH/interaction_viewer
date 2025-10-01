@@ -241,54 +241,13 @@
         import * as stats from './js/stats.js';
         import { drawChordPlot } from './js/chord-plot.js';
         import { fetchAndParseCSV, loadInteractionData } from './js/data.js';
+        import { loadHTMLIncludes } from './js/header-footer.js';
 
         // --- GLOBAL ACTIVE FILTERS OBJECT ---
         // This object holds all active filters for the page and can be passed to modules/plots.
         window.activeFilters = {};
 
         let chordPlotShowDomains = true; // Default to true
-
-        // Function to load HTML includes
-        async function loadHTMLIncludes() {
-            const headerPlaceholder = document.getElementById('header-placeholder');
-            const footerPlaceholder = document.getElementById('footer-placeholder');
-
-            if (headerPlaceholder) {
-                try {
-                    const response = await fetch('_header.html');
-                    if (response.ok) {
-                        headerPlaceholder.innerHTML = await response.text();
-                        // Set active nav link for protein_pair.html
-                        document.querySelectorAll('nav a').forEach(link => link.classList.remove('active'));
-                        const navProteinPairs = document.getElementById('navProteinPairs');
-                        if (navProteinPairs) {
-                            navProteinPairs.classList.add('active');
-                        }
-                    } else {
-                        console.error('Failed to load header:', response.statusText);
-                        headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
-                    }
-                } catch (error) {
-                    console.error('Error fetching header:', error);
-                    headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
-                }
-            }
-
-            if (footerPlaceholder) {
-                try {
-                    const response = await fetch('_footer.html');
-                    if (response.ok) {
-                        footerPlaceholder.innerHTML = await response.text();
-                    } else {
-                        console.error('Failed to load footer:', response.statusText);
-                        footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
-                    }
-                } catch (error) {
-                    console.error('Error fetching footer:', error);
-                    footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
-                }
-            }
-        }
 
         // Function to update page title and H1 based on URL parameters
         function updatePageTitleWithProteinPair() {
@@ -639,7 +598,7 @@
 
         // Initialize the app when DOM is loaded
         document.addEventListener('DOMContentLoaded', async () => {
-            await loadHTMLIncludes(); // Load header and footer first
+            await loadHTMLIncludes('navProteinPairs'); // Load header and footer first
             updatePageTitleWithProteinPair(); // Update title with protein pair names
             initCollapsibleSections();
 

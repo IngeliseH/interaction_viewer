@@ -281,6 +281,7 @@
         import { fetchAndParseCSV, loadInteractionData } from './js/data.js';
         import { updatePromiscuityPlot, convertTableFiltersToPromiscuityCriteria, setupPromiscuityControls } from './js/promiscuity-plot.js';
         import { initializeAllPlots } from './js/domain-fragment-plot.js';
+        import { loadHTMLIncludes } from './js/header-footer.js';
 
         // --- GLOBAL ACTIVE FILTERS OBJECT ---
         window.activeFilters = {};
@@ -288,46 +289,6 @@
         let chordPlotShowDomains = true;
         let chordPlotExpandQuery = false;
         let promiscuityUseFilteredData = true;
-
-        async function loadHTMLIncludes() {
-            const headerPlaceholder = document.getElementById('header-placeholder');
-            const footerPlaceholder = document.getElementById('footer-placeholder');
-
-            if (headerPlaceholder) {
-                try {
-                    const response = await fetch('_header.html');
-                    if (response.ok) {
-                        headerPlaceholder.innerHTML = await response.text();
-                        document.querySelectorAll('nav a').forEach(link => link.classList.remove('active'));
-                        const navProteinPairs = document.getElementById('navProteins');
-                        if (navProteinPairs) {
-                            navProteinPairs.classList.add('active');
-                        }
-                    } else {
-                        console.error('Failed to load header:', response.statusText);
-                        headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
-                    }
-                } catch (error) {
-                    console.error('Error fetching header:', error);
-                    headerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading header.</p>';
-                }
-            }
-
-            if (footerPlaceholder) {
-                try {
-                    const response = await fetch('_footer.html');
-                    if (response.ok) {
-                        footerPlaceholder.innerHTML = await response.text();
-                    } else {
-                        console.error('Failed to load footer:', response.statusText);
-                        footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
-                    }
-                } catch (error) {
-                    console.error('Error fetching footer:', error);
-                    footerPlaceholder.innerHTML = '<p style="color:red; text-align:center;">Error loading footer.</p>';
-                }
-            }
-        }
 
         function updatePageTitleWithProteinPair() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -692,7 +653,7 @@
 
         // --- DOMContentLoaded ---
         document.addEventListener('DOMContentLoaded', async () => {
-            await loadHTMLIncludes();
+            await loadHTMLIncludes('navProteins');
 
             // --- Fetch and cache data for the page ---
             const proteinLengthData = await fetchAndParseCSV('all_fragments_2025.06.04.csv');
