@@ -71,22 +71,30 @@ export function setupHoverEffect(element, labels, parentGroup = null) {
 // Chord Plot Specific Functions
 // =============================================================================
 export function getArcAngles(names, seqLens, options = {}) {
-    const { padAngle = 2, queryProtein = null, expandQuery = false } = options;
+    const { padAngle = 2, queryProteins = [], expandQuery = false } = options;
     const angles = {};
     let currentAngle = 0;
 
     let namesOrdered = [...names];
-    if (queryProtein && names.length > 1 && names.includes(queryProtein)) {
-        namesOrdered = [queryProtein, ...names.filter(n => n !== queryProtein)];
+    if (queryProteins.length > 0) {
+        namesOrdered = [
+            ...queryProteins.filter(p => names.includes(p)),
+            ...names.filter(n => !queryProteins.includes(n))
+        ];
     }
 
     let arcFractions = {};
-    if (expandQuery && queryProtein && namesOrdered[0] === queryProtein && namesOrdered.length > 1) {
-        arcFractions[queryProtein] = 0.6;
-        const rest = 1 - arcFractions[queryProtein];
-        const nOthers = namesOrdered.length - 1;
-        namesOrdered.slice(1).forEach(name => {
-            arcFractions[name] = rest / nOthers;
+    if (expandQuery && queryProteins.length > 0 && namesOrdered.length > queryProteins.length) {
+        const queryFraction = 0.6;
+        const restFraction = 1 - queryFraction;
+        const nOthers = namesOrdered.length - queryProteins.length;
+
+        queryProteins.forEach(query => {
+            arcFractions[query] = queryFraction / queryProteins.length;
+        });
+
+        namesOrdered.filter(name => !queryProteins.includes(name)).forEach(name => {
+            arcFractions[name] = restFraction / nOthers;
         });
     } else {
         const totalLen = Object.values(seqLens).reduce((sum, len) => sum + len, 0);
@@ -96,9 +104,9 @@ export function getArcAngles(names, seqLens, options = {}) {
     }
 
     let angleOffset = 0;
-    if (queryProtein && namesOrdered[0] === queryProtein) {
-        const arcSpan = arcFractions[queryProtein] * (360 - padAngle * names.length);
-        angleOffset = -90 - arcSpan / 2;
+    if (queryProteins.length > 0) {
+        const querySpan = queryProteins.reduce((sum, query) => sum + arcFractions[query], 0) * (360 - padAngle * names.length);
+        angleOffset = -90 - querySpan / 2;
     }
 
     currentAngle = angleOffset;
@@ -172,7 +180,7 @@ export function calculateChordAngles(protein1, protein2, res1, res2, angles, seq
     };
 }
 
-export function createChordPath(startPoints, endPoints, controlPoint) {
+export function createChordGroup(startPoints, endPoints, controlPoint, color, opacity = 0.5) {
     const [x1s, y1s] = startPoints[0];
     const [x1e, y1e] = startPoints[1];
     const [x2s, y2s] = endPoints[0];
@@ -184,17 +192,11 @@ export function createChordPath(startPoints, endPoints, controlPoint) {
         Q ${cx} ${cy} ${x2e} ${y2e}
         L ${x2s} ${y2s}
         Q ${cx} ${cy} ${x1e} ${y1e}
-        Z`
+        Z`,
+        'fill': color,
+        'opacity': opacity,
+        'stroke': 'none'
     });
-}
-
-export function createChordGroup(startPoints, endPoints, controlPoint, color, opacity = 0.5) {
-    const path = createChordPath(startPoints, endPoints, controlPoint);
-    path.setAttribute('fill', color);
-    path.setAttribute('opacity', opacity);
-    path.setAttribute('stroke', 'none');
-    path.classList.add('chord-shape');
-    return path;
 }
 
 export function createGradient(id, x1, y1, x2, y2, color1, color2) {

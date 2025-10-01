@@ -1,5 +1,5 @@
 import { fetchProteinData } from './data.js';
-import { createSvgElement, createProteinLabel, createHoverLabel, setupHoverEffect } from './plot-utility.js';
+import { createSvgElement, createProteinLabel, createHoverLabel } from './plot-utility.js';
 
 let _plotInstances = {};
 

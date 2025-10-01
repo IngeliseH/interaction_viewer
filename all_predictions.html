@@ -227,7 +227,7 @@
         import * as filter from './js/filter.js';
         import * as pagination from './js/pagination.js';
         import * as stats from './js/stats.js';
-        import { drawChordByPosition } from './js/chord-plot.js';
+        import { drawChordPlot } from './js/chord-plot.js';
 
         // Set up column descriptions for info tooltips
         table.setColumnDescriptions({
@@ -343,21 +343,24 @@
         async function initializeChordPlot() {
             const containerSelector = '.chord-plot-container';
             const containerEl = document.querySelector(containerSelector);
-            if (!containerEl) return;
-
+            if (!containerEl)                 return;
+            
             containerEl.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">Loading interaction data for chord plot...</p>`;
 
             try {
-                // table data is already loaded.
-                const filteredData = filter.getFilteredData ? filter.getFilteredData() : [];
+                const allData = await table.loadTableData();
+                const filteredData = filter.getFilteredData ? filter.getFilteredData() : allData;
 
-                await drawChordByPosition(filteredData, containerSelector, {
+                if (!filteredData || filteredData.length === 0) {
+                    containerEl.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">No data available for chord plot.</p>`;
+                    return;
+                }
+
+                await drawChordPlot(filteredData, containerSelector, {
                     size: 500,
-                    queryProtein: null, // No query protein on index page
-                    coloringMode: 'gradient', // Use the new gradient mode
-                    showDomainsOnArcs: false, // No domain data available on this page
-                    domainColorMap: null,
-                    domainRanges: null,
+                    queryProteins: [],
+                    coloringMode: 'gradient',
+                    showDomainsOnArcs: false,
                     expandQuery: false
                 });
 

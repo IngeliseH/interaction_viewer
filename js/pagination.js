@@ -13,6 +13,9 @@ export function setUpdatePaginationUI(fn) {
 
 export function initPagination() {
     setUpdatePaginationUI(updatePaginationControls);
+
+    const totalRows = state.tableData.length;
+    updatePaginationControls(totalRows);
 }
 
 export function updatePaginationUI(totalItems) {

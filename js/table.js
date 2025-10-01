@@ -40,6 +40,11 @@ export async function loadTableData() {
         
         setProteinNameToAccessionMap(accessionMap);
         setProteinNameToCategoryMap(categoryMap);
+
+        // Ensure pagination UI is updated after data is loaded
+        if (state.updatePaginationUI) {
+            state.updatePaginationUI(interactions.length);
+        }
         
         return interactions;
     } catch (error) {

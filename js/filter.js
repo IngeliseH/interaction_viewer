@@ -33,7 +33,7 @@ export function setSearchMode(mode) {
 export function setOnFiltersChanged(fn) { state.setState({ onFiltersChanged: fn }); }
 
 export function updateActiveFilterDisplay() {
-    const activeFilters = document.getElementById('activeFilters');
+    const activeFilters = document.getElementById('active-filters');
     if (!activeFilters) return;
     activeFilters.innerHTML = '';
 

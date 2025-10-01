@@ -277,7 +277,7 @@
         import * as filter from './js/filter.js';
         import * as pagination from './js/pagination.js';
         import * as stats from './js/stats.js';
-        import { drawChordByPosition } from './js/chord-plot.js';
+        import { drawChordPlot } from './js/chord-plot.js';
         import { fetchAndParseCSV, loadInteractionData } from './js/data.js';
         import { updatePromiscuityPlot, convertTableFiltersToPromiscuityCriteria, setupPromiscuityControls } from './js/promiscuity-plot.js';
         import { initializeAllPlots } from './js/domain-fragment-plot.js';
@@ -617,13 +617,11 @@
                             }
                         });
 
-                        await drawChordByPosition(filteredData, containerSelector, {
+                        await drawChordPlot(filteredData, containerSelector, {
                             size: 500,
-                            queryProtein: proteinName,
+                            queryProteins: [proteinName],
                             coloringMode: 'byPartner',
                             showDomainsOnArcs: chordPlotShowDomains,
-                            domainColorMap,
-                            domainRanges,
                             arcColoringMode: 'domains',
                             expandQuery: chordPlotExpandQuery
                         });
@@ -631,13 +629,11 @@
                         setTimeout(() => tryDrawChordPlotWithDomains(attempt + 1), 100);
                     } else {
                         // Fallback
-                        await drawChordByPosition(filteredData, containerSelector, {
+                        await drawChordPlot(filteredData, containerSelector, {
                             size: 500,
-                            queryProtein: proteinName,
+                            queryProteins: [proteinName],
                             coloringMode: 'byPartner',
                             showDomainsOnArcs: chordPlotShowDomains,
-                            domainColorMap: null,
-                            domainRanges: null,
                             expandQuery: chordPlotExpandQuery
                         });
                     }
@@ -746,7 +742,7 @@
                     const urlParams = new URLSearchParams(window.location.search);
                     const p1 = decodeURIComponent(urlParams.get('p1') || '');
                     if (p1) {
-                        // Only change: pass expandQuery option to drawChordByPosition
+                        // Only change: pass expandQuery option to drawChordPlot
                         await initializeChordPlot(p1);
                     }
                 });
@@ -831,5 +827,5 @@
             });
         });
     </script>
-</body>
+    </body>
 </html>

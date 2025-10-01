@@ -239,7 +239,7 @@
         import * as filter from './js/filter.js';
         import * as pagination from './js/pagination.js';
         import * as stats from './js/stats.js';
-        import { drawChordByPosition } from './js/chord-plot.js';
+        import { drawChordPlot } from './js/chord-plot.js';
         import { fetchAndParseCSV, loadInteractionData } from './js/data.js';
 
         // --- GLOBAL ACTIVE FILTERS OBJECT ---
@@ -366,16 +366,15 @@
 
             // Wait for domain plot globals to be available before drawing chord plot
             async function tryDrawChordPlotWithDomains(attempt = 0) {
-                const arcColoringMode = window.location.pathname.endsWith('protein_pair.html') ? 'greyOnly' : 'distinct';
+                const arcColoringMode = 'greyOnly';
                 try {
-                    await drawChordByPosition(mappedData, containerSelector, {
+                    await drawChordPlot(mappedData, containerSelector, {
                         size: 500,
                         proteinNamesForEmptyMessage: proteins.join(' & '),
                         coloringMode: 'varied',
                         showDomainsOnArcs: chordPlotShowDomains,
-                        domainColorMap: window.domainPlot_domainBaseIdToColor,
-                        domainRanges: window.domainPlotInstancesData,
-                        arcColoringMode: arcColoringMode
+                        arcColoringMode: arcColoringMode,
+                        queryProteins: [protein1Name, protein2Name]
                     });
                 } catch (error) {
                     console.error('Error initializing chord plot:', error);
