@@ -43,7 +43,7 @@ export function clearPromiscuityHighlight(containerSelector = null) {
     highlightPromiscuityResidues(null, null, containerSelector);
 }
 
-export function updatePromiscuityPlot(proteinName, promiscuityUseFilteredData, filter, proteinLengthData, interfaceData, containerSelector = '.promiscuity-plot-container') {
+export function updatePromiscuityPlot(proteinName, promiscuityUseFilteredData, filter, proteinLengthData, interfaceData, containerSelector = '.promiscuity-plot-container', options = {}) {
     if (!proteinName || !window.initPromiscuityPlot) return;
 
     const container = document.querySelector(containerSelector);
@@ -63,6 +63,7 @@ export function updatePromiscuityPlot(proteinName, promiscuityUseFilteredData, f
         {
             proteinName: proteinName,
             filterCriteria: filterCriteria,
+            interactionRegion: options.interactionRegion
         }, 
         proteinLengthData, 
         interfaceData
@@ -245,7 +246,7 @@ function _drawPromiscuityBasePlot(proteinName, proteinLength, container, options
     if (Array.isArray(options.interactionRegion)) {
         options.interactionRegion.forEach(region => {
             if (region && typeof region.start === "number" && typeof region.end === "number" && region.start >= 1 && region.end <= proteinLength) {
-                const x = ((region.start - 1) / proteinLength) * plotWidth;
+                                const x = ((region.start - 1) / proteinLength) * plotWidth;
                 const width = ((region.end - region.start + 1) / proteinLength) * plotWidth;
                 const highlightRect = createSvgElement("rect", {
                     "x": x,

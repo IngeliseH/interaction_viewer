@@ -574,72 +574,54 @@
 
                 const filteredData = filter.getFilteredData ? filter.getFilteredData() : [];
 
-                let domainColorMap = null;
-                let domainRanges = null;
+                if (
+                    window.domainPlot_domainBaseIdToColor &&
+                    window.domainPlotInstancesData &&
+                    Object.keys(window.domainPlotInstancesData).length > 0
+                ) {
+                    const domainColorMap = { ...window.domainPlot_domainBaseIdToColor };
+                    const domainRanges = {};
+                    const proteinsInPlot = [...new Set(filteredData.flatMap(d => [d.Protein1, d.Protein2]))];
 
-                async function tryDrawChordPlotWithDomains(attempt = 0) {
-                    if (
-                        window.domainPlot_domainBaseIdToColor &&
-                        window.domainPlotInstancesData &&
-                        Object.keys(window.domainPlotInstancesData).length > 0
-                    ) {
-                        domainColorMap = { ...window.domainPlot_domainBaseIdToColor };
-                        domainRanges = {};
-                        const proteinsInPlot = [...new Set(filteredData.flatMap(d => [d.Protein1, d.Protein2]))];
-
-                        proteinsInPlot.forEach(pname => {
-                            let instance = null;
-                            for (const k of Object.keys(window.domainPlotInstancesData)) {
-                                const inst = window.domainPlotInstancesData[k];
-                                if (inst && inst.proteinName === pname) {
-                                    instance = inst;
-                                    break;
-                                }
+                    proteinsInPlot.forEach(pname => {
+                        let instance = null;
+                        for (const k of Object.keys(window.domainPlotInstancesData)) {
+                            const inst = window.domainPlotInstancesData[k];
+                            if (inst && inst.proteinName === pname) {
+                                instance = inst;
+                                break;
                             }
-                            if (instance) {
-                                const otherD = (instance.otherDomains || []).map(d => ({...d, type: 'other'}));
-                                const afD = (instance.alphafoldDomains || []).map(d => ({...d, type: 'alphafold'}));
-                                const allD = [...otherD, ...afD];
+                        }
+                        if (instance) {
+                            const otherD = (instance.otherDomains || []).map(d => ({...d, type: 'other'}));
+                            const afD = (instance.alphafoldDomains || []).map(d => ({...d, type: 'alphafold'}));
+                            const allD = [...otherD, ...afD];
 
-                                if (allD.length > 0) {
-                                    domainRanges[pname] = allD.map(domain => {
-                                        let baseId = domain.id;
-                                        if (domain.type === 'other') {
-                                            const underscoreIndex = baseId.lastIndexOf('_');
-                                            if (underscoreIndex > -1 && /^\d+$/.test(baseId.substring(underscoreIndex + 1))) {
-                                                baseId = baseId.substring(0, underscoreIndex);
-                                            }
-                                            baseId = baseId.replace(/_/g, ' ');
+                            if (allD.length > 0) {
+                                domainRanges[pname] = allD.map(domain => {
+                                    let baseId = domain.id;
+                                    if (domain.type === 'other') {
+                                        const underscoreIndex = baseId.lastIndexOf('_');
+                                        if (underscoreIndex > -1 && /^\d+$/.test(baseId.substring(underscoreIndex + 1))) {
+                                            baseId = baseId.substring(0, underscoreIndex);
                                         }
-                                        return { ...domain, baseId };
-                                    });
-                                }
+                                        baseId = baseId.replace(/_/g, ' ');
+                                    }
+                                    return { ...domain, baseId };
+                                });
                             }
-                        });
+                        }
+                    });
 
-                        await drawChordPlot(filteredData, containerSelector, {
-                            size: 500,
-                            queryProteins: [proteinName],
-                            coloringMode: 'byPartner',
-                            showDomainsOnArcs: chordPlotShowDomains,
-                            arcColoringMode: 'domains',
-                            expandQuery: chordPlotExpandQuery
-                        });
-                    } else if (attempt < 10) {
-                        setTimeout(() => tryDrawChordPlotWithDomains(attempt + 1), 100);
-                    } else {
-                        // Fallback
-                        await drawChordPlot(filteredData, containerSelector, {
-                            size: 500,
-                            queryProteins: [proteinName],
-                            coloringMode: 'byPartner',
-                            showDomainsOnArcs: chordPlotShowDomains,
-                            expandQuery: chordPlotExpandQuery
-                        });
-                    }
+                    await drawChordPlot(filteredData, containerSelector, {
+                        size: 500,
+                        queryProteins: [proteinName],
+                        coloringMode: 'byPartner',
+                        showDomainsOnArcs: chordPlotShowDomains,
+                        arcColoringMode: 'domains',
+                        expandQuery: chordPlotExpandQuery
+                    });
                 }
-                await tryDrawChordPlotWithDomains();
-
             } catch (error) {
                 console.error('Error initializing chord plot:', error);
                 containerEl.innerHTML = `<p style="text-align:center; color:red; padding-top: 20px;">Could not load chord plot: ${error.message}</p>`;
