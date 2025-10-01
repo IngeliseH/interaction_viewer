@@ -8,3 +8,10 @@
 .promiscuity-plot-container {
     min-height: 100px;
 }
+
+.chord-plot-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+}

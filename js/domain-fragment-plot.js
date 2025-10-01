@@ -59,7 +59,7 @@ async function initializePlotInstance(instanceId, proteinName, selectorsConfig) 
     _drawPlot(instanceId);
 }
 
-async function initializeAllPlots() {
+export async function initializeAllPlots() {
     const urlParams = new URLSearchParams(window.location.search);
     const p1 = decodeURIComponent(urlParams.get('p1') || '');
     const p2 = decodeURIComponent(urlParams.get('p2') || '');
@@ -585,25 +585,25 @@ function _renderFragments(svgGroup, fragments, config) {
 // Global Controls
 // =============================================================================
 function _updateGlobalPlotControlsVisualState() {
-    const uniprotDomainsBtn = document.querySelector('.global-uniprotDomainsBtn');
-    const alphafoldDomainsBtn = document.querySelector('.global-alphafoldDomainsBtn');
-    const fragmentsBtn = document.querySelector('.global-fragmentsBtn');
+    const uniprotDomainsButton = document.querySelector('.global-uniprot-domains-button');
+    const alphafoldDomainsButton = document.querySelector('.global-alphafold-domains-button');
+    const fragmentsButton = document.querySelector('.global-fragments-button');
 
-    if (uniprotDomainsBtn) {
-        uniprotDomainsBtn.classList.toggle('active', _globalPlotToggleStates.showUniprotDomains);
+    if (uniprotDomainsButton) {
+        uniprotDomainsButton.classList.toggle('active', _globalPlotToggleStates.showUniprotDomains);
     }
-    if (alphafoldDomainsBtn) {
-        alphafoldDomainsBtn.classList.toggle('active', _globalPlotToggleStates.showAlphafoldDomains);
+    if (alphafoldDomainsButton) {
+        alphafoldDomainsButton.classList.toggle('active', _globalPlotToggleStates.showAlphafoldDomains);
     }
-    if (fragmentsBtn) {
-        fragmentsBtn.classList.toggle('active', _globalPlotToggleStates.showFragments);
+    if (fragmentsButton) {
+        fragmentsButton.classList.toggle('active', _globalPlotToggleStates.showFragments);
     }
 }
 
 function _setupGlobalPlotControls() {
-    const uniprotDomainsBtn = document.querySelector('.global-uniprotDomainsBtn');
-    const alphafoldDomainsBtn = document.querySelector('.global-alphafoldDomainsBtn');
-    const fragmentsBtn = document.querySelector('.global-fragmentsBtn');
+    const uniprotDomainsButton = document.querySelector('.global-uniprot-domains-button');
+    const alphafoldDomainsButton = document.querySelector('.global-alphafold-domains-button');
+    const fragmentsButton = document.querySelector('.global-fragments-button');
 
     const redrawAllActivePlots = () => {
         Object.keys(_plotInstances).forEach(id => {
@@ -613,31 +613,31 @@ function _setupGlobalPlotControls() {
         });
     };
 
-    if (uniprotDomainsBtn && !uniprotDomainsBtn.dataset.handlerAttached) {
-        uniprotDomainsBtn.addEventListener('click', () => {
+    if (uniprotDomainsButton && !uniprotDomainsButton.dataset.handlerAttached) {
+        uniprotDomainsButton.addEventListener('click', () => {
             _globalPlotToggleStates.showUniprotDomains = !_globalPlotToggleStates.showUniprotDomains;
             _updateGlobalPlotControlsVisualState();
             redrawAllActivePlots();
         });
-        uniprotDomainsBtn.dataset.handlerAttached = 'true';
+        uniprotDomainsButton.dataset.handlerAttached = 'true';
     }
 
-    if (alphafoldDomainsBtn && !alphafoldDomainsBtn.dataset.handlerAttached) {
-        alphafoldDomainsBtn.addEventListener('click', () => {
+    if (alphafoldDomainsButton && !alphafoldDomainsButton.dataset.handlerAttached) {
+        alphafoldDomainsButton.addEventListener('click', () => {
             _globalPlotToggleStates.showAlphafoldDomains = !_globalPlotToggleStates.showAlphafoldDomains;
             _updateGlobalPlotControlsVisualState();
             redrawAllActivePlots();
         });
-        alphafoldDomainsBtn.dataset.handlerAttached = 'true';
+        alphafoldDomainsButton.dataset.handlerAttached = 'true';
     }
 
-    if (fragmentsBtn && !fragmentsBtn.dataset.handlerAttached) {
-        fragmentsBtn.addEventListener('click', () => {
+    if (fragmentsButton && !fragmentsButton.dataset.handlerAttached) {
+        fragmentsButton.addEventListener('click', () => {
             _globalPlotToggleStates.showFragments = !_globalPlotToggleStates.showFragments;
             _updateGlobalPlotControlsVisualState();
             redrawAllActivePlots();
         });
-        fragmentsBtn.dataset.handlerAttached = 'true';
+        fragmentsButton.dataset.handlerAttached = 'true';
     }
 }
 

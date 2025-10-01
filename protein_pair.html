@@ -56,13 +56,13 @@
                                 <!-- Global controls for domain/fragment plots -->
                                 <div class="control-bar global-domain-fragment-plot-controls" style="margin-bottom: 20px;">
                                     <div class="control-button-group">
-                                        <button type="button" class="global-uniprotDomainsBtn control-button" title="Toggle UniProt Domains">
+                                        <button type="button" class="global-uniprot-domains-button control-button" title="Toggle UniProt Domains">
                                             <i class="fas fa-layer-group"></i> Domains
                                         </button>
-                                        <button type="button" class="global-alphafoldDomainsBtn control-button" title="Toggle AlphaFold Domains">
+                                        <button type="button" class="global-alphafold-domains-button control-button" title="Toggle AlphaFold Domains">
                                             <i class="fas fa-brain"></i> AlphaFold Domains
                                         </button>
-                                        <button type="button" class="global-fragmentsBtn control-button" title="Toggle Fragments">
+                                        <button type="button" class="global-fragments-button control-button" title="Toggle Fragments">
                                             <i class="fas fa-puzzle-piece"></i> Fragments
                                         </button>
                                     </div>
@@ -99,7 +99,7 @@
                             <div class="content-section-content">
                                 <div class="active-filters">
                                     <h3>Active Filters:</h3>
-                                    <div class="filter-tags" id="activeFilters"></div>
+                                    <div class="filter-tags" id="active-filters"></div>
                                 </div>
                                 <div class="table-container">
                                     <table id="dataTable">
@@ -182,7 +182,7 @@
                                         </button>
                                     </div>
                                 </div>
-                                <div id="chord-plot-container" style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+                                <div class="chord-plot-container">
                                     <!-- Chord plot will be rendered here -->
                             </div>
                         </div>
@@ -342,43 +342,11 @@
                 }
             }
         }
-        
-        // Helper function to format numbers
-        function formatNumber(value, isInt = false) {
-            const num = parseFloat(value);
-            if (isNaN(num)) return 'N/A';
-            if (isInt) return Math.round(num);
-            return num.toFixed(2);
-        }
-
-        // Helper function to parse location string for display
-        function parseLocationDisplay(locationString, p1FragName, p2FragName) {
-            if (!locationString || typeof locationString !== 'string') {
-                return `${p1FragName}: N/A<br>${p2FragName}: N/A`;
-            }
-            try {
-                const parsableLocationString = locationString.replace(/'/g, '"');
-                const locationData = JSON.parse(parsableLocationString);
-                const keys = Object.keys(locationData).reduce((acc, k) => {
-                    acc[k.toLowerCase()] = locationData[k];
-                    return acc;
-                }, {});
-
-                const loc1 = keys['protein1'] || keys['chaina'] || keys['chain a'] || 'N/A';
-                const loc2 = keys['protein2'] || keys['chainb'] || keys['chain b'] || 'N/A';
-                
-                // In protein_pair.html, p1FragName and p2FragName are from the CSV row (row.Protein1_Domain, row.Protein2_Domain)
-                return `${p1FragName}: ${loc1}<br>${p2FragName}: ${loc2}`;
-            } catch (e) {
-                console.warn('Failed to parse location string:', locationString, e);
-                return `${p1FragName}: Error<br>${p2FragName}: Error`;
-            }
-        }
 
         // --- Chord Plot ---
         // Initialize chord plot with grey-only coloring for protein pair page
         async function initializeChordPlot(data, protein1Name, protein2Name) {
-            const containerSelector = '#chord-plot-container';
+            const containerSelector = '.chord-plot-container';
             const containerEl = document.querySelector(containerSelector);
             if (!containerEl) return;
 

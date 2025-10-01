@@ -235,11 +235,24 @@ export async function drawChordByPosition(data, containerSelector, opts = {}) {
 
     const manyProteins = namesOrdered.length > 20;
     const midAngle = (start + end) / 2;
-    const labelRadius = arcOuter + (manyProteins ? 25 : 20);
+    const labelRadius = arcOuter + (manyProteins ? 7 : 15);
 
     const [lx, ly] = polar(midAngle, labelRadius);
     const labelAngle = manyProteins ? (midAngle > 90 && midAngle < 270 ? midAngle + 180 : midAngle) : 0;
-    const label = createProteinLabel(name, lx, ly, { angle: labelAngle, fontSize: manyProteins ? 12 : 15 });
+    let textAnchor;
+    if (manyProteins) {
+      textAnchor = midAngle > 90 && midAngle < 270 ? 'end' : 'start';
+    } else {
+      if (midAngle > -67.5 && midAngle <= 67.5) {
+        textAnchor = 'start';
+      } else if (midAngle > 112.5 && midAngle <= 247.5) {
+        textAnchor = 'end';
+      } else {
+        textAnchor = 'middle';
+      }
+    }
+    console.log({ name, midAngle, labelRadius, textAnchor, manyProteins });
+    const label = createProteinLabel(name, lx, ly, { angle: labelAngle, fontSize: manyProteins ? 12 : 15, textAnchor: textAnchor });
     g.appendChild(label);
 
     const [ex, ey] = polar(end, arcOuter + 1);
