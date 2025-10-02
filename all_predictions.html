@@ -229,6 +229,7 @@
         import * as pagination from './js/pagination.js';
         import * as stats from './js/stats.js';
         import { drawChordPlot } from './js/chord-plot.js';
+        import { initCollapsibleSectionsSimple } from './js/collapsible-section.js';
 
         // Set up column descriptions for info tooltips
         table.setColumnDescriptions({
@@ -259,8 +260,8 @@
             // Sidebar filter apply
             document.getElementById('applyFilter').addEventListener('click', () => {
                 const column = document.getElementById('filterColumn').value;
-                const condition = document.getElementById('filterCondition').value; // 'above' or 'below'
-                const value = document.getElementById('filterValue').value; // Keep as string for refineNumericFilter
+                const condition = document.getElementById('filterCondition').value;
+                const value = document.getElementById('filterValue').value;
                 if (!column || value.trim() === '') {
                     alert('Please select a valid column and enter a numerical value');
                     return;
@@ -333,29 +334,6 @@
             }
         }
 
-        // --- Collapsible sections ---
-        function initCollapsibleSections() {
-            document.querySelectorAll('.sidebar-section .sidebar-title').forEach(title => {
-                title.addEventListener('click', function() {
-                    const sidebarSection = this.closest('.sidebar-section');
-                    if (sidebarSection) {
-                        sidebarSection.classList.toggle('collapsed');
-                        const icon = this.querySelector('i.fas.fa-chevron-up, i.fas.fa-chevron-down');
-                        if (icon) {
-                            // Toggle chevron icon classes
-                            if (sidebarSection.classList.contains('collapsed')) {
-                                icon.classList.remove('fa-chevron-up');
-                                icon.classList.add('fa-chevron-down');
-                            } else {
-                                icon.classList.remove('fa-chevron-down');
-                                icon.classList.add('fa-chevron-up');
-                            }
-                        }
-                    }
-                });
-            });
-        }
-
         // --- Protein Search ---
         function setupProteinSearch() {
             const proteinSearch = document.getElementById('proteinSearch');
@@ -400,12 +378,11 @@
             });
         }
 
-        // --- Initialize everything ---
         document.addEventListener('DOMContentLoaded', async () => {
             await loadHTMLIncludes('navAllPredictions');
-            initCollapsibleSections(); // Initialize collapsible sidebar sections
+            initCollapsibleSectionsSimple();
             await table.loadTableData();
-            pagination.initPagination();  // Initialize pagination module
+            pagination.initPagination();
             
             // Set UI update hooks and filter change callback first
             stats.setUpdateStatsUI(updateStats);
@@ -427,7 +404,7 @@
             };
             filter.setColumnFilters(initialNumericFilters);
             
-            table.initTable(); // Initializes column headers, etc.
+            table.initTable();
             setupSidebarEventListeners();
         });
     </script>

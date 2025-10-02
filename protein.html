@@ -282,6 +282,7 @@
         import { updatePromiscuityPlot, convertTableFiltersToPromiscuityCriteria, setupPromiscuityControls } from './js/promiscuity-plot.js';
         import { initializeAllPlots } from './js/domain-fragment-plot.js';
         import { loadHTMLIncludes } from './js/header-footer.js';
+        import { initCollapsibleSectionsComplex } from './js/collapsible-section.js';
 
         // --- GLOBAL ACTIVE FILTERS OBJECT ---
         window.activeFilters = {};
@@ -298,8 +299,6 @@
             const f2_id = decodeURIComponent(urlParams.get('f2_id') || '');
 
             const pageTitleElement = document.querySelector('.page-main-heading');
-            const fragmentImageElement = document.getElementById('fragment-image');
-            const fragmentImageCaptionElement = document.getElementById('fragment-image-caption');
 
             if (p1) {
                 if (pageTitleElement) {
@@ -313,20 +312,6 @@
                     document.title = p1;
                 }
                 loadAndDisplayProteinInfo(p1);
-
-                if (fragmentImageElement) {
-                    fragmentImageElement.src = `fragment_images/${p1}fragments.png`;
-                    fragmentImageElement.alt = `${p1} fragments`;
-                    fragmentImageElement.onerror = function () {
-                        this.style.display = 'none';
-                        if (fragmentImageCaptionElement) {
-                            fragmentImageCaptionElement.textContent = `Image for ${p1} fragments not found.`;
-                        }
-                    };
-                    if (fragmentImageCaptionElement) {
-                        fragmentImageCaptionElement.textContent = `${p1} fragments`;
-                    }
-                }
 
             } else {
                 if (pageTitleElement) {
@@ -613,54 +598,22 @@
             table.setSearchMode("includes");
             pagination.setCurrentPage(1);
             pagination.setUpdatePaginationUI(pagination.updatePaginationControls);
-            stats.setUpdateStatsUI(null); // No stats summary for this view
-            // The setOnFiltersChanged is handled in DOMContentLoaded to include promiscuity plot updates
+            stats.setUpdateStatsUI(null);
             table.initTable();
-            filter.updateActiveFilterDisplay(); // Ensure active filters (including initial ones) are displayed
+            filter.updateActiveFilterDisplay();
             table.renderTable();
-        }
-
-        // --- Collapsible sections ---
-        function initCollapsibleSections() {
-            document.querySelectorAll('.sidebar-title, .content-section > .content-section-title').forEach(title => {
-                title.addEventListener('click', function (event) {
-                    // Prevent nested title clicks from triggering parent collapse
-                    if (event.target.closest('.collapsible-subsection-title')) {
-                        return;
-                    }
-                    
-                    let sectionToCollapse;
-                    const mainGrid = document.querySelector('.main-content .grid'); // Target the grid within main-content
-
-                    if (this.classList.contains('sidebar-title')) {
-                        // For the main sidebar, toggle collapse on the <aside class="sidebar"> itself
-                        sectionToCollapse = this.closest('aside.sidebar');
-                        if (sectionToCollapse && mainGrid) {
-                            sectionToCollapse.classList.toggle('collapsed');
-                            mainGrid.classList.toggle('sidebar-collapsed'); // Toggle class on grid for layout change
-                        }
-                    } else if (this.classList.contains('content-section-title')) {
-                        // For content sections, target the parent <main class="content-area">
-                        sectionToCollapse = this.closest('main.content-area');
-                        if (sectionToCollapse) {
-                            sectionToCollapse.classList.toggle('collapsed');
-                        }
-                    }
-                    // Note: The chevron icon rotation for sidebar-title is handled by existing CSS
-                });
-            });
         }
 
         // --- DOMContentLoaded ---
         document.addEventListener('DOMContentLoaded', async () => {
             await loadHTMLIncludes('navProteins');
-
+            
             // --- Fetch and cache data for the page ---
             const proteinLengthData = await fetchAndParseCSV('all_fragments_2025.06.04.csv');
             const interfaceData = await fetchAndParseCSV('all_interface_analysis_2025.06.05_shifted.csv');
             await initializeAllPlots();
             updatePageTitleWithProteinPair();
-            initCollapsibleSections();
+            initCollapsibleSectionsComplex();
 
             // Chord plot controls
             const chordDomainsBtn = document.getElementById('chord-domains-btn');
@@ -685,7 +638,6 @@
                     const urlParams = new URLSearchParams(window.location.search);
                     const p1 = decodeURIComponent(urlParams.get('p1') || '');
                     if (p1) {
-                        // Only change: pass expandQuery option to drawChordPlot
                         await initializeChordPlot(p1);
                     }
                 });
@@ -757,9 +709,10 @@
             }
 
             document.querySelectorAll('.sidebar .sidebar-section ul li a').forEach(link => {
-                link.addEventListener('click', function (event) {
+                link.addEventListener('click', function(event) {
                     const targetId = this.getAttribute('href').substring(1);
                     const targetSectionElement = document.getElementById(targetId);
+
                     if (targetSectionElement) {
                         const contentArea = targetSectionElement.closest('main.content-area');
                         if (contentArea && contentArea.classList.contains('collapsed')) {

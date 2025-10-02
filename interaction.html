@@ -282,6 +282,7 @@
         import { fetchAndParseCSV } from './js/data.js';
         import { updatePromiscuityPlot, convertTableFiltersToPromiscuityCriteria, setupPromiscuityControls } from './js/promiscuity-plot.js';
         import { loadHTMLIncludes } from './js/header-footer.js';
+        import { initCollapsibleSectionsComplex } from './js/collapsible-section.js';
 
         // --- Page-level state for promiscuity plot filtering ---
         let promiscuityUseFilteredData = false;
@@ -294,7 +295,6 @@
             const f1_id = decodeURIComponent(urlParams.get('f1_id') || '');
             const f2_id = decodeURIComponent(urlParams.get('f2_id') || '');
 
-            // Update main page title and subheadings for domain/fragment plots
             const pageTitleElement = document.querySelector('.page-main-heading');
             const p1DFSubheading = document.getElementById('p1-name-subheading-df');
             const p2DFSubheading = document.getElementById('p2-name-subheading-df');
@@ -303,6 +303,7 @@
                 const p1Display = f1_id ? `${p1} (Fragment ${f1_id})` : p1;
                 const p2Display = f2_id ? `${p2} (Fragment ${f2_id})` : p2;
                 const title = `${p1Display} + ${p2Display}`;
+
                 document.title = title;
                 if (pageTitleElement) pageTitleElement.textContent = title;
                 
@@ -323,42 +324,6 @@
                     fallbackMessageDF.style.display = 'block';
                 }
             }
-        }
-        function initCollapsibleSections() {
-            document.querySelectorAll('.sidebar-title, .content-section > .content-section-title').forEach(title => {
-                title.addEventListener('click', function (event) {
-                    // Prevent nested title clicks from triggering parent collapse
-                    if (event.target.closest('.collapsible-subsection-title')) {
-                        return;
-                    }
-
-                    const isContentTitle = this.classList.contains('content-section-title');
-                    const isSidebarTitle = this.classList.contains('sidebar-title');
-
-                    if (isContentTitle) {
-                        const contentArea = this.closest('main.content-area');
-                        if (contentArea) {
-                            contentArea.classList.toggle('collapsed');
-                        }
-                    } else if (isSidebarTitle) {
-                        const sidebarTitleH2 = this.querySelector('h2');
-                        const isMainPageSectionsSidebarTitle = sidebarTitleH2 && sidebarTitleH2.querySelector('i.fa-list-ul');
-                        
-                        const sidebarElement = this.closest('aside.sidebar');
-                        const parentGrid = this.closest('.main-content .grid');
-
-                        if (isMainPageSectionsSidebarTitle && sidebarElement && parentGrid) {
-                            sidebarElement.classList.toggle('collapsed');
-                            parentGrid.classList.toggle('sidebar-collapsed');
-                        } else {
-                            const sectionToCollapse = this.closest('.sidebar-section');
-                            if (sectionToCollapse) {
-                                sectionToCollapse.classList.toggle('collapsed');
-                            }
-                        }
-                    }
-                });
-            });
         }
 
         // Function to update stat boxes from URL params and color them
@@ -484,7 +449,6 @@
 
                 if (pdbFile) {
                     structureViewer.setAttribute('data-pdb', `structures/${pdbFile}`);
-                    // Now that data-pdb is set, call the viewer function
                     if (window.displayInteractionInViewer) {
                         window.displayInteractionInViewer(structureViewer, `structures/${pdbFile}`);
                     } else {
@@ -504,7 +468,6 @@
         // Helper to extract interaction regions for p1 and p2 from URL params
         function getInteractionRegionsFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
-            // Accept comma-separated ranges, e.g. "10-20,30-40"
             function parseRegion(str) {
                 if (!str) return [];
                 return str.split(',').map(r => {
@@ -521,65 +484,19 @@
             };
         }
 
-        // Initialize the app when DOM is loaded
         document.addEventListener('DOMContentLoaded', async () => {
             await loadHTMLIncludes('navProteinPairs');
-            
-            // --- Fetch and cache data for the page ---
+            initCollapsibleSectionsComplex();
+
             const proteinLengthData = await fetchAndParseCSV('all_fragments_2025.06.04.csv');
             const interfaceData = await fetchAndParseCSV('all_interface_analysis_2025.06.05_shifted.csv');
 
-            // Initialize pagination first
             pagination.initPagination();
             pagination.setUpdatePaginationUI(pagination.updatePaginationControls);
 
-            const urlParams = new URLSearchParams(window.location.search);
+            updatePageTitleWithProteinPair();
+            updateInteractionStatsFromURL();
 
-            updatePageTitleWithProteinPair(); // Update title with protein pair names
-            updateInteractionStatsFromURL(); // <-- Add this line
-            initCollapsibleSections(); // Initialize collapsible sections
-
-            // Ensure linked section is uncollapsed when navigating via sidebar links from URL
-            const sectionIdFromUrl = urlParams.get('section');
-            if (sectionIdFromUrl) {
-                const targetSectionDiv = document.getElementById(sectionIdFromUrl);
-                if (targetSectionDiv) {
-                    const mainContentArea = targetSectionDiv.closest('main.content-area');
-                    if (mainContentArea) {
-                        mainContentArea.classList.remove('collapsed');
-                    }
-                    const sidebarLink = document.querySelector(`.sidebar-content a[href="#${sectionIdFromUrl}"]`);
-                    if (sidebarLink) {
-                        document.querySelectorAll('.sidebar-content a.active').forEach(l => l.classList.remove('active'));
-                        sidebarLink.classList.add('active');
-                    }
-                }
-            }
-
-            // Add click listeners for sidebar links to handle active state and uncollapse sections
-            document.querySelectorAll('.sidebar .sidebar-section ul li a').forEach(link => {
-                link.addEventListener('click', function(event) {
-                    // Update active class for sidebar links
-                    document.querySelectorAll('.sidebar .sidebar-section ul li a.active').forEach(activeLink => {
-                        activeLink.classList.remove('active');
-                    });
-                    this.classList.add('active');
-
-                    const targetId = this.getAttribute('href').substring(1);
-                    const targetSectionElement = document.getElementById(targetId); // This is the div.content-section
-
-                    if (targetSectionElement) {
-                        const mainContentArea = targetSectionElement.closest('main.content-area');
-                        if (mainContentArea && mainContentArea.classList.contains('collapsed')) {
-                            mainContentArea.classList.remove('collapsed');
-                            // Chevron icon for the content section should update via CSS
-                        }
-                        // Allow default anchor behavior to scroll to the section
-                    }
-                });
-            });
-
-            // Function to load other interactions for the same protein pair
             async function loadOtherInteractions() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const p1 = decodeURIComponent(urlParams.get('p1') || '');
@@ -629,7 +546,7 @@
                 });
 
                 await table.loadTableData();
-                filter.setColumnFilters(initialNumericFilters); // Apply initial filters
+                filter.setColumnFilters(initialNumericFilters);
                 filter.setSelectedProteins([p1, p2]);
                 table.setSearchMode("pair-exact");
                 pagination.setCurrentPage(1);

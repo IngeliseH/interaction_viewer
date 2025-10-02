@@ -242,6 +242,7 @@
         import { drawChordPlot } from './js/chord-plot.js';
         import { fetchAndParseCSV, loadInteractionData } from './js/data.js';
         import { loadHTMLIncludes } from './js/header-footer.js';
+        import { initCollapsibleSectionsComplex } from './js/collapsible-section.js';
 
         // --- GLOBAL ACTIVE FILTERS OBJECT ---
         // This object holds all active filters for the page and can be passed to modules/plots.
@@ -256,8 +257,6 @@
             const p2 = decodeURIComponent(urlParams.get('p2') || '');
             const f1_id = decodeURIComponent(urlParams.get('f1_id') || '');
             const f2_id = decodeURIComponent(urlParams.get('f2_id') || '');
-            // const f1_loc = decodeURIComponent(urlParams.get('f1_loc') || ''); // Not used for title yet
-            // const f2_loc = decodeURIComponent(urlParams.get('f2_loc') || ''); // Not used for title yet
 
             const pageTitleElement = document.querySelector('.page-main-heading');
             const p1DFSubheading = document.getElementById('p1-name-subheading-df');
@@ -274,16 +273,6 @@
                 }
                 if (p1DFSubheading) p1DFSubheading.textContent = `${p1}`;
                 if (p2DFSubheading) p2DFSubheading.textContent = `${p2}`;
-
-                // Domain/fragment plot initialization is now handled by domain-fragment-plot.js
-                // It will also manage showing/hiding the P2 plot section.
-
-                // Remove old fragment image display logic as it's replaced by plots
-                const oldFragmentImagesContainer = document.getElementById('fragment-images-container');
-                if (oldFragmentImagesContainer) oldFragmentImagesContainer.style.display = 'none';
-                const oldFallbackMessage = document.getElementById('fragments-fallback-message'); // Old ID
-                if (oldFallbackMessage) oldFallbackMessage.style.display = 'none';
-
 
             } else {
                 console.warn("Proteins parameter format is incorrect or p1/p2 not provided.");
@@ -372,43 +361,6 @@
             // After rendering, update chord plot with filtered data
             const filteredData = filter.getFilteredData();
             await initializeChordPlot(filteredData, p1, p2);
-        }
-
-        function initCollapsibleSections() {
-            document.querySelectorAll('.sidebar-title, .content-section > .content-section-title').forEach(title => {
-                title.addEventListener('click', function (event) {
-                    // Prevent nested title clicks from triggering parent collapse
-                    if (event.target.closest('.collapsible-subsection-title')) {
-                        return;
-                    }
-
-                    const isContentTitle = this.classList.contains('content-section-title');
-                    const isSidebarTitle = this.classList.contains('sidebar-title');
-
-                    if (isContentTitle) {
-                        const contentArea = this.closest('main.content-area');
-                        if (contentArea) {
-                            contentArea.classList.toggle('collapsed');
-                        }
-                    } else if (isSidebarTitle) {
-                        const sidebarTitleH2 = this.querySelector('h2');
-                        const isMainPageSectionsSidebarTitle = sidebarTitleH2 && sidebarTitleH2.querySelector('i.fa-list-ul');
-                        
-                        const sidebarElement = this.closest('aside.sidebar');
-                        const parentGrid = this.closest('.main-content .grid');
-
-                        if (isMainPageSectionsSidebarTitle && sidebarElement && parentGrid) {
-                            sidebarElement.classList.toggle('collapsed');
-                            parentGrid.classList.toggle('sidebar-collapsed');
-                        } else {
-                            const sectionToCollapse = this.closest('.sidebar-section');
-                            if (sectionToCollapse) {
-                                sectionToCollapse.classList.toggle('collapsed');
-                            }
-                        }
-                    }
-                });
-            });
         }
 
         // Helper: Get structure file name for a fragment pair is now handled inside setupStructureSection
@@ -598,9 +550,9 @@
 
         // Initialize the app when DOM is loaded
         document.addEventListener('DOMContentLoaded', async () => {
-            await loadHTMLIncludes('navProteinPairs'); // Load header and footer first
-            updatePageTitleWithProteinPair(); // Update title with protein pair names
-            initCollapsibleSections();
+            await loadHTMLIncludes('navProteinPairs');
+            updatePageTitleWithProteinPair();
+            initCollapsibleSectionsComplex();
 
             // Chord plot controls
             const chordDomainsBtn = document.getElementById('chord-domains-btn');
@@ -628,8 +580,7 @@
             };
 
             filter.setOnFiltersChanged(async () => {
-                filter.updateActiveFilterDisplay(); // Update active filter tags in UI
-                // The chord plot will be updated here
+                filter.updateActiveFilterDisplay();
                 const urlParams = new URLSearchParams(window.location.search);
                 const p1 = decodeURIComponent(urlParams.get('p1') || '');
                 const p2 = decodeURIComponent(urlParams.get('p2') || '');
@@ -645,11 +596,8 @@
             const p2 = decodeURIComponent(urlParams.get('p2') || '');
 
             if (p1 && p2) {
-                // Apply initial filters to the table state without rendering
-                filter.setColumnFilters(initialNumericFiltersForProteinPage, false); 
-                // Initialize table (this will load data and then render with initial filters)
+                filter.setColumnFilters(initialNumericFiltersForProteinPage, false);
                 await initializePPITableForProtein(p1, p2);
-                // The initial call to initializeChordPlot is now handled inside initializePPITableForProtein.
             } else {
                 console.warn("Protein names not provided in URL parameters. Cannot initialize table.");
                 const tableBody = document.getElementById('dataBody');
@@ -658,25 +606,8 @@
                 }
             }
 
-            //  Ensure linked section is uncollapsed when navigating via sidebar links
-            document.querySelectorAll('.sidebar .sidebar-section ul li a').forEach(link => {
-                link.addEventListener('click', function(event) {
-                    const targetId = this.getAttribute('href').substring(1);
-                    const targetSectionElement = document.getElementById(targetId);
-
-                    if (targetSectionElement) {
-                        const contentArea = targetSectionElement.closest('main.content-area');
-                        if (contentArea && contentArea.classList.contains('collapsed')) {
-                            contentArea.classList.remove('collapsed');
-                        }
-                    }
-                });
-            });
-
-            // Any other initializations for protein_pair.html can go here
-            await setupStructureSection(); // Initialize the structure grid and viewer logic
+            await setupStructureSection();
         });
     </script>
-    <!-- The duplicated script block that was here has been removed. -->
 </body>
 </html>
