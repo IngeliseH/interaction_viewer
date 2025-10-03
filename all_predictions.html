@@ -228,7 +228,7 @@
         import * as filter from './js/filter.js';
         import * as pagination from './js/pagination.js';
         import * as stats from './js/stats.js';
-        import { drawChordPlot } from './js/chord-plot.js';
+        import { initializeChordPlotCombined } from './js/chord-plot.js';
         import { initCollapsibleSectionsSimple } from './js/collapsible-section.js';
 
         // Set up column descriptions for info tooltips
@@ -253,7 +253,7 @@
                 input.addEventListener('change', function() {
                     table.setSearchMode(this.value);
                     table.renderTable();
-                    initializeChordPlot();
+                    initializeChordPlotWrapper();
                 });
             });
 
@@ -304,34 +304,17 @@
         }
 
         // --- Chord Plot ---
-        async function initializeChordPlot() {
-            const containerSelector = '.chord-plot-container';
-            const containerEl = document.querySelector(containerSelector);
-            if (!containerEl)                 return;
-            
-            containerEl.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">Loading interaction data for chord plot...</p>`;
+        async function initializeChordPlotWrapper() {
+            const filteredData = filter.getFilteredData();
 
-            try {
-                const allData = await table.loadTableData();
-                const filteredData = filter.getFilteredData ? filter.getFilteredData() : allData;
-
-                if (!filteredData || filteredData.length === 0) {
-                    containerEl.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">No data available for chord plot.</p>`;
-                    return;
-                }
-
-                await drawChordPlot(filteredData, containerSelector, {
-                    size: 500,
-                    queryProteins: [],
-                    coloringMode: 'gradient',
-                    showDomainsOnArcs: false,
-                    expandQuery: false
-                });
-
-            } catch (error) {
-                console.error('Error initializing chord plot:', error);
-                containerEl.innerHTML = `<p style="text-align:center; color:red; padding-top: 20px;">Could not load chord plot: ${error.message}</p>`;
-            }
+            await initializeChordPlotCombined({
+                queryProteins: [],
+                data: filteredData,
+                size: 600,
+                coloringMode: 'gradient',
+                showDomainsOnArcs: false,
+                expandQuery: false
+            });
         }
 
         // --- Protein Search ---
@@ -389,7 +372,7 @@
             pagination.setUpdatePaginationUI(table.updatePaginationControls);
             filter.setOnFiltersChanged(() => {
                 filter.updateActiveFilterDisplay();
-                initializeChordPlot();
+                initializeChordPlotWrapper();
             }); 
 
             setupProteinSearch(); // Add this line

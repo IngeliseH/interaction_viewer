@@ -1,8 +1,9 @@
 import { createSvgElement, createProteinLabel, createHoverLabel, createArcPath, 
          createGradient, setupHoverEffect, getArcAngles,
          createDomainPath, calculateChordAngles, createLabelGroup, createChordGroup } from './plot-utility.js';
-import { createInteractionLink } from './table.js';
-import { loadProteinMetadata, fetchProteinData } from './data.js';
+import { createInteractionLink, loadTableData } from './table.js';
+import { loadProteinMetadata } from './data.js';
+import * as filter from './filter.js';
 
 const palettes = [
   "#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f", "#e5c494", "#b3b3b3",
@@ -13,6 +14,56 @@ function polar(theta, radius) {
   const rad = theta * Math.PI / 180;
   return [Math.cos(rad) * radius, Math.sin(rad) * radius];
 }
+
+export async function initializeChordPlotCombined({
+    containerSelector = '.chord-plot-container',
+    data = null,
+    size = 500,
+    queryProteins = [],
+    arcColoringMode = 'default',
+    coloringMode = 'gradient',
+    showDomainsOnArcs = false,
+    expandQuery = false
+} = {}) {
+    const containerEl = document.querySelector(containerSelector);
+    if (!containerEl) return;
+
+    containerEl.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">Loading interaction data for chord plot...</p>`;
+
+    try {
+        if (!data) {
+            const allData = await loadTableData();
+            data = filter.getFilteredData ? filter.getFilteredData() : allData;
+        }
+
+        if (!data || data.length === 0) {
+            containerEl.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">No data available for chord plot.</p>`;
+            return;
+        }
+
+        if (queryProteins.length === 2) {
+            data = data.map(row => ({
+                ...row,
+                Protein1: row.Protein1 || row.protein1,
+                Protein2: row.Protein2 || row.protein2,
+                absolute_location: row.absolute_location || row.location
+            }));
+        }
+
+        await drawChordPlot(data, containerSelector, {
+            size,
+            queryProteins,
+            coloringMode,
+            arcColoringMode,
+            showDomainsOnArcs,
+            expandQuery
+        });
+    } catch (error) {
+        console.error('Error initializing chord plot:', error);
+        containerEl.innerHTML = `<p style="text-align:center; color:red; padding-top: 20px;">Could not load chord plot: ${error.message}</p>`;
+    }
+}
+
 
 export async function drawChordPlot(data, containerSelector, opts = {}) {
   if (!Array.isArray(data)) {
@@ -25,9 +76,8 @@ export async function drawChordPlot(data, containerSelector, opts = {}) {
   }
 
   const {
-    size = 600,
+    size = 500,
     padAngle = 2,
-    proteinNamesForEmptyMessage = 'the selection',
     coloringMode = 'byProtein1',
     queryProteins = [],
     expandQuery = false,
@@ -40,7 +90,7 @@ export async function drawChordPlot(data, containerSelector, opts = {}) {
   if (data.length === 0) {
     const container = document.querySelector(containerSelector);
     if (container) {
-      container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">No interactions to display in chord plot for ${proteinNamesForEmptyMessage}.</p>`;
+      container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">No interactions to display in chord plot.</p>`;
     }
     console.log("[ChordPlot] No data to plot, aborting.");
     return;

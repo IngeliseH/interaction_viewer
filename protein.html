@@ -277,7 +277,7 @@
         import * as filter from './js/filter.js';
         import * as pagination from './js/pagination.js';
         import * as stats from './js/stats.js';
-        import { drawChordPlot } from './js/chord-plot.js';
+        import { initializeChordPlotCombined } from './js/chord-plot.js';
         import { fetchAndParseCSV, loadInteractionData } from './js/data.js';
         import { updatePromiscuityPlot, convertTableFiltersToPromiscuityCriteria, setupPromiscuityControls } from './js/promiscuity-plot.js';
         import { initializeAllPlots } from './js/domain-fragment-plot.js';
@@ -286,30 +286,21 @@
 
         // --- GLOBAL ACTIVE FILTERS OBJECT ---
         window.activeFilters = {};
+        const urlParams = new URLSearchParams(window.location.search);
+        const p1 = decodeURIComponent(urlParams.get('p1') || '');
 
         let chordPlotShowDomains = true;
         let chordPlotExpandQuery = false;
         let promiscuityUseFilteredData = true;
 
-        function updatePageTitleWithProteinPair() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const p1 = decodeURIComponent(urlParams.get('p1') || '');
-            const p2 = decodeURIComponent(urlParams.get('p2') || '');
+        function updatePageTitleWithProtein() {
             const f1_id = decodeURIComponent(urlParams.get('f1_id') || '');
-            const f2_id = decodeURIComponent(urlParams.get('f2_id') || '');
 
             const pageTitleElement = document.querySelector('.page-main-heading');
 
             if (p1) {
                 if (pageTitleElement) {
                     pageTitleElement.textContent = p1;
-                }
-                if (p2) {
-                    const p1Display = f1_id ? `${p1} ${f1_id}` : p1;
-                    const p2Display = f2_id ? `${p2} ${f2_id}` : p2;
-                    document.title = `${p1Display} + ${p2Display}`;
-                } else {
-                    document.title = p1;
                 }
                 loadAndDisplayProteinInfo(p1);
 
@@ -504,74 +495,15 @@
             }
         }
 
-        // --- Chord Plot ---
-        async function initializeChordPlot(proteinName) {
-            const containerSelector = '.chord-plot-container';
-            const containerEl = document.querySelector(containerSelector);
-            if (!containerEl) return;
 
-            containerEl.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">Loading interaction data for chord plot...</p>`;
-
-            try {
-                await table.loadTableData();
-
-                filter.setSelectedProteins([proteinName]);
-                table.setSearchMode("includes");
-
-                const filteredData = filter.getFilteredData ? filter.getFilteredData() : [];
-
-                if (
-                    window.domainPlot_domainBaseIdToColor &&
-                    window.domainPlotInstancesData &&
-                    Object.keys(window.domainPlotInstancesData).length > 0
-                ) {
-                    const domainColorMap = { ...window.domainPlot_domainBaseIdToColor };
-                    const domainRanges = {};
-                    const proteinsInPlot = [...new Set(filteredData.flatMap(d => [d.Protein1, d.Protein2]))];
-
-                    proteinsInPlot.forEach(pname => {
-                        let instance = null;
-                        for (const k of Object.keys(window.domainPlotInstancesData)) {
-                            const inst = window.domainPlotInstancesData[k];
-                            if (inst && inst.proteinName === pname) {
-                                instance = inst;
-                                break;
-                            }
-                        }
-                        if (instance) {
-                            const otherD = (instance.otherDomains || []).map(d => ({...d, type: 'other'}));
-                            const afD = (instance.alphafoldDomains || []).map(d => ({...d, type: 'alphafold'}));
-                            const allD = [...otherD, ...afD];
-
-                            if (allD.length > 0) {
-                                domainRanges[pname] = allD.map(domain => {
-                                    let baseId = domain.id;
-                                    if (domain.type === 'other') {
-                                        const underscoreIndex = baseId.lastIndexOf('_');
-                                        if (underscoreIndex > -1 && /^\d+$/.test(baseId.substring(underscoreIndex + 1))) {
-                                            baseId = baseId.substring(0, underscoreIndex);
-                                        }
-                                        baseId = baseId.replace(/_/g, ' ');
-                                    }
-                                    return { ...domain, baseId };
-                                });
-                            }
-                        }
-                    });
-
-                    await drawChordPlot(filteredData, containerSelector, {
-                        size: 500,
-                        queryProteins: [proteinName],
-                        coloringMode: 'byPartner',
-                        showDomainsOnArcs: chordPlotShowDomains,
-                        arcColoringMode: 'domains',
-                        expandQuery: chordPlotExpandQuery
-                    });
-                }
-            } catch (error) {
-                console.error('Error initializing chord plot:', error);
-                containerEl.innerHTML = `<p style="text-align:center; color:red; padding-top: 20px;">Could not load chord plot: ${error.message}</p>`;
-            }
+        async function initializeChordPlotWrapper() {
+            await initializeChordPlotCombined({
+                queryProteins: [p1],
+                containerSelector: '.chord-plot-container',
+                coloringMode: 'byPartner',
+                showDomainsOnArcs: chordPlotShowDomains,
+                expandQuery: chordPlotExpandQuery
+            });
         }
 
         table.setColumnDescriptions({
@@ -592,9 +524,9 @@
         });
 
         // --- Table initialization and filtering ---
-        async function initializePPITableForProtein(proteinName) {
+        async function initializePPITableForProtein() {
             await table.loadTableData();
-            filter.setSelectedProteins([proteinName]);
+            filter.setSelectedProteins([p1]);
             table.setSearchMode("includes");
             pagination.setCurrentPage(1);
             pagination.setUpdatePaginationUI(pagination.updatePaginationControls);
@@ -612,7 +544,7 @@
             const proteinLengthData = await fetchAndParseCSV('all_fragments_2025.06.04.csv');
             const interfaceData = await fetchAndParseCSV('all_interface_analysis_2025.06.05_shifted.csv');
             await initializeAllPlots();
-            updatePageTitleWithProteinPair();
+            updatePageTitleWithProtein();
             initCollapsibleSectionsComplex();
 
             // Chord plot controls
@@ -622,11 +554,7 @@
                 chordDomainsBtn.addEventListener('click', async () => {
                     chordPlotShowDomains = !chordPlotShowDomains;
                     chordDomainsBtn.classList.toggle('active', chordPlotShowDomains);
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const p1 = decodeURIComponent(urlParams.get('p1') || '');
-                    if (p1) {
-                        await initializeChordPlot(p1);
-                    }
+                    await initializeChordPlotWrapper();
                 });
             }
             const chordExpandBtn = document.getElementById('chord-expand-query-btn');
@@ -635,11 +563,7 @@
                 chordExpandBtn.addEventListener('click', async () => {
                     chordPlotExpandQuery = !chordPlotExpandQuery;
                     chordExpandBtn.classList.toggle('active', chordPlotExpandQuery);
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const p1 = decodeURIComponent(urlParams.get('p1') || '');
-                    if (p1) {
-                        await initializeChordPlot(p1);
-                    }
+                    await initializeChordPlotWrapper();
                 });
             }
 
@@ -653,20 +577,10 @@
                 filter.updateActiveFilterDisplay();
 
                 updatePromiscuityPlotWrapper();
-
-                const urlParams = new URLSearchParams(window.location.search);
-                const p1 = decodeURIComponent(urlParams.get('p1') || '');
-                if (p1) {
-                    await initializeChordPlot(p1);
-                }
+                await initializeChordPlotWrapper();
             });
 
-                        function updatePromiscuityPlotWrapper() {
-                const urlParams = new URLSearchParams(window.location.search);
-                const p1 = decodeURIComponent(urlParams.get('p1') || '');
-
-                if (!p1) return;
-
+            function updatePromiscuityPlotWrapper() {
                 updatePromiscuityPlot(
                     p1,
                     promiscuityUseFilteredData,
@@ -685,16 +599,12 @@
                 }
             );
 
-            // Get protein name from URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const p1 = decodeURIComponent(urlParams.get('p1') || '');
-
             if (p1) {
                 filter.setColumnFilters(initialNumericFiltersForProteinPage);
 
-                await initializePPITableForProtein(p1);
+                await initializePPITableForProtein();
 
-                await initializeChordPlot(p1);
+                await initializeChordPlotWrapper();
 
                 updatePromiscuityPlotWrapper();
 

@@ -239,22 +239,19 @@
         import * as filter from './js/filter.js';
         import * as pagination from './js/pagination.js';
         import * as stats from './js/stats.js';
-        import { drawChordPlot } from './js/chord-plot.js';
+        import { initializeChordPlotCombined } from './js/chord-plot.js';
         import { fetchAndParseCSV, loadInteractionData } from './js/data.js';
         import { loadHTMLIncludes } from './js/header-footer.js';
         import { initCollapsibleSectionsComplex } from './js/collapsible-section.js';
 
-        // --- GLOBAL ACTIVE FILTERS OBJECT ---
-        // This object holds all active filters for the page and can be passed to modules/plots.
         window.activeFilters = {};
 
-        let chordPlotShowDomains = true; // Default to true
+        let chordPlotShowDomains = true;
+        const urlParams = new URLSearchParams(window.location.search);
+        const p1 = decodeURIComponent(urlParams.get('p1') || '');
+        const p2 = decodeURIComponent(urlParams.get('p2') || '');
 
-        // Function to update page title and H1 based on URL parameters
-        function updatePageTitleWithProteinPair() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const p1 = decodeURIComponent(urlParams.get('p1') || ''); 
-            const p2 = decodeURIComponent(urlParams.get('p2') || '');
+        function updatePageTitleWithProteinPair(urlParams, p1, p2) {
             const f1_id = decodeURIComponent(urlParams.get('f1_id') || '');
             const f2_id = decodeURIComponent(urlParams.get('f2_id') || '');
 
@@ -268,9 +265,7 @@
                 const title = `${p1Display} + ${p2Display}`;
                 
                 document.title = title;
-                if (pageTitleElement) {
-                    pageTitleElement.textContent = title;
-                }
+                if (pageTitleElement) pageTitleElement.textContent = title;
                 if (p1DFSubheading) p1DFSubheading.textContent = `${p1}`;
                 if (p2DFSubheading) p2DFSubheading.textContent = `${p2}`;
 
@@ -291,46 +286,17 @@
             }
         }
 
-        // --- Chord Plot ---
-        // Initialize chord plot with grey-only coloring for protein pair page
-        async function initializeChordPlot(data, protein1Name, protein2Name) {
-            const containerSelector = '.chord-plot-container';
-            const containerEl = document.querySelector(containerSelector);
-            if (!containerEl) return;
+        async function initializeChordPlotWrapper() {
+            const filteredData = filter.getFilteredData();
 
-            const proteins = [protein1Name, protein2Name].filter(Boolean);
-            if (proteins.length === 0) {
-                containerEl.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">No proteins specified for chord plot.</p>`;
-                return;
-            }
-
-            // Map data for chord plot
-            const mappedData = data.map(row => ({
-                ...row,
-                Protein1: row.Protein1 || row.protein1,
-                Protein2: row.Protein2 || row.protein2,
-                absolute_location: row.absolute_location || row.location
-            }));
-
-            // Wait for domain plot globals to be available before drawing chord plot
-            async function tryDrawChordPlotWithDomains(attempt = 0) {
-                const arcColoringMode = 'greyOnly';
-                try {
-                    await drawChordPlot(mappedData, containerSelector, {
-                        size: 500,
-                        proteinNamesForEmptyMessage: proteins.join(' & '),
-                        coloringMode: 'varied',
-                        showDomainsOnArcs: chordPlotShowDomains,
-                        arcColoringMode: arcColoringMode,
-                        queryProteins: [protein1Name, protein2Name]
-                    });
-                } catch (error) {
-                    console.error('Error initializing chord plot:', error);
-                    containerEl.innerHTML = `<p style="text-align:center; color:red; padding-top: 20px;">Could not load chord plot: ${error.message}</p>`;
-                }
-            }
-
-            await tryDrawChordPlotWithDomains();
+            await initializeChordPlotCombined({
+                queryProteins: [p1, p2],
+                containerSelector: '.chord-plot-container',
+                data: filteredData,
+                arcColoringMode: 'greyOnly',
+                coloringMode: 'varied',
+                showDomainsOnArcs: chordPlotShowDomains
+            });
         }
 
         // --- Table column descriptions for info tooltips ---
@@ -348,55 +314,38 @@
         });
 
         // --- Table initialization and filtering ---
-        async function initializePPITableForProtein(p1, p2) {
+        async function initializePPITableForProtein() {
             await table.loadTableData();
             filter.setSelectedProteins([p1, p2]);
-            table.setSearchMode("pair-exact"); // Use the new mode for exact protein pairs
+            table.setSearchMode("pair-exact");
             pagination.setCurrentPage(1);
             pagination.setUpdatePaginationUI(pagination.updatePaginationControls);
-            stats.setUpdateStatsUI(null); // No stats summary for this view
+            stats.setUpdateStatsUI(null);
             table.initTable();
-            filter.updateActiveFilterDisplay(); // Ensure active filters (including initial ones) are displayed
+            filter.updateActiveFilterDisplay();
             table.renderTable();
-            // After rendering, update chord plot with filtered data
-            const filteredData = filter.getFilteredData();
-            await initializeChordPlot(filteredData, p1, p2);
+            await initializeChordPlotWrapper();
         }
 
-        // Helper: Get structure file name for a fragment pair is now handled inside setupStructureSection
         async function setupStructureSection() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const p1 = decodeURIComponent(urlParams.get('p1') || '');
-            const p2 = decodeURIComponent(urlParams.get('p2') || '');
             const f1_id_param = decodeURIComponent(urlParams.get('f1_id') || '');
             const f2_id_param = decodeURIComponent(urlParams.get('f2_id') || '');
 
-            let f1Fragments, f2Fragments;
+            let f1Fragments = [];
+            let f2Fragments = [];
 
-            if (f1_id_param) {
-                f1Fragments = f1_id_param.split(',').map(f => f.trim()).filter(f => f);
-            } else {
-                f1Fragments = []; // Ensure it's an array
-            }
-
-            if (f2_id_param) {
-                f2Fragments = f2_id_param.split(',').map(f => f.trim()).filter(f => f);
-            } else {
-                f2Fragments = []; // Ensure it's an array
-            }
+            if (f1_id_param) f1Fragments = f1_id_param.split(',').map(f => f.trim()).filter(f => f);
+            if (f2_id_param) f2Fragments = f2_id_param.split(',').map(f => f.trim()).filter(f => f);
 
             const gridContainer = document.getElementById('structure-grid-container');
-            const viewerDiv = document.getElementById('structure-viewer-pair-page'); // Corrected ID
+            const viewerDiv = document.getElementById('structure-viewer-pair-page');
             const fallback = document.getElementById('structure-viewer-fallback');
-            const controlsContainer = document.getElementById('structure-controls'); // Corrected selector
+            const controlsContainer = document.getElementById('structure-controls');
+            controlsContainer.style.display = 'none';
 
             if (!gridContainer || !viewerDiv || !fallback || !controlsContainer) {
                 console.error("Structure section elements not found. Needed: gridContainer, viewerDiv, fallback, controlsContainer.", {gridContainer, viewerDiv, fallback, controlsContainer});
                 if (fallback) fallback.textContent = "Structure viewer components missing from page. Please check console.";
-                // Attempt to hide controls if they exist but other parts are missing
-                if(controlsContainer) controlsContainer.style.display = 'none';
-                // If grid container is missing, can't proceed with grid.
-                if(!gridContainer && fallback) fallback.textContent += " Grid container missing.";
                 return;
             }
             
@@ -407,22 +356,13 @@
                 return;
             }
 
-            // Viewer instance will be created by displayStructureInViewer when a PDB is loaded.
-            // Controls are also handled by displayStructureInViewer.
-            // The initial $3Dmol.createViewer call and attachStructureControls have been removed.
-            controlsContainer.style.display = 'none'; // Hide controls initially
-
-            // Attempt to load default PDB on page load
-            const initialPdbPath = viewerDiv.getAttribute('data-pdb');
-            if (initialPdbPath && f1Fragments.length > 0 && f2Fragments.length > 0) { // Only load if fragments exist for a grid
-                window.displayStructureInViewer(viewerDiv, initialPdbPath);
-            } else if (f1Fragments.length === 0 || f2Fragments.length === 0) {
+            if (f1Fragments.length === 0 || f2Fragments.length === 0) {
                 if (fallback) fallback.textContent = "Fragment information missing, cannot display structure grid or viewer.";
                 gridContainer.innerHTML = "<p style='text-align:center;'>Fragment information not available to build the grid.</p>";
                 controlsContainer.style.display = 'none';
-                return; // Exit if no fragments to build grid
+                return;
             } else {
-                 if (fallback) fallback.textContent = "No default structure specified or fragments missing.";
+                 if (fallback) fallback.textContent = "Select fragments from the grid to view structure";
             }
 
             let pdbFiles = [];
@@ -445,37 +385,24 @@
             let proteinForX, fragmentsForX, proteinForY, fragmentsForY;
 
             if (f1Fragments.length < f2Fragments.length) {
-                // p1 has fewer fragments, so p1 goes on Y-axis, p2 on X-axis
                 proteinForY = p1;
                 fragmentsForY = f1Fragments;
                 proteinForX = p2;
                 fragmentsForX = f2Fragments;
             } else {
-                // p1 has more or equal fragments than p2 (or p2 has fewer).
-                // So, p2 goes on Y-axis (if lengths differ, p2 is shorter; if equal, p2 on Y by convention).
-                // p1 goes on X-axis.
                 proteinForY = p2;
                 fragmentsForY = f2Fragments;
                 proteinForX = p1;
                 fragmentsForX = f1Fragments;
             }
 
-
-            // Build grid layout with labels
-            let gridLayoutHtml = `<div>`; 
-            
-            // Protein X Label (Horizontal, above table)
-            gridLayoutHtml += `<div class="structure-grid-protein-x-label">${proteinForX}</div>`;
-
-            gridLayoutHtml += `<div class="structure-grid-y-label-table-container">`; 
-
-            // Protein Y Label (Vertical, left of table)
-            gridLayoutHtml += `<div class="structure-grid-protein-y-label">${proteinForY}</div>`;
-            
-            // Table container
-            gridLayoutHtml += `<div>`;
-            let tableHtml = '<table class="structure-grid">'; 
-            tableHtml += '<tr><th></th>'; // Empty top-left cell
+            let gridLayoutHtml = `<div>
+                <div class="structure-grid-protein-x-label">${proteinForX}</div>
+                <div class="structure-grid-y-label-table-container">
+                <div class="structure-grid-protein-y-label">${proteinForY}</div>
+                <div>`;
+            let tableHtml = `<table class="structure-grid">
+                <tr><th></th>`
             fragmentsForX.forEach(fX => {
                 tableHtml += `<th class="structure-grid-col-header">${fX}</th>`;
             });
@@ -506,25 +433,19 @@
                 });
                 tableHtml += '</tr>';
             });
-            tableHtml += '</table>';
+            tableHtml += `</table>
+                </div>
+                </div>
+                </div>`;
             gridLayoutHtml += tableHtml;
-            gridLayoutHtml += `</div>`; // End table container
-            gridLayoutHtml += `</div>`; // End Protein Y Label + Table container
-            gridLayoutHtml += `</div>`; // End Main container
-
             gridContainer.innerHTML = gridLayoutHtml;
 
 
-            // Add click handlers for grid cells
+            // Click handlers for grid cells
             gridContainer.querySelectorAll('.structure-cell-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    // --- Highlighting logic ---
-                    // 1. Remove 'selected' class from any currently selected cell
                     const currentlySelected = gridContainer.querySelector('.structure-grid-cell.selected');
-                    if (currentlySelected) {
-                        currentlySelected.classList.remove('selected');
-                    }
-                    // 2. Add 'selected' class to the parent cell of the clicked button
+                    if (currentlySelected) currentlySelected.classList.remove('selected');
                     this.closest('.structure-grid-cell').classList.add('selected');
 
                     const file = this.getAttribute('data-file');
@@ -532,15 +453,8 @@
                     const controlsContainer = document.getElementById('structure-controls');
 
                     if (file) {
-                        // By clearing the viewer div, we force 3Dmol to create a new canvas.
-                        // This should resolve issues where the viewer instance is not correctly updated on subsequent calls.
                         viewerDiv.innerHTML = '';
-
-                        // Ensure controls are visible when a structure is about to be loaded.
-                        if (controlsContainer) {
-                            controlsContainer.style.display = ''; 
-                        }
-                        
+                        if (controlsContainer) controlsContainer.style.display = '';
                         const viewerOptions = window.getInteractionViewerOptions ? window.getInteractionViewerOptions() : {};
                         window.displayStructureInViewer(viewerDiv, file, viewerOptions);
                     }
@@ -551,7 +465,7 @@
         // Initialize the app when DOM is loaded
         document.addEventListener('DOMContentLoaded', async () => {
             await loadHTMLIncludes('navProteinPairs');
-            updatePageTitleWithProteinPair();
+            updatePageTitleWithProteinPair(urlParams, p1, p2);
             initCollapsibleSectionsComplex();
 
             // Chord plot controls
@@ -561,14 +475,7 @@
                 chordDomainsBtn.addEventListener('click', async () => {
                     chordPlotShowDomains = !chordPlotShowDomains;
                     chordDomainsBtn.classList.toggle('active', chordPlotShowDomains);
-                    // Re-render chord plot
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const p1 = decodeURIComponent(urlParams.get('p1') || '');
-                    const p2 = decodeURIComponent(urlParams.get('p2') || '');
-                    if (p1 && p2) {
-                        const filteredData = filter.getFilteredData();
-                        await initializeChordPlot(filteredData, p1, p2);
-                    }
+                    await initializeChordPlotWrapper();
                 });
             }
 
@@ -581,23 +488,13 @@
 
             filter.setOnFiltersChanged(async () => {
                 filter.updateActiveFilterDisplay();
-                const urlParams = new URLSearchParams(window.location.search);
-                const p1 = decodeURIComponent(urlParams.get('p1') || '');
-                const p2 = decodeURIComponent(urlParams.get('p2') || '');
-                if (p1 && p2) {
-                    const filteredData = filter.getFilteredData();
-                    await initializeChordPlot(filteredData, p1, p2);
-                }
+                await initializeChordPlotWrapper();
             });
-
-            // Get protein name from URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const p1 = decodeURIComponent(urlParams.get('p1') || '');
-            const p2 = decodeURIComponent(urlParams.get('p2') || '');
 
             if (p1 && p2) {
                 filter.setColumnFilters(initialNumericFiltersForProteinPage, false);
-                await initializePPITableForProtein(p1, p2);
+                await initializePPITableForProtein();
+                await initializeChordPlotWrapper();
             } else {
                 console.warn("Protein names not provided in URL parameters. Cannot initialize table.");
                 const tableBody = document.getElementById('dataBody');
@@ -606,7 +503,7 @@
                 }
             }
 
-            await setupStructureSection();
+            await setupStructureSection(urlParams, p1, p2);
         });
     </script>
 </body>

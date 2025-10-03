@@ -705,7 +705,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Initialize plots after ensuring containers exist
     await initializeAllPlots();
 
     let resizeDebounceTimer;

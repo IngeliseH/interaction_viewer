@@ -284,14 +284,13 @@
         import { loadHTMLIncludes } from './js/header-footer.js';
         import { initCollapsibleSectionsComplex } from './js/collapsible-section.js';
 
-        // --- Page-level state for promiscuity plot filtering ---
         let promiscuityUseFilteredData = false;
+        const urlParams = new URLSearchParams(window.location.search);
+        const p1 = decodeURIComponent(urlParams.get('p1') || ''); 
+        const p2 = decodeURIComponent(urlParams.get('p2') || '');
 
         // Function to update page title and H1 based on URL parameters
         function updatePageTitleWithProteinPair() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const p1 = decodeURIComponent(urlParams.get('p1') || ''); 
-            const p2 = decodeURIComponent(urlParams.get('p2') || '');
             const f1_id = decodeURIComponent(urlParams.get('f1_id') || '');
             const f2_id = decodeURIComponent(urlParams.get('f2_id') || '');
 
@@ -418,9 +417,6 @@
 
         // New function to find PDB file, set data-pdb, and load the viewer script
         async function updateStructureViewerPdbAndLoadScript() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const p1 = decodeURIComponent(urlParams.get('p1') || '');
-            const p2 = decodeURIComponent(urlParams.get('p2') || '');
             const f1_id = decodeURIComponent(urlParams.get('f1_id') || '');
             const f2_id = decodeURIComponent(urlParams.get('f2_id') || '');
 
@@ -498,9 +494,6 @@
             updateInteractionStatsFromURL();
 
             async function loadOtherInteractions() {
-                const urlParams = new URLSearchParams(window.location.search);
-                const p1 = decodeURIComponent(urlParams.get('p1') || '');
-                const p2 = decodeURIComponent(urlParams.get('p2') || '');
                 const container = document.getElementById('other-interactions-list');
 
                 if (!p1 || !p2 || !container) {
@@ -573,10 +566,6 @@
             }
 
             function updatePromiscuityPlots() {
-                const urlParams = new URLSearchParams(window.location.search);
-                const p1 = decodeURIComponent(urlParams.get('p1') || '');
-                const p2 = decodeURIComponent(urlParams.get('p2') || '');
-
                 const interactionRegions = getInteractionRegionsFromURL();
                 const p1Section = document.getElementById('promiscuity-plot-p1-section');
                 const p2Section = document.getElementById('promiscuity-plot-p2-section');
