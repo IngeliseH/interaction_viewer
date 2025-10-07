@@ -124,6 +124,7 @@ export async function fetchAndParseCSV(url) {
 // =============================================================================
 // Data Processing
 // =============================================================================
+//TODO: see if some of these functions can be combined
 export function parseLocation(locationString) {
     if (!locationString || typeof locationString !== 'string') return {};
 
@@ -179,6 +180,25 @@ export function indicesToRanges(indices) {
     }
     
     return result.join(', ');
+}
+
+export function parseLocation2(loc) {
+    // Converts a location string from a url like "2, 5-38" into an array of objects [{start: 2, end: 2}, {start: 5, end: 38}]
+    if (!loc || typeof loc !== 'string') return [];
+    return loc.split(',')
+        .map(part => part.trim())
+        .filter(Boolean)
+        .flatMap(part => {
+            const rangeMatch = part.match(/^(\d+)-(\d+)$/);
+            if (rangeMatch) {
+                const [start, end] = rangeMatch.slice(1).map(Number);
+                if (!isNaN(start) && !isNaN(end)) return [{ start, end }];
+            } else {
+                const singleValue = Number(part);
+                if (!isNaN(singleValue)) return [{ start: singleValue, end: singleValue }];
+            }
+            return [];
+        });
 }
 
 function _parseDomainString(domainsRaw) {

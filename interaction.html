@@ -279,7 +279,7 @@
         import * as filter from './js/filter.js';
         import * as pagination from './js/pagination.js';
         import * as stats from './js/stats.js';
-        import { fetchAndParseCSV } from './js/data.js';
+        import { fetchAndParseCSV, parseLocation2 } from './js/data.js';
         import { updatePromiscuityPlot, convertTableFiltersToPromiscuityCriteria, setupPromiscuityControls } from './js/promiscuity-plot.js';
         import { loadHTMLIncludes } from './js/header-footer.js';
         import { initCollapsibleSectionsComplex } from './js/collapsible-section.js';
@@ -461,25 +461,6 @@
             }
         }
 
-        // Helper to extract interaction regions for p1 and p2 from URL params
-        function getInteractionRegionsFromURL() {
-            const urlParams = new URLSearchParams(window.location.search);
-            function parseRegion(str) {
-                if (!str) return [];
-                return str.split(',').map(r => {
-                    const m = r.match(/(\d+)-(\d+)/);
-                    if (m) {
-                        return { start: parseInt(m[1], 10), end: parseInt(m[2], 10) };
-                    }
-                    return null;
-                }).filter(Boolean);
-            }
-            return {
-                p1: parseRegion(urlParams.get('f1_loc')),
-                p2: parseRegion(urlParams.get('f2_loc'))
-            };
-        }
-
         document.addEventListener('DOMContentLoaded', async () => {
             await loadHTMLIncludes('navProteinPairs');
             initCollapsibleSectionsComplex();
@@ -566,7 +547,10 @@
             }
 
             function updatePromiscuityPlots() {
-                const interactionRegions = getInteractionRegionsFromURL();
+                const interactionRegions = [
+                    parseLocation2(urlParams.get('f1_loc')),
+                    parseLocation2(urlParams.get('f2_loc'))
+                ];
                 const p1Section = document.getElementById('promiscuity-plot-p1-section');
                 const p2Section = document.getElementById('promiscuity-plot-p2-section');
                 const fallbackMsg = document.getElementById('promiscuity-fallback-message');

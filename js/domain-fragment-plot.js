@@ -1,5 +1,6 @@
 import { fetchProteinData } from './data.js';
 import { createSvgElement, createProteinLabel, createHoverLabel } from './plot-utility.js';
+import { parseLocation2 } from './data.js';
 
 let _plotInstances = {};
 
@@ -233,10 +234,10 @@ function _renderPlot(container, instanceId, { proteinName, proteinLength, fragme
                     const f1_loc = urlParams.get('f1_loc');
                     const f2_loc = urlParams.get('f2_loc');
                     if (instanceId === 'p1' && f1_loc) {
-                        highlightLocations = _parseRange(f1_loc);
+                        highlightLocations = parseLocation2(f1_loc);
                     }
                     if (instanceId === 'p2' && f2_loc) {
-                        highlightLocations = _parseRange(f2_loc);
+                        highlightLocations = parseLocation2(f2_loc);
                     }
                 }
 
@@ -367,26 +368,6 @@ function _renderCollapsibleTable(container, instanceId, { alphafoldDomains, unip
     });
 
     container.appendChild(domainInfoSection);
-}
-
-// =============================================================================
-// Data Processing
-// =============================================================================
-function _parseRange(rangeStr) {
-    if (!rangeStr || typeof rangeStr !== 'string') return [];
-    return rangeStr.split(',')
-        .map(s => s.trim())
-        .filter(Boolean)
-        .flatMap(part => {
-            if (part.includes('-')) {
-                const [start, end] = part.split('-').map(Number);
-                if (!isNaN(start) && !isNaN(end)) return [{ start, end }];
-            } else {
-                const val = Number(part);
-                if (!isNaN(val)) return [{ start: val, end: val }];
-            }
-            return [];
-        });
 }
 
 // =============================================================================
