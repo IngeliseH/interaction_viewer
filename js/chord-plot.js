@@ -112,7 +112,7 @@ export async function initializeChordPlot({
     const arcInner = size * 0.32;
 
     drawArcs({ namesOrdered, angles, seqLens, g, arcInner, arcOuter, palettes, showDomainsOnArcs, arcColoringMode }, allProteinLengths, queryProteins);
-    drawChords({ ifaceData, angles, seqLens, g, arcInner, defs, names, palettes, coloringMode, queryProteins });
+    drawChords({ ifaceData, data, angles, seqLens, g, arcInner, defs, names, palettes, coloringMode, queryProteins });
   } catch (error) {
     console.error('Error initializing chord plot:', error);
     container.innerHTML = `<p style="text-align:center; color:red; padding-top: 20px;">Could not load chord plot: ${error.message}</p>`;
@@ -202,20 +202,35 @@ function drawDomains(name, domains, start, end, seqLens, arcInner, arcOuter, g) 
 }
 
 function drawChords(config) {
-  const { ifaceData, angles, seqLens, g, arcInner, defs, names, palettes, coloringMode, queryProteins } = config;
+  const { ifaceData, data, angles, seqLens, g, arcInner, defs, names, palettes, coloringMode, queryProteins } = config;
 
   ifaceData.forEach((iface, i) => {
     const { protein1, protein2, res1, res2 } = iface;
 
     const chordAngles = calculateChordAngles(protein1, protein2, res1, res2, angles, seqLens);
-    const { label1StartAngle, label1EndAngle, label2StartAngle, label2EndAngle } = 
-      createLabelGroup(chordAngles);
+    const { label1StartAngle, label1EndAngle, label2StartAngle, label2EndAngle } = createLabelGroup(chordAngles);
 
-    let row = ifaceData.find(r => (
-      r.protein1 === protein1 && r.protein2 === protein2 &&
-      r.res1[0] === res1[0] && r.res1[1] === res1[1] &&
-      r.res2[0] === res2[0] && r.res2[1] === res2[1]
-    )) || {};
+    let row = data.find(r => {
+      const p1 = r.Protein1 || r.protein1;
+      const p2 = r.Protein2 || r.protein2;
+      let absLoc = {};
+      if (r.absolute_location && typeof r.absolute_location === 'string') {
+        try {
+          absLoc = JSON.parse(r.absolute_location.replace(/'/g, '"'));
+        } catch {}
+      }
+      const absKeys = Object.keys(absLoc).reduce((acc, k) => { acc[k.toLowerCase()] = absLoc[k]; return acc; }, {});
+      const arr1 = absKeys['protein1'] || absKeys['chaina'] || absKeys['chain a'] || [];
+      const arr2 = absKeys['protein2'] || absKeys['chainb'] || absKeys['chain b'] || [];
+      const r1 = (Array.isArray(arr1) && arr1.length > 0) ? [Math.min(...arr1), Math.max(...arr1)] : [];
+      const r2 = (Array.isArray(arr2) && arr2.length > 0) ? [Math.min(...arr2), Math.max(...arr2)] : [];
+      return (
+        p1 === protein1 && p2 === protein2 &&
+        r1.length && r2.length &&
+        r1[0] === res1[0] && r1[1] === res1[1] &&
+        r2[0] === res2[0] && r2[1] === res2[1]
+      );
+    }) || {};
 
     const [x1s, y1s] = polar(chordAngles.pos1Start, arcInner);
     const [x1e, y1e] = polar(chordAngles.pos1End, arcInner);
