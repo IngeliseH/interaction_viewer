@@ -478,6 +478,10 @@
             if (p1 && p2) {
                 filter.setColumnFilters(initialNumericFiltersForProteinPage, false);
                 await initializePPITableForProtein();
+                await initializeDomainFragmentPlots({
+                    proteins: p1 === p2 ? [p1] : [p1, p2],
+                    fallbackMessageSelector: '#fragments-fallback-message-df'
+                });
                 await initializeChordPlotWrapper();
             } else {
                 console.warn("Protein names not provided in URL parameters. Cannot initialize table.");
@@ -488,14 +492,6 @@
             }
 
             await setupStructureSection(urlParams, p1, p2);
-
-            const proteins = p1 === p2 ? [p1] : [p1, p2];
-
-            console.log("Initializing domain/fragment plots for proteins:", proteins);
-            await initializeDomainFragmentPlots({
-                proteins,
-                fallbackMessageSelector: '#fragments-fallback-message-df'
-            });
         });
     </script>
 </body>
