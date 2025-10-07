@@ -544,7 +544,7 @@ function _renderFragments(svgGroup, fragments, config) {
             fragmentRect.setAttribute("stroke", originalStroke);
             fragStartLabel.setAttribute("visibility", "hidden");
             fragEndLabel.setAttribute("visibility", "hidden");
-            if (window.clearPromiscuityHighlight) window.clearPromiscuityHighlight();
+            if (window.highlightPromiscuityResidues) window.highlightPromiscuityResidues();
         });
     });
 }
@@ -652,7 +652,7 @@ function _handleDomainHover(isHovering, domainRectId, startLabelId, endLabelId, 
 
     if (isHovering && window.highlightPromiscuityResidues) {
         window.highlightPromiscuityResidues(start, end);
-    } else if (!isHovering && window.clearPromiscuityHighlight) {
-        window.clearPromiscuityHighlight();
+    } else if (!isHovering && window.highlightPromiscuityResidues) {
+        window.highlightPromiscuityResidues();
     }
 }

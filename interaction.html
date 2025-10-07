@@ -423,21 +423,8 @@
                 table.renderTable();
             }
 
-            // Setup global controls for promiscuity plots
-            function setupGlobalPromiscuityControls() {
-                const placeholder = document.getElementById('promiscuity-controls-placeholder');
-                if (!placeholder) return;
-
-                setupPromiscuityControls(
-                    placeholder,
-                    promiscuityUseFilteredData,
-                    updatePromiscuityPlots,
-                    (newState) => {
-                        promiscuityUseFilteredData = newState;
-                    }
-                );
-            }
-
+            //TODO: Refactor to be more similar to domain fragment plot -
+            // iterate through protein list (and interaction regions list) to make all plots dynamically and without repetition
             function updatePromiscuityPlots() {
                 const interactionRegions = [
                     parseLocation2(urlParams.get('f1_loc')),
@@ -449,62 +436,49 @@
                 const p1Subheading = document.getElementById('p1-name-subheading-promiscuity');
                 const p2Subheading = document.getElementById('p2-name-subheading-promiscuity');
 
-                let filterCriteria = {};
-                if (promiscuityUseFilteredData) {
-                    const currentGlobalFilters = filter.getAllFilters();
-                    filterCriteria = convertTableFiltersToPromiscuityCriteria(currentGlobalFilters);
-                }
-
                 const p1Container = document.querySelector('#promiscuity-plot-p1');
                 const p2Container = document.querySelector('#promiscuity-plot-p2');
                 if (p1Container) p1Container.innerHTML = '';
                 if (p2Container) p2Container.innerHTML = '';
 
-                if (p1) {
-                    if (p1Section) p1Section.style.display = '';
-                    if (p1Subheading) p1Subheading.textContent = p1;
-                    updatePromiscuityPlot(
-                        p1,
-                        promiscuityUseFilteredData,
-                        filter,
-                        proteinLengthData,
-                        interfaceData,
-                        '#promiscuity-plot-p1',
-                        { interactionRegion: interactionRegions.p1 }
-                    );
-                } else {
-                    if (p1Section) p1Section.style.display = 'none';
-                }
+                if (p1Section) p1Section.style.display = '';
+                if (p1Subheading) p1Subheading.textContent = p1;
+                updatePromiscuityPlot(
+                    p1,
+                    promiscuityUseFilteredData,
+                    filter,
+                    proteinLengthData,
+                    interfaceData,
+                    '#promiscuity-plot-p1',
+                    { interactionRegion: interactionRegions[0] }
+                );
 
-                if (p2) {
-                    if (p2Section) p2Section.style.display = '';
-                    if (p2Subheading) p2Subheading.textContent = p2;
-                    console.log('Updating P2 plot with interactionRegion:', interactionRegions.p2);
-                    updatePromiscuityPlot(
-                        p2,
-                        promiscuityUseFilteredData,
-                        filter,
-                        proteinLengthData,
-                        interfaceData,
-                        '#promiscuity-plot-p2',
-                        { interactionRegion: interactionRegions.p2 }
-                    );
-                } else {
-                    if (p2Section) p2Section.style.display = 'none';
-                }
-
-                if (!p1 && !p2) {
-                    if (fallbackMsg) fallbackMsg.style.display = 'block';
-                } else {
-                    if (fallbackMsg) fallbackMsg.style.display = 'none';
-                }
+                if (p2Section) p2Section.style.display = '';
+                if (p2Subheading) p2Subheading.textContent = p2;
+                updatePromiscuityPlot(
+                    p2,
+                    promiscuityUseFilteredData,
+                    filter,
+                    proteinLengthData,
+                    interfaceData,
+                    '#promiscuity-plot-p2',
+                    { interactionRegion: interactionRegions[1] }
+                );
             }
 
-            setupGlobalPromiscuityControls();
             await initializeDomainFragmentPlots({
                 proteins: [p1, p2],
                 fallbackMessageSelector: '#fragments-fallback-message-df'
             });
+
+            setupPromiscuityControls(
+                document.getElementById('promiscuity-controls-placeholder'),
+                promiscuityUseFilteredData,
+                updatePromiscuityPlots,
+                (newState) => {
+                    promiscuityUseFilteredData = newState;
+                }
+            );
 
             updatePromiscuityPlots();
             loadOtherInteractions();

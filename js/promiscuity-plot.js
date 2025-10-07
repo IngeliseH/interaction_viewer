@@ -4,28 +4,8 @@ import { createSvgElement, createProteinLabel, createHoverLabel, setupHoverEffec
 // Public API Functions
 // =============================================================================
 
-export async function initPromiscuityPlot(containerSelector, options = {}, proteinLengthData, interfaceData) {
-    const proteinName = options.proteinName || new URLSearchParams(window.location.search).get('p1');
-    const container = document.querySelector(containerSelector);
-
-    if (container) {
-        container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">Loading data...</p>`;
-    }
-
-    if (!proteinName) {
-        const msg = 'Protein not specified for promiscuity plot.';
-        if (container) container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">${msg}</p>`;
-        return;
-    }
-
-    const useFilteredData = options.filterCriteria && Object.keys(options.filterCriteria).length > 0;
-    _drawPlotWithData(container, { ...options, proteinName }, proteinLengthData, interfaceData, useFilteredData);
-}
-
-export function highlightPromiscuityResidues(start, end, containerSelector = null) {
-    const containers = containerSelector
-        ? [document.querySelector(containerSelector)]
-        : Array.from(document.querySelectorAll('.promiscuity-plot-container'));
+export function highlightPromiscuityResidues(start = null, end = null) {
+    const containers = Array.from(document.querySelectorAll('.promiscuity-plot-container'));
 
     containers.forEach(container => {
         if (!container) return;
@@ -39,35 +19,29 @@ export function highlightPromiscuityResidues(start, end, containerSelector = nul
     });
 }
 
-export function clearPromiscuityHighlight(containerSelector = null) {
-    highlightPromiscuityResidues(null, null, containerSelector);
-}
-
 export function updatePromiscuityPlot(proteinName, promiscuityUseFilteredData, filter, proteinLengthData, interfaceData, containerSelector = '.promiscuity-plot-container', options = {}) {
-    if (!proteinName || !window.initPromiscuityPlot) return;
-
     const container = document.querySelector(containerSelector);
     if (!container) {
         console.error(`Container not found: ${containerSelector}`);
         return;
     }
-
-    let filterCriteria = {};
-    if (promiscuityUseFilteredData) {
-        const currentGlobalFilters = filter.getAllFilters();
-        filterCriteria = convertTableFiltersToPromiscuityCriteria(currentGlobalFilters);
+    container.innerHTML = '';
+    if (!proteinName) {
+        const msg = 'Protein not specified for promiscuity plot.';
+        if (container) container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">${msg}</p>`;
+        return;
     }
 
-    window.initPromiscuityPlot(
-        containerSelector,
-        {
-            proteinName: proteinName,
-            filterCriteria: filterCriteria,
-            interactionRegion: options.interactionRegion
-        }, 
-        proteinLengthData, 
-        interfaceData
-    );
+    const filterCriteria = promiscuityUseFilteredData ? convertTableFiltersToPromiscuityCriteria(filter.getAllFilters()) : {};
+
+    const proteinInfoRow = proteinLengthData.find(row => row.name === proteinName);
+    const proteinLength = parseInt(proteinInfoRow?.length, 10);
+    const { coverageArray } = _fetchRelevantInterfaces(proteinName, proteinLength, interfaceData, filterCriteria);
+    const plotElements = _drawPromiscuityBasePlot(proteinName, proteinLength, container, options);
+
+    if (plotElements) {
+        _drawPromiscuityCoverageBars(plotElements, coverageArray);
+    }
 }
 
 export function convertTableFiltersToPromiscuityCriteria(activeNumericFilters) {
@@ -130,29 +104,6 @@ export function setupPromiscuityControls(placeholder, promiscuityUseFilteredData
     buttonGroup.appendChild(toggleButton);
     controlBar.appendChild(buttonGroup);
     placeholder.appendChild(controlBar);
-}
-
-// =============================================================================
-// Core Logic
-// =============================================================================
-
-function _drawPlotWithData(container, options, proteinLengthData, interfaceData, useFilteredData) {
-    const proteinName = options.proteinName;
-
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    const filterCriteria = useFilteredData ? options.filterCriteria : {};
-
-    const proteinInfoRow = proteinLengthData.find(row => row.name === proteinName);
-    const proteinLength = parseInt(proteinInfoRow?.length, 10);
-    const { coverageArray } = _fetchRelevantInterfaces(proteinName, proteinLength, interfaceData, filterCriteria);
-    const plotElements = _drawPromiscuityBasePlot(proteinName, proteinLength, container, options);
-
-    if (plotElements) {
-        _drawPromiscuityCoverageBars(plotElements, coverageArray);
-    }
 }
 
 // =============================================================================
@@ -364,6 +315,5 @@ function _renderBarHighlights(container) {
     });
 }
 
-window.initPromiscuityPlot = initPromiscuityPlot;
+//TODO: stop attaching to window?
 window.highlightPromiscuityResidues = highlightPromiscuityResidues;
-window.clearPromiscuityHighlight = clearPromiscuityHighlight;
