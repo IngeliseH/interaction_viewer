@@ -60,56 +60,42 @@ async function initializePlotInstance(instanceId, proteinName, selectorsConfig) 
     _drawPlot(instanceId);
 }
 
-export async function initializeAllPlots() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const p1 = decodeURIComponent(urlParams.get('p1') || '');
-    const p2 = decodeURIComponent(urlParams.get('p2') || '');
+export async function initializeDomainFragmentPlots({ proteins, fallbackMessageSelector }) {
 
-    const isProteinPage = window.location.pathname.endsWith('protein.html');
-    const isProteinPairPage = window.location.pathname.endsWith('protein_pair.html');
-    const isInteractionPage = window.location.pathname.endsWith('interaction.html');
+    const fallbackMessage = document.querySelector(fallbackMessageSelector);
 
     _setupGlobalPlotControls();
     _updateGlobalPlotControlsVisualState();
 
-    if (isProteinPage) {
-        await initializePlotInstance('main', p1, {
-            container: '.domain-fragment-plot-container',
-            statusMessage: '.domain-fragment-plot-status',
-        });
-    } else if (isProteinPairPage || isInteractionPage) {
-        const fallbackMessageDF = document.getElementById('fragments-fallback-message-df');
+    if (!proteins || proteins.length === 0) {
+        if (fallbackMessage) {
+            fallbackMessage.textContent = 'Protein parameters not provided.';
+            fallbackMessage.style.display = 'block';
+        }
+        return;
+    }
 
-        if (!p1) {
-            if (fallbackMessageDF) {
-                fallbackMessageDF.textContent = 'Protein 1 parameter not provided.';
-                fallbackMessageDF.style.display = 'block';
+    if (fallbackMessage) fallbackMessage.style.display = 'none';
+
+    for (let i = 1; i <= proteins.length; i++) {
+        const protein = proteins[i-1];
+        const section = document.getElementById(`domain-fragment-plot-p${i}-section`);
+        if (section) {
+            section.style.display = 'block';
+            if (!section.querySelector(`#domain-fragment-plot-container-p${i}`)) {
+                section.innerHTML = `
+                    <h3 id="p${i}-name-subheading-df" class="page-subtitle">Loading Protein ${i}...</h3>
+                    <div id="domain-fragment-plot-status-p${i}" class="domain-fragment-plot-status"></div>
+                    <div id="domain-fragment-plot-container-p${i}" class="domain-fragment-plot-container"></div>
+                `;
             }
-            return;
         }
 
-        if (fallbackMessageDF) fallbackMessageDF.style.display = 'none';
-
-        await initializePlotInstance('p1', p1, {
-            container: '#domain-fragment-plot-container-p1',
-            statusMessage: '.domain-fragment-plot-status-p1',
-            subheading: '#p1-name-subheading-df'
+        await initializePlotInstance(`p${i}`, protein, {
+            container: `#domain-fragment-plot-container-p${i}`,
+            statusMessage: `.domain-fragment-plot-status-p${i}`,
+            subheading: `#p${i}-name-subheading-df`
         });
-
-        if (p2 && p1 !== p2) {
-            const p2Section = document.getElementById('domain-fragment-plot-p2-section');
-            if (p2Section) {
-                p2Section.style.display = 'block';
-
-                await initializePlotInstance('p2', p2, {
-                    container: '#domain-fragment-plot-container-p2',
-                    statusMessage: '.domain-fragment-plot-status-p2',
-                    subheading: '#p2-name-subheading-df'
-                });
-            }
-        } else if (p2Section) {
-            p2Section.style.display = 'none';
-        }
     }
 }
 
@@ -229,6 +215,7 @@ function _renderPlot(container, instanceId, { proteinName, proteinLength, fragme
 
             if (parsedFragments.length > 0) {
                 let highlightLocations = [];
+                //TODO: Stop extracting from url in here - pass in as parameter instead
                 if (window.location.pathname.endsWith('interaction.html')) {
                     const urlParams = new URLSearchParams(window.location.search);
                     const f1_loc = urlParams.get('f1_loc');
@@ -669,39 +656,3 @@ function _handleDomainHover(isHovering, domainRectId, startLabelId, endLabelId, 
         window.clearPromiscuityHighlight();
     }
 }
-
-// =============================================================================
-// Event Listeners
-// =============================================================================
-document.addEventListener('DOMContentLoaded', async () => {
-    // Initialize p2 section containers early, ensuring they exist before plot initialization
-    const p2Section = document.getElementById('domain-fragment-plot-p2-section');
-    if (p2Section) {
-        if (!p2Section.querySelector('#domain-fragment-plot-container-p2')) {
-            p2Section.innerHTML = `
-                <h3 id="p2-name-subheading-df" class="page-subtitle">Loading Protein 2...</h3>
-                <div class="domain-fragment-plot-status-p2"></div>
-                <div class="domain-fragment-plot-container-p2"></div>
-            `;
-        }
-    }
-
-    await initializeAllPlots();
-
-    let resizeDebounceTimer;
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeDebounceTimer);
-        resizeDebounceTimer = setTimeout(() => {
-            Object.keys(_plotInstances).forEach(instanceId => {
-                const instance = _plotInstances[instanceId];
-                if (instance && instance.proteinName && instance.selectors.container) {
-                    if (instance.proteinLength !== null) {
-                        _drawPlot(instanceId);
-                    } else {
-                        initializePlotInstance(instanceId, instance.proteinName, instance.selectors);
-                    }
-                }
-            });
-        }, 250);
-    });
-});

@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
     <script src="https://3dmol.org/build/3Dmol-min.js"></script>
-    <script type="module" src="js/domain-fragment-plot.js"></script>
     <script type="module" src="js/promiscuity-plot.js"></script>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/button.css">
@@ -132,24 +131,8 @@
                                         </button>
                                     </div>
                                 </div>
-
-                                <!-- Protein 1 Plot Section -->
-                                <div id="domain-fragment-plot-p1-section">
-                                    <h3 id="p1-name-subheading-df" class="page-subtitle">Loading Protein 1...</h3>
-                                    <div id="domain-fragment-plot-container-p1" class="domain-fragment-plot-container">
-                                        <!-- Domain/Fragment Plot for P1 will be rendered here -->
-                                    </div>
-                                    <!-- Collapsible table for P1 will be generated here by JS -->
-                                </div>
-
-                                <!-- Protein 2 Plot Section -->
-                                <div id="domain-fragment-plot-p2-section" style="margin-top: 30px; display: none;"> <!-- Initially hidden -->
-                                    <h3 id="p2-name-subheading-df" class="page-subtitle">Loading Protein 2...</h3>
-                                    <div id="domain-fragment-plot-container-p2" class="domain-fragment-plot-container">
-                                        <!-- Domain/Fragment Plot for P2 will be rendered here -->
-                                    </div>
-                                    <!-- Collapsible table for P2 will be generated here by JS -->
-                                </div>
+                                <div id="domain-fragment-plot-p1-section"></div>
+                                <div id="domain-fragment-plot-p2-section"></div>
                                 <p id="fragments-fallback-message-df" style="text-align:center; display:none; margin-top: 15px;">
                                     Information about domains and fragments will be shown here if available.
                                 </p>
@@ -283,6 +266,7 @@
         import { updatePromiscuityPlot, convertTableFiltersToPromiscuityCriteria, setupPromiscuityControls } from './js/promiscuity-plot.js';
         import { loadHTMLIncludes } from './js/header-footer.js';
         import { initCollapsibleSectionsComplex } from './js/collapsible-section.js';
+        import { initializeDomainFragmentPlots } from './js/domain-fragment-plot.js';
         import { updateInteractionStatsFromURL } from './js/stats.js';
 
         let promiscuityUseFilteredData = false;
@@ -306,9 +290,6 @@
 
                 document.title = title;
                 if (pageTitleElement) pageTitleElement.textContent = title;
-                
-                // The domain-fragment-plot.js will handle showing/hiding P2 plot section
-                // and initializing the plots.
 
             } else {
                 console.warn('Protein pair parameters not found in URL.');
@@ -520,6 +501,11 @@
             }
 
             setupGlobalPromiscuityControls();
+            await initializeDomainFragmentPlots({
+                proteins: [p1, p2],
+                fallbackMessageSelector: '#fragments-fallback-message-df'
+            });
+
             updatePromiscuityPlots();
             loadOtherInteractions();
 

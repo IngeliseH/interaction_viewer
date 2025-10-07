@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
     <script src="https://3dmol.org/build/3Dmol-min.js"></script>
-    <script type="module" src="js/domain-fragment-plot.js"></script>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/button.css">
     <link rel="stylesheet" href="css/collapsible-section.css">
@@ -67,26 +66,11 @@
                                         </button>
                                     </div>
                                 </div>
-
-                                <!-- Protein 1 Plot Section -->
                                 <div id="domain-fragment-plot-p1-section">
-                                    <h3 id="p1-name-subheading-df" class="page-subtitle">Loading Protein 1...</h3>
-                                    <div id="domain-fragment-plot-container-p1" class="domain-fragment-plot-container">
-                                        <!-- Domain/Fragment Plot for P1 will be rendered here -->
-                                    </div>
-                                    <!-- Collapsible table for P1 will be generated here by JS -->
+                                    <h3 id="p1-name-subheading-df" class="page-subtitle">Loading plot...</h3>
                                 </div>
-
-                                <!-- Protein 2 Plot Section -->
-                                <div id="domain-fragment-plot-p2-section">
-                                    <h3 id="p2-name-subheading-df" class="page-subtitle">Loading Protein 2...</h3>
-                                    <div class="domain-fragment-plot-status"></div>
-                                    <div id="domain-fragment-plot-container-p2" class="domain-fragment-plot-container"></div>
-                                </div>
-                                
-                                <p id="fragments-fallback-message-df" style="text-align:center; display:none; margin-top: 15px;">
-                                    Information about domains and fragments will be shown here if available.
-                                </p>
+                                <div id="domain-fragment-plot-p2-section"></div>
+                                <p id="fragments-fallback-message-df" style="text-align:center; display:none; margin-top: 15px;"></p>
                             </div>
                         </div>
                     </main>
@@ -242,6 +226,7 @@
         import { initializeChordPlot } from './js/chord-plot.js';
         import { loadHTMLIncludes } from './js/header-footer.js';
         import { initCollapsibleSectionsComplex } from './js/collapsible-section.js';
+        import { initializeDomainFragmentPlots } from './js/domain-fragment-plot.js';
 
         window.activeFilters = {};
 
@@ -503,6 +488,14 @@
             }
 
             await setupStructureSection(urlParams, p1, p2);
+
+            const proteins = p1 === p2 ? [p1] : [p1, p2];
+
+            console.log("Initializing domain/fragment plots for proteins:", proteins);
+            await initializeDomainFragmentPlots({
+                proteins,
+                fallbackMessageSelector: '#fragments-fallback-message-df'
+            });
         });
     </script>
 </body>
