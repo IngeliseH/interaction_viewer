@@ -20,3 +20,24 @@ export function getStatColor(val, thresholds) {
 export function setUpdateStatsUI(fn) { 
     state.setState({ updateStatsUI: fn }); 
 }
+
+export function updateInteractionStatsFromURL(urlParams) {
+    function _setStatColor(element, value, thresholds) {
+        element.classList.remove(
+            'stat-red', 'stat-orange', 'stat-yellow', 'stat-lightgreen', 'stat-darkgreen'
+        );
+        const colorClass = getStatColor(value, thresholds);
+        if (colorClass) element.classList.add(colorClass);
+    }
+
+    const stats = ['iptm', 'min_pae', 'avg_pae', 'rop', 'pdockq'];
+    stats.forEach(stat => {
+        const value = urlParams.get(stat);
+        const element = document.getElementById(`stat-${stat.replace('_', '')}`);
+        const cardElement = document.getElementById(`stat-card-${stat.replace('_', '')}`);
+
+        element.textContent = value;
+
+        _setStatColor(cardElement, value, statColorConfig[stat]);
+    });
+}
