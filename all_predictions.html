@@ -228,7 +228,7 @@
         import * as filter from './js/filter.js';
         import * as pagination from './js/pagination.js';
         import * as stats from './js/stats.js';
-        import { initializeChordPlotCombined } from './js/chord-plot.js';
+        import { initializeChordPlot } from './js/chord-plot.js';
         import { initCollapsibleSectionsSimple } from './js/collapsible-section.js';
 
         // Set up column descriptions for info tooltips
@@ -307,7 +307,7 @@
         async function initializeChordPlotWrapper() {
             const filteredData = filter.getFilteredData();
 
-            await initializeChordPlotCombined({
+            await initializeChordPlot({
                 queryProteins: [],
                 data: filteredData,
                 size: 600,

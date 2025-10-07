@@ -1,9 +1,8 @@
 import { createSvgElement, createProteinLabel, createHoverLabel, createArcPath, 
          createGradient, setupHoverEffect, getArcAngles,
          createDomainPath, calculateChordAngles, createLabelGroup, createChordGroup } from './plot-utility.js';
-import { createInteractionLink, loadTableData } from './table.js';
+import { createInteractionLink } from './table.js';
 import { loadProteinMetadata } from './data.js';
-import * as filter from './filter.js';
 
 const palettes = [
   "#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f", "#e5c494", "#b3b3b3",
@@ -15,7 +14,7 @@ function polar(theta, radius) {
   return [Math.cos(rad) * radius, Math.sin(rad) * radius];
 }
 
-export async function initializeChordPlotCombined({
+export async function initializeChordPlot({
     containerSelector = '.chord-plot-container',
     data = null,
     size = 500,
@@ -24,154 +23,100 @@ export async function initializeChordPlotCombined({
     coloringMode = 'gradient',
     showDomainsOnArcs = false,
     expandQuery = false
-} = {}) {
-    const containerEl = document.querySelector(containerSelector);
-    if (!containerEl) return;
-
-    containerEl.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">Loading interaction data for chord plot...</p>`;
-
-    try {
-        if (!data) {
-            const allData = await loadTableData();
-            data = filter.getFilteredData ? filter.getFilteredData() : allData;
-        }
-
-        if (!data || data.length === 0) {
-            containerEl.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">No data available for chord plot.</p>`;
-            return;
-        }
-
-        if (queryProteins.length === 2) {
-            data = data.map(row => ({
-                ...row,
-                Protein1: row.Protein1 || row.protein1,
-                Protein2: row.Protein2 || row.protein2,
-                absolute_location: row.absolute_location || row.location
-            }));
-        }
-
-        await drawChordPlot(data, containerSelector, {
-            size,
-            queryProteins,
-            coloringMode,
-            arcColoringMode,
-            showDomainsOnArcs,
-            expandQuery
-        });
-    } catch (error) {
-        console.error('Error initializing chord plot:', error);
-        containerEl.innerHTML = `<p style="text-align:center; color:red; padding-top: 20px;">Could not load chord plot: ${error.message}</p>`;
-    }
-}
-
-
-export async function drawChordPlot(data, containerSelector, opts = {}) {
-  if (!Array.isArray(data)) {
-    const container = document.querySelector(containerSelector);
-    if (container) {
-      container.innerHTML = `<p style="text-align:center; color:red; padding-top: 20px;">Error: Chord plot data is not an array.</p>`;
-    }
-    console.error("[ChordPlot] Data passed is not an array:", data);
-    return;
-  }
-
-  const {
-    size = 500,
-    padAngle = 2,
-    coloringMode = 'byProtein1',
-    queryProteins = [],
-    expandQuery = false,
-    showDomainsOnArcs = false,
-    arcColoringMode = 'default'
-  } = opts;
-
-  console.log("[ChordPlot] Received data rows for plotting:", data.length);
-
-  if (data.length === 0) {
-    const container = document.querySelector(containerSelector);
-    if (container) {
-      container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">No interactions to display in chord plot.</p>`;
-    }
-    console.log("[ChordPlot] No data to plot, aborting.");
-    return;
-  }
-
-  const filteredData = queryProteins.length > 0
-    ? data.filter(row => queryProteins.includes(row.Protein1) || queryProteins.includes(row.Protein2))
-    : data;
-  console.log("[ChordPlot] Filtered data rows:", filteredData.length);
-
-  const allProteinLengths = await loadProteinMetadata();
-
-  const proteins = {};
-  const proteinNames = [...new Set(filteredData.flatMap(d => [d.Protein1 || d.protein1, d.Protein2 || d.protein2]))].filter(Boolean);
-
-  proteinNames.forEach(name => {
-    const proteinData = allProteinLengths.get(name) || {};
-    proteins[name] = { name: name, length: proteinData.length || 0 };
-  });
-
-  const proteinList = Object.values(proteins);
-  const names = proteinList.map(p => p.name);
-  const seqLens = proteinList.reduce((acc, p) => {
-    acc[p.name] = p.length || 100;
-    return acc;
-  }, {});
-  
-  const ifaceData = filteredData.map(row => {
-    const p1 = row.Protein1 || row.protein1;
-    const p2 = row.Protein2 || row.protein2;
-    let absLoc = {};
-    if (row.absolute_location && typeof row.absolute_location === 'string') {
-      try {
-        absLoc = JSON.parse(row.absolute_location.replace(/'/g, '"'));
-      } catch (e) {
-        console.warn("[ChordPlot] Failed to parse absolute_location for row (ifaceData):", row, e);
-      }
-    }
-    const absKeys = Object.keys(absLoc).reduce((acc, k) => { acc[k.toLowerCase()] = absLoc[k]; return acc; }, {});
-
-    const arr1 = absKeys['protein1'] || absKeys['chaina'] || absKeys['chain a'] || [];
-    const arr2 = absKeys['protein2'] || absKeys['chainb'] || absKeys['chain b'] || [];
-
-    const res1 = (Array.isArray(arr1) && arr1.length > 0) ? [Math.min(...arr1), Math.max(...arr1)] : [];
-    const res2 = (Array.isArray(arr2) && arr2.length > 0) ? [Math.min(...arr2), Math.max(...arr2)] : [];
-    if (!(res1.length && res2.length)) {
-    }
-    return {
-      protein1: p1,
-      protein2: p2,
-      res1,
-      res2
-    };
-  }).filter(d => d.res1.length && d.res2.length);
-  
+  } = {}) {
   const container = document.querySelector(containerSelector);
-  container.innerHTML = '';
-  
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('width', size);
-  svg.setAttribute('height', size + 40);
+  if (!container) return;
+  const padAngle = 2;
 
-  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-  svg.appendChild(defs);
+  container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">Loading interaction data for chord plot...</p>`;
 
-  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-  g.setAttribute('transform', `translate(${size/2},${size/2})`);
-  svg.appendChild(g);
-  container.appendChild(svg);
+  try {
+    if (!data || data.length === 0) {
+      container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">No interactions to display in chord plot.</p>`;
+      console.log("[ChordPlot] No data available for chord plot.");
+      return;
+    }
 
-  const { angles, namesOrdered } = getArcAngles(names, seqLens, { 
-    padAngle, 
-    queryProteins, 
-    expandQuery 
-  });
-  
-  const arcOuter = size * 0.38;
-  const arcInner = size * 0.32;
+    if (!Array.isArray(data)) {
+      container.innerHTML = `<p style="text-align:center; color:red; padding-top: 20px;">Error: Chord plot data is not an array.</p>`;
+      console.error("[ChordPlot] Data passed is not an array:", data);
+      return;
+    }
 
-  drawArcs({ namesOrdered, angles, seqLens, g, arcInner, arcOuter, palettes, showDomainsOnArcs, arcColoringMode }, allProteinLengths, queryProteins);
-  drawChords({ ifaceData, angles, seqLens, g, arcInner, defs, data: filteredData, names, palettes, coloringMode, queryProteins });
+    console.log("[ChordPlot] Received data rows for plotting:", data.length);
+
+    const allProteinLengths = await loadProteinMetadata();
+
+    const proteins = {};
+    const proteinNames = [...new Set(data.flatMap(d => [d.Protein1 || d.protein1, d.Protein2 || d.protein2]))].filter(Boolean);
+
+    proteinNames.forEach(name => {
+      const proteinData = allProteinLengths.get(name) || {};
+      proteins[name] = { name: name, length: proteinData.length || 0 };
+    });
+
+    const proteinList = Object.values(proteins);
+    const names = proteinList.map(p => p.name);
+    const seqLens = proteinList.reduce((acc, p) => {
+      acc[p.name] = p.length || 100;
+      return acc;
+    }, {});
+
+    const ifaceData = data.map(row => {
+      const p1 = row.Protein1 || row.protein1;
+      const p2 = row.Protein2 || row.protein2;
+      let absLoc = {};
+      if (row.absolute_location && typeof row.absolute_location === 'string') {
+        try {
+          absLoc = JSON.parse(row.absolute_location.replace(/'/g, '"'));
+        } catch (e) {
+          console.warn("[ChordPlot] Failed to parse absolute_location for:", row, e);
+        }
+      }
+      const absKeys = Object.keys(absLoc).reduce((acc, k) => { acc[k.toLowerCase()] = absLoc[k]; return acc; }, {});
+
+      const arr1 = absKeys['protein1'] || absKeys['chaina'] || absKeys['chain a'] || [];
+      const arr2 = absKeys['protein2'] || absKeys['chainb'] || absKeys['chain b'] || [];
+
+      const res1 = (Array.isArray(arr1) && arr1.length > 0) ? [Math.min(...arr1), Math.max(...arr1)] : [];
+      const res2 = (Array.isArray(arr2) && arr2.length > 0) ? [Math.min(...arr2), Math.max(...arr2)] : [];
+      return {
+        protein1: p1,
+        protein2: p2,
+        res1,
+        res2
+      };
+    }).filter(d => d.res1.length && d.res2.length);
+
+    container.innerHTML = '';
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', size);
+    svg.setAttribute('height', size + 40);
+
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    svg.appendChild(defs);
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('transform', `translate(${size/2},${size/2})`);
+    svg.appendChild(g);
+    container.appendChild(svg);
+
+    const { angles, namesOrdered } = getArcAngles(names, seqLens, { 
+      padAngle, 
+      queryProteins, 
+      expandQuery 
+    });
+
+    const arcOuter = size * 0.38;
+    const arcInner = size * 0.32;
+
+    drawArcs({ namesOrdered, angles, seqLens, g, arcInner, arcOuter, palettes, showDomainsOnArcs, arcColoringMode }, allProteinLengths, queryProteins);
+    drawChords({ ifaceData, angles, seqLens, g, arcInner, defs, names, palettes, coloringMode, queryProteins });
+  } catch (error) {
+    console.error('Error initializing chord plot:', error);
+    container.innerHTML = `<p style="text-align:center; color:red; padding-top: 20px;">Could not load chord plot: ${error.message}</p>`;
+  }
 }
 
 async function drawArcs(config, proteinMetadata, queryProteins) {
@@ -257,7 +202,7 @@ function drawDomains(name, domains, start, end, seqLens, arcInner, arcOuter, g) 
 }
 
 function drawChords(config) {
-  const { ifaceData, angles, seqLens, g, arcInner, defs, data, names, palettes, coloringMode, queryProteins } = config;
+  const { ifaceData, angles, seqLens, g, arcInner, defs, names, palettes, coloringMode, queryProteins } = config;
 
   ifaceData.forEach((iface, i) => {
     const { protein1, protein2, res1, res2 } = iface;
@@ -265,6 +210,12 @@ function drawChords(config) {
     const chordAngles = calculateChordAngles(protein1, protein2, res1, res2, angles, seqLens);
     const { label1StartAngle, label1EndAngle, label2StartAngle, label2EndAngle } = 
       createLabelGroup(chordAngles);
+
+    let row = ifaceData.find(r => (
+      r.protein1 === protein1 && r.protein2 === protein2 &&
+      r.res1[0] === res1[0] && r.res1[1] === res1[1] &&
+      r.res2[0] === res2[0] && r.res2[1] === res2[1]
+    )) || {};
 
     const [x1s, y1s] = polar(chordAngles.pos1Start, arcInner);
     const [x1e, y1e] = polar(chordAngles.pos1End, arcInner);
@@ -288,7 +239,7 @@ function drawChords(config) {
         const [m2x, m2y] = polar(midAngle2, arcInner);
         const colorP1 = palettes[names.indexOf(protein1) % palettes.length];
         const colorP2 = palettes[names.indexOf(protein2) % palettes.length];
-        
+
         const gradient = createGradient(gradientId, m1x, m1y, m2x, m2y, colorP2, colorP1);
         defs.appendChild(gradient);
         chordColor = `url(#${gradientId})`;
@@ -310,28 +261,6 @@ function drawChords(config) {
       createHoverLabel(res2[0], ...polar(label2StartAngle, arcInner), { bold: true }),
       createHoverLabel(res2[1], ...polar(label2EndAngle, arcInner), { bold: true })
     ];
-  
-    let row = data.find(r => {
-      const p1 = r.Protein1 || r.protein1;
-      const p2 = r.Protein2 || r.protein2;
-      let absLoc = {};
-      if (r.absolute_location && typeof r.absolute_location === 'string') {
-        try {
-          absLoc = JSON.parse(r.absolute_location.replace(/'/g, '"'));
-        } catch {}
-      }
-      const absKeys = Object.keys(absLoc).reduce((acc, k) => { acc[k.toLowerCase()] = absLoc[k]; return acc; }, {});
-      const arr1 = absKeys['protein1'] || absKeys['chaina'] || absKeys['chain a'] || [];
-      const arr2 = absKeys['protein2'] || absKeys['chainb'] || absKeys['chain b'] || [];
-      const r1 = (Array.isArray(arr1) && arr1.length > 0) ? [Math.min(...arr1), Math.max(...arr1)] : [];
-      const r2 = (Array.isArray(arr2) && arr2.length > 0) ? [Math.min(...arr2), Math.max(...arr2)] : [];
-      return (
-        p1 === protein1 && p2 === protein2 &&
-        r1.length && r2.length &&
-        r1[0] === res1[0] && r1[1] === res1[1] &&
-        r2[0] === res2[0] && r2[1] === res2[1]
-      );
-    }) || {};
 
     const interactionLink = createInteractionLink(row)
 

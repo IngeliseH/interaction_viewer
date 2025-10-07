@@ -277,7 +277,7 @@
         import * as filter from './js/filter.js';
         import * as pagination from './js/pagination.js';
         import * as stats from './js/stats.js';
-        import { initializeChordPlotCombined } from './js/chord-plot.js';
+        import { initializeChordPlot } from './js/chord-plot.js';
         import { fetchAndParseCSV, loadInteractionData } from './js/data.js';
         import { updatePromiscuityPlot, convertTableFiltersToPromiscuityCriteria, setupPromiscuityControls } from './js/promiscuity-plot.js';
         import { initializeAllPlots } from './js/domain-fragment-plot.js';
@@ -497,9 +497,12 @@
 
 
         async function initializeChordPlotWrapper() {
-            await initializeChordPlotCombined({
+            const filteredData = filter.getFilteredData();
+
+            await initializeChordPlot({
                 queryProteins: [p1],
                 containerSelector: '.chord-plot-container',
+                data: filteredData,
                 coloringMode: 'byPartner',
                 showDomainsOnArcs: chordPlotShowDomains,
                 expandQuery: chordPlotExpandQuery

@@ -239,8 +239,7 @@
         import * as filter from './js/filter.js';
         import * as pagination from './js/pagination.js';
         import * as stats from './js/stats.js';
-        import { initializeChordPlotCombined } from './js/chord-plot.js';
-        import { fetchAndParseCSV, loadInteractionData } from './js/data.js';
+        import { initializeChordPlot } from './js/chord-plot.js';
         import { loadHTMLIncludes } from './js/header-footer.js';
         import { initCollapsibleSectionsComplex } from './js/collapsible-section.js';
 
@@ -289,7 +288,7 @@
         async function initializeChordPlotWrapper() {
             const filteredData = filter.getFilteredData();
 
-            await initializeChordPlotCombined({
+            await initializeChordPlot({
                 queryProteins: [p1, p2],
                 containerSelector: '.chord-plot-container',
                 data: filteredData,
