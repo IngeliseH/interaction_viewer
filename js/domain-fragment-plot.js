@@ -61,7 +61,7 @@ export async function initializeDomainFragmentPlots({ proteins, fallbackMessageS
 // =============================================================================
 // Core Logic
 // =============================================================================
-async function _initializePlotInstance(instanceId, proteinName, selectorsConfig) {
+async function _initializePlotInstance(instanceId, proteinName, selectors) {
     if (!proteinName) {
         console.error(`Domain/Fragment Plot: No protein name provided for instance ${instanceId}`);
         return;
@@ -73,13 +73,16 @@ async function _initializePlotInstance(instanceId, proteinName, selectorsConfig)
         fragmentIndices: null,
         alphafoldDomains: null,
         uniprotDomains: null,
-        selectors: { ...selectorsConfig }
+        isCollapsibleTableCollapsed: true,
+        containerSelector: selectors.container,
+        statusMessageSelector: selectors.statusMessage,
+        subheadingSelector: selectors.subheading
     };
 
     const instance = _plotInstances[instanceId];
-    const container = document.querySelector(instance.selectors.container);
-    const statusMessageElement = document.querySelector(instance.selectors.statusMessage);
-    const subheadingElement = instance.selectors.subheading ? document.querySelector(instance.selectors.subheading) : null;
+    const container = document.querySelector(instance.containerSelector);
+    const statusMessageElement = document.querySelector(instance.statusMessageSelector);
+    const subheadingElement = instance.subheadingSelector ? document.querySelector(instance.subheadingSelector) : null;
 
     if (subheadingElement) {
         subheadingElement.textContent = proteinName;
@@ -89,6 +92,11 @@ async function _initializePlotInstance(instanceId, proteinName, selectorsConfig)
     if (container) container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">Loading data for domain/fragment plot...</p>`;
 
     const proteinData = await fetchProteinData(proteinName);
+    if (proteinData.length === null || isNaN(proteinData.length)) {
+        const message = proteinName ? `Length data not available or invalid for ${proteinName}. Cannot draw domain/fragment plot.` : 'Protein not specified for domain/fragment plot.';
+        container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">${message}</p>`;
+        return;
+    }
     
     instance.proteinLength = proteinData.length;
     instance.fragmentIndices = proteinData.fragmentIndices;
@@ -99,54 +107,35 @@ async function _initializePlotInstance(instanceId, proteinName, selectorsConfig)
         statusMessageElement.textContent = '';
     }
 
-    _drawPlot(instanceId);
+    container.innerHTML = '';
+
+    _renderPlot(container, instanceId);
+
+    _renderCollapsibleTable(container, instanceId);
 }
 
-function _drawPlot(instanceId) {
+function _updatePlot(instanceId) {
     const instance = _plotInstances[instanceId];
     if (!instance) {
         console.error(`Domain/Fragment Plot: Instance ${instanceId} not found.`);
         return;
     }
 
-    const { proteinName, proteinLength, fragmentIndices, alphafoldDomains, uniprotDomains, selectors } = instance;
-    if (!selectors || !selectors.container) {
-        console.error(`Domain/Fragment Plot: No container selector defined for instance ${instanceId}`);
-        return;
-    }
-
-    const container = document.querySelector(selectors.container);
+    const container = document.querySelector(instance.containerSelector);
     if (!container) {
-        console.error(`Domain/Fragment Plot: Container not found using selector "${selectors.container}" for instance ${instanceId}`);
+        console.error(`Domain/Fragment Plot: Container not found using selector "${instance.containerSelector}" for instance ${instanceId}`);
         return;
     }
-
-    const collapsibleSection = container.querySelector(`#domain-info-collapsible-section-${instanceId}`);
-    const wasCollapsed = collapsibleSection?.classList.contains('collapsed');
-
     container.innerHTML = '';
 
-    if (proteinLength === null || isNaN(proteinLength)) {
-        const message = proteinName ? `Length data not available or invalid for ${proteinName}. Cannot draw domain/fragment plot.` : 'Protein not specified for domain/fragment plot.';
-        container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">${message}</p>`;
-        return;
-    }
+    _renderPlot(container, instanceId);
 
-    _renderPlot(container, instanceId, {
-        proteinName,
-        proteinLength,
-        fragmentIndices,
-        alphafoldDomains,
-        uniprotDomains,
-    });
-
-    _renderCollapsibleTable(container, instanceId, {
-        alphafoldDomains,
-        uniprotDomains,
-    }, wasCollapsed);
+    _renderCollapsibleTable(container, instanceId);
 }
 
-function _renderPlot(container, instanceId, { proteinName, proteinLength, fragmentIndices, alphafoldDomains, uniprotDomains }) {
+function _renderPlot(container, instanceId) {
+    const instance = _plotInstances[instanceId];
+    const { proteinName, proteinLength, fragmentIndices, alphafoldDomains, uniprotDomains } = instance;
     const { showUniprotDomains, showAlphafoldDomains, showFragments } = _globalPlotToggleStates;
     const margin = { top: 0, right: 60, bottom: 0, left: 60 };
     const dimensions = _calculatePlotDimensions(container, margin);
@@ -176,9 +165,7 @@ function _renderPlot(container, instanceId, { proteinName, proteinLength, fragme
     }
 
     if (showAlphafoldDomains && alphafoldDomains && alphafoldDomains.length > 0 && proteinLength) {
-        _renderDomains(svgGroup, alphafoldDomains, {
-            instanceId,
-            proteinLength,
+        _renderDomains(svgGroup, instanceId, {
             plotWidth: dimensions.plotWidth,
             yPosition: (dimensions.plotHeight / 2) - (dimensions.alphafoldDomainHeight / 2),
             type: 'af',
@@ -188,9 +175,7 @@ function _renderPlot(container, instanceId, { proteinName, proteinLength, fragme
     }
 
     if (showUniprotDomains && uniprotDomains && uniprotDomains.length > 0 && proteinLength) {
-        _renderDomains(svgGroup, uniprotDomains, {
-            instanceId,
-            proteinLength,
+        _renderDomains(svgGroup, instanceId, {
             plotWidth: dimensions.plotWidth,
             yPosition: (dimensions.plotHeight / 2) - (dimensions.uniprotDomainHeight / 2),
             type: 'uniprot',
@@ -228,8 +213,7 @@ function _renderPlot(container, instanceId, { proteinName, proteinLength, fragme
                     }
                 }
 
-                _renderFragments(svgGroup, parsedFragments, {
-                    proteinLength,
+                _renderFragments(svgGroup, parsedFragments, instanceId, {
                     plotWidth: dimensions.plotWidth,
                     yPosition: dimensions.plotHeight / 2,
                     height: dimensions.fragmentBarHeight,
@@ -251,12 +235,14 @@ function _renderPlot(container, instanceId, { proteinName, proteinLength, fragme
     container.appendChild(svg);
 }
 
-function _renderCollapsibleTable(container, instanceId, { alphafoldDomains, uniprotDomains }, collapsed = true) {
+function _renderCollapsibleTable(container, instanceId) {
+    const instance = _plotInstances[instanceId];
+    const { alphafoldDomains, uniprotDomains } = instance;
     const { showUniprotDomains, showAlphafoldDomains } = _globalPlotToggleStates;
 
     const domainInfoSection = document.createElement('div');
     domainInfoSection.className = 'collapsible-subsection';
-    if (collapsed) {
+    if (instance.isCollapsibleTableCollapsed) {
         domainInfoSection.classList.add('collapsed');
     }
     domainInfoSection.id = `domain-info-collapsible-section-${instanceId}`;
@@ -351,6 +337,7 @@ function _renderCollapsibleTable(container, instanceId, { alphafoldDomains, unip
 
     titleDiv.addEventListener('click', () => {
         domainInfoSection.classList.toggle('collapsed');
+        instance.isCollapsibleTableCollapsed = !instance.isCollapsibleTableCollapsed;
     });
 
     container.appendChild(domainInfoSection);
@@ -380,8 +367,11 @@ function _calculatePlotDimensions(container, margin) {
     };
 }
 
-function _renderDomains(svgGroup, domains, config) {
-    const { instanceId, proteinLength, plotWidth, yPosition, type, domainHeight, labelFontSize } = config;
+function _renderDomains(svgGroup, instanceId, config) {
+    const { plotWidth, yPosition, type, domainHeight } = config;
+    const instance = _plotInstances[instanceId];
+    const { proteinLength } = instance;
+    const domains = type === 'uniprot' ? instance.uniprotDomains : instance.alphafoldDomains;
 
     window.domainPlot_domainBaseIdToColor = _domainColorMap;
     window.domainPlotInstancesData = _plotInstances;
@@ -459,8 +449,10 @@ function _renderDomains(svgGroup, domains, config) {
     });
 }
 
-function _renderFragments(svgGroup, fragments, config) {
-    const { proteinLength, plotWidth, yPosition, height, highlightLocations } = config;
+function _renderFragments(svgGroup, fragments, instanceId, config) {
+    const { plotWidth, yPosition, height, highlightLocations } = config;
+    const instance = _plotInstances[instanceId];
+    const { proteinLength } = instance;
 
     fragments.forEach((frag, i) => {
         if (!Array.isArray(frag) || frag.length !== 2) return;
@@ -568,6 +560,7 @@ function _updateGlobalPlotControlsVisualState() {
 }
 
 function _setupGlobalPlotControls() {
+    //TODO: Generate these dynamically in a <div id="domain-fragment-controls-placeholder"></div>
     const uniprotDomainsButton = document.querySelector('.global-uniprot-domains-button');
     const alphafoldDomainsButton = document.querySelector('.global-alphafold-domains-button');
     const fragmentsButton = document.querySelector('.global-fragments-button');
@@ -575,7 +568,7 @@ function _setupGlobalPlotControls() {
     const redrawAllActivePlots = () => {
         Object.keys(_plotInstances).forEach(id => {
             if (_plotInstances[id] && _plotInstances[id].proteinName) {
-                _drawPlot(id);
+                _updatePlot(id);
             }
         });
     };
