@@ -107,9 +107,12 @@
                             </div>
                             <div class="content-section-content">
                                 <div id="promiscuity-controls-placeholder"></div>
-                                <div class="promiscuity-plot-container">
-                                    <!-- Plot will be rendered here by JavaScript -->
+                                <div id="promiscuity-plots-container">
+                                    <!-- Promiscuity plot will be rendered here by JavaScript -->
                                 </div>
+                                <p id="promiscuity-fallback-message" style="text-align:center; display:none; margin-top: 15px;">
+                                    Protein parameter not provided.
+                                </p>
                             </div>
                         </div>
                     </main>
@@ -281,7 +284,7 @@
         import * as stats from './js/stats.js';
         import { initializeChordPlot } from './js/chord-plot.js';
         import { fetchAndParseCSV, loadInteractionData } from './js/data.js';
-        import { updatePromiscuityPlot, setupPromiscuityControls } from './js/promiscuity-plot.js';
+        import { initializePromiscuityPlots, updateAllPromiscuityPlots, getPromiscuityFilterState } from './js/promiscuity-plot.js';
         import { loadHTMLIncludes } from './js/header-footer.js';
         import { initCollapsibleSectionsComplex } from './js/collapsible-section.js';
         import { initializeDomainFragmentPlots } from './js/domain-fragment-plot.js';
@@ -293,7 +296,6 @@
 
         let chordPlotShowDomains = true;
         let chordPlotExpandQuery = false;
-        let promiscuityUseFilteredData = true;
 
         function updatePageTitleWithProtein() {
             const f1_id = decodeURIComponent(urlParams.get('f1_id') || '');
@@ -375,47 +377,13 @@
                                     }
                                 } catch (e) {
                                     console.error("[ProtHTML] Error parsing 'domains' string with regex:", e);
-                                    // Fallback to direct parsing if regex matching fails
-                                    // (Keeping the previous regex parsing as a fallback for now, or remove if confident in the shared function)
-                                    // domainDataString is already the raw string, no need to pass to another function
-                                    const processedRanges = window.getProcessedAlphaFoldDomainRanges(domainDataString);
-                                    if (Array.isArray(processedRanges)) {
-                                        afDomainRanges = processedRanges.filter(r => r && typeof r.start === 'number' && typeof r.end === 'number'); // Basic validation
-                                    } else {
-                                        console.warn("[ProtHTML] window.getProcessedAlphaFoldDomainRanges did not return a valid array. Will attempt fallback parsing if implemented, or use empty.");
-                                        // Fallback to direct parsing if the preferred method fails or is not available
-                                        // (Keeping the previous regex parsing as a fallback for now, or remove if confident in the shared function)
-                                        const domainDataString = proteinInfoRow.domains;
-                                        if (domainDataString && typeof domainDataString === 'string') {
-                                            const matches = domainDataString.matchAll(/\('AF_D\d*',\s*\((\d+),\s*(\d+)\)\)/g);
-                                            for (const match of matches) {
-                                                const start = parseInt(match[1], 10);
-                                                const end = parseInt(match[2], 10);
-                                                if (!isNaN(start) && !isNaN(end) && start > 0 && end >= start) {
-                                                    afDomainRanges.push({ start, end });
-                                                }
-                                            }
-                                        }
-                                    }
                                 }
                             } else {
-                                console.warn("[ProtHTML] window.getProcessedAlphaFoldDomainRanges function not found. Attempting fallback parsing of 'domains' string.");
-                                // Fallback to direct parsing if the preferred method is not available
-                                const domainDataString = proteinInfoRow.domains;
-                                if (domainDataString && typeof domainDataString === 'string') {
-                                    const matches = domainDataString.matchAll(/\('AF_D\d*',\s*\((\d+),\s*(\d+)\)\)/g);
-                                    for (const match of matches) {
-                                        const start = parseInt(match[1], 10);
-                                        const end = parseInt(match[2], 10);
-                                        if (!isNaN(start) && !isNaN(end) && start > 0 && end >= start) {
-                                            afDomainRanges.push({ start, end });
-                                        }
-                                    }
-                                }
+                                console.warn("[ProtHTML] No 'domains' string available for AF domain parsing.");
                             }
 
                             if (afDomainRanges.length === 0) {
-                                console.warn("[ProtHTML] No AF domain ranges found after attempting preferred and fallback methods.");
+                                console.warn("[ProtHTML] No AF domains found.");
                             }
 
                             fetchAndLoadAlphaFoldStructure(accessionId, afDomainRanges);
@@ -548,14 +516,10 @@
             // --- Fetch and cache data for the page ---
             const proteinLengthData = await fetchAndParseCSV('all_fragments_2025.06.04.csv');
             const interfaceData = await fetchAndParseCSV('all_interface_analysis_2025.06.05_shifted.csv');
-            await initializeDomainFragmentPlots({
-                proteins: [p1],
-                fallbackMessageSelector: '#fragments-fallback-message-df'
-            });
+
             updatePageTitleWithProtein();
             initCollapsibleSectionsComplex();
 
-            // Chord plot controls
             const chordDomainsBtn = document.getElementById('chord-domains-btn');
             if (chordDomainsBtn) {
                 chordDomainsBtn.classList.toggle('active', chordPlotShowDomains);
@@ -583,48 +547,30 @@
 
             filter.setOnFiltersChanged(async () => {
                 filter.updateActiveFilterDisplay();
-
-                updatePromiscuityPlotWrapper();
+                if (getPromiscuityFilterState()) {
+                    updateAllPromiscuityPlots();
+                }
                 await initializeChordPlotWrapper();
             });
 
-            function updatePromiscuityPlotWrapper() {
-                updatePromiscuityPlot(
-                    p1,
-                    promiscuityUseFilteredData,
-                    filter,
-                    proteinLengthData,
-                    interfaceData
-                );
-            }
+            filter.setColumnFilters(initialNumericFiltersForProteinPage);
 
-            setupPromiscuityControls(
-                document.getElementById('promiscuity-controls-placeholder'),
-                promiscuityUseFilteredData,
-                updatePromiscuityPlotWrapper,
-                (newState) => {
-                    promiscuityUseFilteredData = newState;
-                }
-            );
+            await initializePPITableForProtein();
 
-            if (p1) {
-                filter.setColumnFilters(initialNumericFiltersForProteinPage);
+            await initializeDomainFragmentPlots({
+                proteins: [p1],
+                fallbackMessageSelector: '#fragments-fallback-message-df'
+            });
 
-                await initializePPITableForProtein();
+            await initializeChordPlotWrapper();
 
-                await initializeChordPlotWrapper();
-
-                updatePromiscuityPlotWrapper();
-
-            } else {
-                const promiscuityContainer = document.querySelector('.promiscuity-plot-container');
-                if (promiscuityContainer) promiscuityContainer.innerHTML = '<p style="text-align:center; color:grey; padding-top: 20px;">Protein not specified for plot.</p>';
-                const ppiTableContainer = document.getElementById('ppi-table');
-                if (ppiTableContainer) ppiTableContainer.style.display = 'none';
-                const chordPlotContainer = document.querySelector('.chord-plot-container');
-                if (chordPlotContainer) chordPlotContainer.innerHTML = '<p style="text-align:center; color:grey; padding-top: 20px;">Protein not specified for plot.</p>';
-                console.warn("Protein p1 not provided, table and promiscuity plot not fully initialized.");
-            }
+            await initializePromiscuityPlots({
+                proteins: [p1],
+                proteinLengthData: proteinLengthData,
+                interfaceData: interfaceData,
+                filter: filter,
+                applyFilters: true
+            });
 
             document.querySelectorAll('.sidebar .sidebar-section ul li a').forEach(link => {
                 link.addEventListener('click', function(event) {
