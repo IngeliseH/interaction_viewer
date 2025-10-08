@@ -24,7 +24,6 @@ export async function initializeDomainFragmentPlots({ proteins, fallbackMessageS
     const fallbackMessage = document.querySelector(fallbackMessageSelector);
 
     _setupGlobalPlotControls();
-    _updateGlobalPlotControlsVisualState();
 
     if (!proteins || proteins.length === 0) {
         if (fallbackMessage) {
@@ -543,28 +542,7 @@ function _renderFragments(svgGroup, fragments, instanceId, config) {
 // =============================================================================
 // Global Controls
 // =============================================================================
-function _updateGlobalPlotControlsVisualState() {
-    const uniprotDomainsButton = document.querySelector('.global-uniprot-domains-button');
-    const alphafoldDomainsButton = document.querySelector('.global-alphafold-domains-button');
-    const fragmentsButton = document.querySelector('.global-fragments-button');
-
-    if (uniprotDomainsButton) {
-        uniprotDomainsButton.classList.toggle('active', _globalPlotToggleStates.showUniprotDomains);
-    }
-    if (alphafoldDomainsButton) {
-        alphafoldDomainsButton.classList.toggle('active', _globalPlotToggleStates.showAlphafoldDomains);
-    }
-    if (fragmentsButton) {
-        fragmentsButton.classList.toggle('active', _globalPlotToggleStates.showFragments);
-    }
-}
-
-function _setupGlobalPlotControls() {
-    //TODO: Generate these dynamically in a <div id="domain-fragment-controls-placeholder"></div>
-    const uniprotDomainsButton = document.querySelector('.global-uniprot-domains-button');
-    const alphafoldDomainsButton = document.querySelector('.global-alphafold-domains-button');
-    const fragmentsButton = document.querySelector('.global-fragments-button');
-
+function _createToggleButton({ key, className, innerHTML, title }) {
     const redrawAllActivePlots = () => {
         Object.keys(_plotInstances).forEach(id => {
             if (_plotInstances[id] && _plotInstances[id].proteinName) {
@@ -573,32 +551,64 @@ function _setupGlobalPlotControls() {
         });
     };
 
-    if (uniprotDomainsButton && !uniprotDomainsButton.dataset.handlerAttached) {
-        uniprotDomainsButton.addEventListener('click', () => {
-            _globalPlotToggleStates.showUniprotDomains = !_globalPlotToggleStates.showUniprotDomains;
-            _updateGlobalPlotControlsVisualState();
-            redrawAllActivePlots();
-        });
-        uniprotDomainsButton.dataset.handlerAttached = 'true';
-    }
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `control-button ${className}`;
+    button.innerHTML = innerHTML;
+    button.title = title;
+    button.classList.toggle('active', _globalPlotToggleStates[key]);
 
-    if (alphafoldDomainsButton && !alphafoldDomainsButton.dataset.handlerAttached) {
-        alphafoldDomainsButton.addEventListener('click', () => {
-            _globalPlotToggleStates.showAlphafoldDomains = !_globalPlotToggleStates.showAlphafoldDomains;
-            _updateGlobalPlotControlsVisualState();
-            redrawAllActivePlots();
-        });
-        alphafoldDomainsButton.dataset.handlerAttached = 'true';
-    }
+    button.addEventListener('click', () => {
+        _globalPlotToggleStates[key] = !_globalPlotToggleStates[key];
+        button.classList.toggle('active', _globalPlotToggleStates[key]);
+        redrawAllActivePlots();
+    });
 
-    if (fragmentsButton && !fragmentsButton.dataset.handlerAttached) {
-        fragmentsButton.addEventListener('click', () => {
-            _globalPlotToggleStates.showFragments = !_globalPlotToggleStates.showFragments;
-            _updateGlobalPlotControlsVisualState();
-            redrawAllActivePlots();
+    return button;
+}
+
+function _setupGlobalPlotControls() {
+    const placeholder = document.getElementById('domain-fragment-controls-placeholder');
+    if (!placeholder) return;
+    placeholder.innerHTML = ''; 
+
+    const controlBar = document.createElement('div');
+    controlBar.className = 'control-bar global-domain-fragment-plot-controls';
+    controlBar.style.marginBottom = '20px';
+
+    const buttonGroup = document.createElement('div');
+    buttonGroup.className = 'control-button-group';
+
+    const buttonConfigs = [
+        {
+            key: 'showUniprotDomains',
+            className: 'global-uniprot-domains-button',
+            innerHTML: '<i class="fas fa-layer-group"></i> Domains',
+            title: 'Toggle UniProt Domains'
+        },
+        {
+            key: 'showAlphafoldDomains',
+            className: 'global-alphafold-domains-button',
+            innerHTML: '<i class="fas fa-brain"></i> AlphaFold Domains',
+            title: 'Toggle AlphaFold Domains'
+        },
+        {
+            key: 'showFragments',
+            className: 'global-fragments-button',
+            innerHTML: '<i class="fas fa-puzzle-piece"></i> Fragments',
+            title: 'Toggle Fragments'
+        }
+    ];
+
+    buttonConfigs.forEach(config => {
+        const button = _createToggleButton({
+            ...config
         });
-        fragmentsButton.dataset.handlerAttached = 'true';
-    }
+        buttonGroup.appendChild(button);
+    });
+
+    controlBar.appendChild(buttonGroup);
+    placeholder.appendChild(controlBar);
 }
 
 // =============================================================================
