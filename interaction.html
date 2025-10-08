@@ -401,15 +401,16 @@
 
             await initializeDomainFragmentPlots({
                 proteins: [p1, p2],
+                interactionRegions,
                 fallbackMessageSelector: '#fragments-fallback-message-df'
             });
 
             await initializePromiscuityPlots({
                 proteins: [p1, p2],
-                interactionRegions: interactionRegions,
-                proteinLengthData: proteinLengthData,
-                interfaceData: interfaceData,
-                filter: filter,
+                interactionRegions,
+                proteinLengthData,
+                interfaceData,
+                filter,
                 applyFilters: false
             });
 

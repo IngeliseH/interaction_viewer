@@ -1,6 +1,5 @@
 import { fetchProteinData } from './data.js';
 import { createSvgElement, createProteinLabel, createHoverLabel } from './plot-utility.js';
-import { parseLocation2 } from './data.js';
 
 let _plotInstances = {};
 
@@ -19,7 +18,7 @@ let _currentColorIndex = 0;
 // =============================================================================
 // Public API Functions
 // =============================================================================
-export async function initializeDomainFragmentPlots({ proteins, fallbackMessageSelector }) {
+export async function initializeDomainFragmentPlots({ proteins, fallbackMessageSelector, interactionRegions = [] }) {
 
     const fallbackMessage = document.querySelector(fallbackMessageSelector);
 
@@ -37,6 +36,7 @@ export async function initializeDomainFragmentPlots({ proteins, fallbackMessageS
 
     for (let i = 1; i <= proteins.length; i++) {
         const protein = proteins[i-1];
+        const interactionRegion = (interactionRegions.length >= i) ? interactionRegions[i-1] : [];
         const section = document.getElementById(`domain-fragment-plot-p${i}-section`);
         if (section) {
             section.style.display = 'block';
@@ -49,10 +49,13 @@ export async function initializeDomainFragmentPlots({ proteins, fallbackMessageS
             }
         }
 
-        await _initializePlotInstance(`p${i}`, protein, {
-            container: `#domain-fragment-plot-container-p${i}`,
-            statusMessage: `.domain-fragment-plot-status-p${i}`,
-            subheading: `#p${i}-name-subheading-df`
+        await _initializePlotInstance({
+            instanceId:`p${i}`,
+            proteinName: protein,
+            interactionRegion,
+            containerSelector: `#domain-fragment-plot-container-p${i}`,
+            statusMessageSelector: `.domain-fragment-plot-status-p${i}`,
+            subheadingSelector: `#p${i}-name-subheading-df`
         });
     }
 }
@@ -60,7 +63,7 @@ export async function initializeDomainFragmentPlots({ proteins, fallbackMessageS
 // =============================================================================
 // Core Logic
 // =============================================================================
-async function _initializePlotInstance(instanceId, proteinName, selectors) {
+async function _initializePlotInstance({instanceId, proteinName, interactionRegion = [], containerSelector, statusMessageSelector, subheadingSelector}) {
     if (!proteinName) {
         console.error(`Domain/Fragment Plot: No protein name provided for instance ${instanceId}`);
         return;
@@ -72,10 +75,11 @@ async function _initializePlotInstance(instanceId, proteinName, selectors) {
         fragmentIndices: null,
         alphafoldDomains: null,
         uniprotDomains: null,
+        interactionRegion: interactionRegion || [],
         isCollapsibleTableCollapsed: true,
-        containerSelector: selectors.container,
-        statusMessageSelector: selectors.statusMessage,
-        subheadingSelector: selectors.subheading
+        containerSelector,
+        statusMessageSelector,
+        subheadingSelector
     };
 
     const instance = _plotInstances[instanceId];
@@ -198,7 +202,7 @@ function _renderPlot(container, instanceId) {
             }
 
             if (parsedFragments.length > 0) {
-                let highlightLocations = [];
+                /*let highlightLocations = [];
                 //TODO: Stop extracting from url in here - pass in as parameter instead
                 if (window.location.pathname.endsWith('interaction.html')) {
                     const urlParams = new URLSearchParams(window.location.search);
@@ -210,13 +214,12 @@ function _renderPlot(container, instanceId) {
                     if (instanceId === 'p2' && f2_loc) {
                         highlightLocations = parseLocation2(f2_loc);
                     }
-                }
+                }*/
 
                 _renderFragments(svgGroup, parsedFragments, instanceId, {
                     plotWidth: dimensions.plotWidth,
                     yPosition: dimensions.plotHeight / 2,
-                    height: dimensions.fragmentBarHeight,
-                    highlightLocations
+                    height: dimensions.fragmentBarHeight
                 });
             }
         } catch (e) {
@@ -449,7 +452,7 @@ function _renderDomains(svgGroup, instanceId, config) {
 }
 
 function _renderFragments(svgGroup, fragments, instanceId, config) {
-    const { plotWidth, yPosition, height, highlightLocations } = config;
+    const { plotWidth, yPosition, height } = config;
     const instance = _plotInstances[instanceId];
     const { proteinLength } = instance;
 
@@ -489,8 +492,8 @@ function _renderFragments(svgGroup, fragments, instanceId, config) {
         });
         svgGroup.appendChild(fragmentRect);
 
-        if (highlightLocations.length > 0) {
-            highlightLocations.forEach(loc => {
+        if (instance.interactionRegion.length > 0) {
+            instance.interactionRegion.forEach(loc => {
                 const overlapStart = Math.max(start, loc.start);
                 const overlapEnd = Math.min(end, loc.end);
                 if (overlapEnd >= overlapStart) {
