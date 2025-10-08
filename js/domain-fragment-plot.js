@@ -19,7 +19,49 @@ let _currentColorIndex = 0;
 // =============================================================================
 // Public API Functions
 // =============================================================================
-async function initializePlotInstance(instanceId, proteinName, selectorsConfig) {
+export async function initializeDomainFragmentPlots({ proteins, fallbackMessageSelector }) {
+
+    const fallbackMessage = document.querySelector(fallbackMessageSelector);
+
+    _setupGlobalPlotControls();
+    _updateGlobalPlotControlsVisualState();
+
+    if (!proteins || proteins.length === 0) {
+        if (fallbackMessage) {
+            fallbackMessage.textContent = 'Protein parameters not provided.';
+            fallbackMessage.style.display = 'block';
+        }
+        return;
+    }
+
+    if (fallbackMessage) fallbackMessage.style.display = 'none';
+
+    for (let i = 1; i <= proteins.length; i++) {
+        const protein = proteins[i-1];
+        const section = document.getElementById(`domain-fragment-plot-p${i}-section`);
+        if (section) {
+            section.style.display = 'block';
+            if (!section.querySelector(`#domain-fragment-plot-container-p${i}`)) {
+                section.innerHTML = `
+                    <h3 id="p${i}-name-subheading-df" class="page-subtitle">Loading Protein ${i}...</h3>
+                    <div id="domain-fragment-plot-status-p${i}" class="domain-fragment-plot-status"></div>
+                    <div id="domain-fragment-plot-container-p${i}" class="domain-fragment-plot-container"></div>
+                `;
+            }
+        }
+
+        await _initializePlotInstance(`p${i}`, protein, {
+            container: `#domain-fragment-plot-container-p${i}`,
+            statusMessage: `.domain-fragment-plot-status-p${i}`,
+            subheading: `#p${i}-name-subheading-df`
+        });
+    }
+}
+
+// =============================================================================
+// Core Logic
+// =============================================================================
+async function _initializePlotInstance(instanceId, proteinName, selectorsConfig) {
     if (!proteinName) {
         console.error(`Domain/Fragment Plot: No protein name provided for instance ${instanceId}`);
         return;
@@ -60,48 +102,6 @@ async function initializePlotInstance(instanceId, proteinName, selectorsConfig) 
     _drawPlot(instanceId);
 }
 
-export async function initializeDomainFragmentPlots({ proteins, fallbackMessageSelector }) {
-
-    const fallbackMessage = document.querySelector(fallbackMessageSelector);
-
-    _setupGlobalPlotControls();
-    _updateGlobalPlotControlsVisualState();
-
-    if (!proteins || proteins.length === 0) {
-        if (fallbackMessage) {
-            fallbackMessage.textContent = 'Protein parameters not provided.';
-            fallbackMessage.style.display = 'block';
-        }
-        return;
-    }
-
-    if (fallbackMessage) fallbackMessage.style.display = 'none';
-
-    for (let i = 1; i <= proteins.length; i++) {
-        const protein = proteins[i-1];
-        const section = document.getElementById(`domain-fragment-plot-p${i}-section`);
-        if (section) {
-            section.style.display = 'block';
-            if (!section.querySelector(`#domain-fragment-plot-container-p${i}`)) {
-                section.innerHTML = `
-                    <h3 id="p${i}-name-subheading-df" class="page-subtitle">Loading Protein ${i}...</h3>
-                    <div id="domain-fragment-plot-status-p${i}" class="domain-fragment-plot-status"></div>
-                    <div id="domain-fragment-plot-container-p${i}" class="domain-fragment-plot-container"></div>
-                `;
-            }
-        }
-
-        await initializePlotInstance(`p${i}`, protein, {
-            container: `#domain-fragment-plot-container-p${i}`,
-            statusMessage: `.domain-fragment-plot-status-p${i}`,
-            subheading: `#p${i}-name-subheading-df`
-        });
-    }
-}
-
-// =============================================================================
-// Core Logic
-// =============================================================================
 function _drawPlot(instanceId) {
     const instance = _plotInstances[instanceId];
     if (!instance) {
@@ -233,7 +233,6 @@ function _renderPlot(container, instanceId, { proteinName, proteinLength, fragme
                     plotWidth: dimensions.plotWidth,
                     yPosition: dimensions.plotHeight / 2,
                     height: dimensions.fragmentBarHeight,
-                    labelFontSize: 10,
                     highlightLocations
                 });
             }
@@ -401,7 +400,7 @@ function _renderDomains(svgGroup, domains, config) {
 
         const rect_x = x1_orig - 0.5;
         const domainWidth = Math.max(1, x2_orig - x1_orig + 1);
-        const fillColor = type === 'uniprot' ? _getDomainColor(normalizedId) : 'lightblue';
+        const fillColor = type === 'uniprot' ? _assignDomainColor(normalizedId) : 'lightblue';
 
         const domainRect = createSvgElement("rect", {
             "id": `${type}-domain-${instanceId}-${index}`,
@@ -461,7 +460,7 @@ function _renderDomains(svgGroup, domains, config) {
 }
 
 function _renderFragments(svgGroup, fragments, config) {
-    const { proteinLength, plotWidth, yPosition, height, labelFontSize, highlightLocations } = config;
+    const { proteinLength, plotWidth, yPosition, height, highlightLocations } = config;
 
     fragments.forEach((frag, i) => {
         if (!Array.isArray(frag) || frag.length !== 2) return;
@@ -612,7 +611,7 @@ function _setupGlobalPlotControls() {
 // =============================================================================
 // Internal Helpers
 // =============================================================================
-function _getDomainColor(baseId) {
+function _assignDomainColor(baseId) {
     if (!_domainColorMap[baseId]) {
         _domainColorMap[baseId] = _domainColors[_currentColorIndex % _domainColors.length];
         _currentColorIndex++;
