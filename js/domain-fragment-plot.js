@@ -310,6 +310,7 @@ function _renderCollapsibleTable(container, instanceId) {
         row.addEventListener("mouseover", () => {
             _handleDomainHover(
                 true,
+                instanceId,
                 domainRectId,
                 startLabelId,
                 endLabelId,
@@ -323,6 +324,7 @@ function _renderCollapsibleTable(container, instanceId) {
         row.addEventListener("mouseout", () => {
             _handleDomainHover(
                 false,
+                instanceId,
                 domainRectId,
                 startLabelId,
                 endLabelId,
@@ -423,6 +425,7 @@ function _renderDomains(svgGroup, instanceId, config) {
         domainRect.addEventListener("mouseover", () => {
             _handleDomainHover(
                 true,
+                instanceId,
                 `${type}-domain-${instanceId}-${index}`,
                 `${type}-start-label-${instanceId}-${index}`,
                 `${type}-end-label-${instanceId}-${index}`,
@@ -432,10 +435,10 @@ function _renderDomains(svgGroup, instanceId, config) {
                 domain.end
             );
         });
-
         domainRect.addEventListener("mouseout", () => {
             _handleDomainHover(
                 false,
+                instanceId,
                 `${type}-domain-${instanceId}-${index}`,
                 `${type}-start-label-${instanceId}-${index}`,
                 `${type}-end-label-${instanceId}-${index}`,
@@ -530,14 +533,14 @@ function _renderFragments(svgGroup, fragments, instanceId, config) {
             fragmentRect.setAttribute("stroke", hoverStroke);
             fragStartLabel.setAttribute("visibility", "visible");
             fragEndLabel.setAttribute("visibility", "visible");
-            if (window.highlightPromiscuityResidues) window.highlightPromiscuityResidues(start, end);
+            if (window.highlightPromiscuityResidues) window.highlightPromiscuityResidues(instanceId, start, end);
         });
         fragmentRect.addEventListener("mouseout", () => {
             fragmentRect.setAttribute("fill", originalFill);
             fragmentRect.setAttribute("stroke", originalStroke);
             fragStartLabel.setAttribute("visibility", "hidden");
             fragEndLabel.setAttribute("visibility", "hidden");
-            if (window.highlightPromiscuityResidues) window.highlightPromiscuityResidues();
+            if (window.highlightPromiscuityResidues) window.highlightPromiscuityResidues(instanceId);
         });
     });
 }
@@ -577,7 +580,6 @@ function _setupGlobalPlotControls() {
 
     const controlBar = document.createElement('div');
     controlBar.className = 'control-bar global-domain-fragment-plot-controls';
-    controlBar.style.marginBottom = '20px';
 
     const buttonGroup = document.createElement('div');
     buttonGroup.className = 'control-button-group';
@@ -634,7 +636,7 @@ function _normalizeDomainId(domainId) {
     return baseId.replace(/_/g, ' ');
 }
 
-function _handleDomainHover(isHovering, domainRectId, startLabelId, endLabelId, baseIdLabelId, domainRow, start, end) {
+function _handleDomainHover(isHovering, instanceId, domainRectId, startLabelId, endLabelId, baseIdLabelId, domainRow, start, end) {
     const domainRect = document.getElementById(domainRectId);
     if (domainRect) domainRect.setAttribute("opacity", isHovering ? "1.0" : "0.6");
 
@@ -656,8 +658,8 @@ function _handleDomainHover(isHovering, domainRectId, startLabelId, endLabelId, 
     }
 
     if (isHovering && window.highlightPromiscuityResidues) {
-        window.highlightPromiscuityResidues(start, end);
+        window.highlightPromiscuityResidues(instanceId, start, end);
     } else if (!isHovering && window.highlightPromiscuityResidues) {
-        window.highlightPromiscuityResidues();
+        window.highlightPromiscuityResidues(instanceId);
     }
 }

@@ -11,7 +11,7 @@ export function getPromiscuityFilterState() {
     return _applyPromiscuityFilters;
 }
 
-//TODO: use beter system for getting protein length data
+//TODO: use better system for getting protein length data
 export async function initializePromiscuityPlots({
     proteins,
     interactionRegions = [],
@@ -68,18 +68,31 @@ export function updateAllPromiscuityPlots() {
     });
 }
 
-export function highlightPromiscuityResidues(start = null, end = null) {
-    const containers = Array.from(document.querySelectorAll('.promiscuity-plot-container'));
+export function highlightPromiscuityResidues(instanceId, start = null, end = null) {
+    const container = document.getElementById(`promiscuity-plot-${instanceId}`);
 
-    containers.forEach(container => {
-        if (!container) return;
+    if (!container) {
+        console.warn(`Promiscuity Plot: Container for instance ${instanceId} not found.`);
+        return;
+    };
 
-        if (start === null || end === null) {
-            container._promiscuityHighlightRange = null;
-        } else if (typeof start === "number" && typeof end === "number" && start <= end) {
-            container._promiscuityHighlightRange = { start, end };
-        }
-        _renderBarHighlights(container);
+    let highlightRange = null;
+    if (typeof start === "number" && typeof end === "number" && start <= end) {
+        highlightRange = { start, end };
+    }
+    const barsGroup = container.querySelector('svg g.coverage-bars');
+    if (!barsGroup) {
+        console.warn(`Promiscuity Plot: Coverage bars group for instance ${instanceId} not found.`);
+        return;
+    };
+    const bars = barsGroup.querySelectorAll('rect');
+
+    bars.forEach((rect) => {
+        const residueIdx = Number(rect.dataset.residueIdx);
+        const isInHighlight = highlightRange &&
+            residueIdx >= start &&
+            residueIdx <= end;
+        rect.setAttribute("opacity", isInHighlight ? "1.0" : "0.6");
     });
 }
 
@@ -164,7 +177,6 @@ function _initializePlotInstance(instanceId, proteinName, config) {
 
     const section = document.createElement('div');
     section.id = sectionId;
-    section.style.marginBottom = '30px';
 
     const subheading = document.createElement('h3');
     subheading.id = `${instanceId}-name-subheading-promiscuity`;
@@ -228,7 +240,6 @@ function _setupPromiscuityControls(placeholder, updateCallback) {
 
     const controlBar = document.createElement('div');
     controlBar.className = 'control-bar';
-    controlBar.style.marginBottom = '20px';
 
     const buttonGroup = document.createElement('div');
     buttonGroup.className = 'control-button-group';
@@ -399,27 +410,6 @@ function _drawPromiscuityCoverageBars(plotElements, coverageArray) {
 
             barsGroup.appendChild(rect);
         }
-    });
-}
-
-// =============================================================================
-// Internal Helpers
-// =============================================================================
-function _renderBarHighlights(container) {
-    if (!container) return;
-
-    const barsGroup = container.querySelector('svg g.coverage-bars');
-    if (!barsGroup) return;
-
-    const highlightRange = container._promiscuityHighlightRange;
-    const bars = barsGroup.querySelectorAll('rect');
-
-    bars.forEach((rect) => {
-        const residueIdx = Number(rect.dataset.residueIdx);
-        const isInHighlight = highlightRange &&
-            residueIdx >= highlightRange.start &&
-            residueIdx <= highlightRange.end;
-        rect.setAttribute("opacity", isInHighlight ? "1.0" : "0.6");
     });
 }
 
