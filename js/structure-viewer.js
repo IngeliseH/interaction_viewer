@@ -187,8 +187,10 @@ function displayStructureInViewer(container, pdbPath, options = {}) {
     }
 }
 
+//TODO: export rather than attaching to window?
 window.displayStructureInViewer = displayStructureInViewer;
 
+//TODO: probably a better way to manage this
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.structure-viewer').forEach(container => {
         const pdbPath = container.getAttribute('data-pdb');

@@ -159,6 +159,7 @@ export function parseLocation(locationString) {
 }
 
 export function indicesToRanges(indices) {
+    // Converts an array of integers into a compact range string, e.g. [2,3,4,7] -> "2-4,7"
     if (!Array.isArray(indices) || indices.length === 0) return '';
     
     const sorted = Array.from(new Set(indices))

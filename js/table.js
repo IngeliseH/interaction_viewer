@@ -10,7 +10,6 @@ export function setTableData(data) { state.setState({ tableData: data }); }
 export function setColumnDescriptions(desc) { state.setState({ columnDescriptions: desc }); }
 export function setCurrentSort(sort) { state.setState({ currentSort: sort }); }
 export function setSearchMode(mode) { state.setState({ searchMode: mode }); }
-export function setCurrentPage(page) { state.setState({ currentPage: page }); }
 export function setProteinNameToAccessionMap(map) { state.setState({ proteinNameToAccessionMap: map }); }
 export function setProteinNameToCategoryMap(map) { state.setState({ proteinNameToCategoryMap: map }); }
 

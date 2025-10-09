@@ -25,28 +25,16 @@ export async function initializePromiscuityPlots({
     const controlsPlaceholder = document.querySelector('#promiscuity-controls-placeholder');
     const plotSectionsContainer = document.querySelector('#promiscuity-plots-container');
     const fallbackMessage = document.querySelector('#promiscuity-fallback-message');
+    if (fallbackMessage) fallbackMessage.style.display = 'none';
 
     if (!plotSectionsContainer || !controlsPlaceholder) {
         console.error('Promiscuity Plot: Essential container or placeholder selectors not found.');
         return;
     }
-
-    _setupPromiscuityControls(controlsPlaceholder, updateAllPromiscuityPlots);
-
-    if (!proteins || proteins.length === 0) {
-        if (fallbackMessage) {
-            fallbackMessage.textContent = 'Protein parameters not provided for promiscuity plots.';
-            fallbackMessage.style.display = 'block';
-        }
-        plotSectionsContainer.innerHTML = '';
-        _plotInstances = {};
-        return;
-    }
-
-    if (fallbackMessage) fallbackMessage.style.display = 'none';
-
     plotSectionsContainer.innerHTML = '';
     _plotInstances = {};
+
+    _setupPromiscuityControls(controlsPlaceholder, updateAllPromiscuityPlots);
 
     proteins.forEach((proteinName, index) => {
         const instanceId = `p${index + 1}`;

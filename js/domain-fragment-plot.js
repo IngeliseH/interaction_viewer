@@ -19,43 +19,21 @@ let _currentColorIndex = 0;
 // Public API Functions
 // =============================================================================
 export async function initializeDomainFragmentPlots({ proteins, fallbackMessageSelector, interactionRegions = [] }) {
-
-    const fallbackMessage = document.querySelector(fallbackMessageSelector);
-
     _setupGlobalPlotControls();
 
-    if (!proteins || proteins.length === 0) {
-        if (fallbackMessage) {
-            fallbackMessage.textContent = 'Protein parameters not provided.';
-            fallbackMessage.style.display = 'block';
-        }
-        return;
-    }
-
+    const fallbackMessage = document.querySelector(fallbackMessageSelector);
     if (fallbackMessage) fallbackMessage.style.display = 'none';
 
     for (let i = 1; i <= proteins.length; i++) {
         const protein = proteins[i-1];
         const interactionRegion = (interactionRegions.length >= i) ? interactionRegions[i-1] : [];
-        const section = document.getElementById(`domain-fragment-plot-p${i}-section`);
-        if (section) {
-            section.style.display = 'block';
-            if (!section.querySelector(`#domain-fragment-plot-container-p${i}`)) {
-                section.innerHTML = `
-                    <h3 id="p${i}-name-subheading-df" class="page-subtitle">Loading Protein ${i}...</h3>
-                    <div id="domain-fragment-plot-status-p${i}" class="domain-fragment-plot-status"></div>
-                    <div id="domain-fragment-plot-container-p${i}" class="domain-fragment-plot-container"></div>
-                `;
-            }
-        }
+        const plotSectionsContainer = document.querySelector('#domain-fragment-plots-container');
 
         await _initializePlotInstance({
             instanceId:`p${i}`,
             proteinName: protein,
             interactionRegion,
-            containerSelector: `#domain-fragment-plot-container-p${i}`,
-            statusMessageSelector: `.domain-fragment-plot-status-p${i}`,
-            subheadingSelector: `#p${i}-name-subheading-df`
+            plotSectionsContainer
         });
     }
 }
@@ -63,13 +41,25 @@ export async function initializeDomainFragmentPlots({ proteins, fallbackMessageS
 // =============================================================================
 // Core Logic
 // =============================================================================
-async function _initializePlotInstance({instanceId, proteinName, interactionRegion = [], containerSelector, statusMessageSelector, subheadingSelector}) {
-    if (!proteinName) {
-        console.error(`Domain/Fragment Plot: No protein name provided for instance ${instanceId}`);
-        return;
-    }
+async function _initializePlotInstance({instanceId, proteinName, interactionRegion = [], plotSectionsContainer}) {
+    const section = document.createElement('div');
+    section.id = `domain-fragment-plot-${instanceId}-section`;
 
-    _plotInstances[instanceId] = {
+    const subheading = document.createElement('h3');
+    subheading.id = `${instanceId}-name-subheading-domain-fragment`;
+    subheading.className = 'page-subtitle';
+    subheading.textContent = proteinName;
+
+    const container = document.createElement('div');
+    container.id = `domain-fragment-plot-container-${instanceId}`;
+    container.className = 'domain-fragment-plot-container';
+    container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">Loading data for domain/fragment plot...</p>`;
+
+    section.appendChild(subheading);
+    section.appendChild(container);
+    plotSectionsContainer.appendChild(section);
+
+    const instance = {
         proteinName,
         proteinLength: null,
         fragmentIndices: null,
@@ -77,26 +67,14 @@ async function _initializePlotInstance({instanceId, proteinName, interactionRegi
         uniprotDomains: null,
         interactionRegion: interactionRegion || [],
         isCollapsibleTableCollapsed: true,
-        containerSelector,
-        statusMessageSelector,
-        subheadingSelector
+        containerSelector: container.id,
+        subheadingSelector: subheading.id
     };
-
-    const instance = _plotInstances[instanceId];
-    const container = document.querySelector(instance.containerSelector);
-    const statusMessageElement = document.querySelector(instance.statusMessageSelector);
-    const subheadingElement = instance.subheadingSelector ? document.querySelector(instance.subheadingSelector) : null;
-
-    if (subheadingElement) {
-        subheadingElement.textContent = proteinName;
-    }
-
-    if (statusMessageElement) statusMessageElement.textContent = `Loading data for ${proteinName}...`;
-    if (container) container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">Loading data for domain/fragment plot...</p>`;
+    _plotInstances[instanceId] = instance;
 
     const proteinData = await fetchProteinData(proteinName);
     if (proteinData.length === null || isNaN(proteinData.length)) {
-        const message = proteinName ? `Length data not available or invalid for ${proteinName}. Cannot draw domain/fragment plot.` : 'Protein not specified for domain/fragment plot.';
+        const message = proteinName ? `Length data not available or invalid for ${proteinName}.` : 'Protein not specified.';
         container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">${message}</p>`;
         return;
     }
@@ -106,14 +84,9 @@ async function _initializePlotInstance({instanceId, proteinName, interactionRegi
     instance.alphafoldDomains = proteinData.alphafoldDomains;
     instance.uniprotDomains = proteinData.uniprotDomains;
 
-    if (statusMessageElement) {
-        statusMessageElement.textContent = '';
-    }
-
     container.innerHTML = '';
 
     _renderPlot(container, instanceId);
-
     _renderCollapsibleTable(container, instanceId);
 }
 
@@ -130,9 +103,13 @@ function _updatePlot(instanceId) {
         return;
     }
     container.innerHTML = '';
+    if (!proteinName || !instance.proteinLength) {
+        const msg = proteinName ? `Length data not available for ${proteinName}.` : 'Protein not specified.';
+        container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">${msg}</p>`;
+        return null;
+    }
 
     _renderPlot(container, instanceId);
-
     _renderCollapsibleTable(container, instanceId);
 }
 
@@ -202,20 +179,6 @@ function _renderPlot(container, instanceId) {
             }
 
             if (parsedFragments.length > 0) {
-                /*let highlightLocations = [];
-                //TODO: Stop extracting from url in here - pass in as parameter instead
-                if (window.location.pathname.endsWith('interaction.html')) {
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const f1_loc = urlParams.get('f1_loc');
-                    const f2_loc = urlParams.get('f2_loc');
-                    if (instanceId === 'p1' && f1_loc) {
-                        highlightLocations = parseLocation2(f1_loc);
-                    }
-                    if (instanceId === 'p2' && f2_loc) {
-                        highlightLocations = parseLocation2(f2_loc);
-                    }
-                }*/
-
                 _renderFragments(svgGroup, parsedFragments, instanceId, {
                     plotWidth: dimensions.plotWidth,
                     yPosition: dimensions.plotHeight / 2,

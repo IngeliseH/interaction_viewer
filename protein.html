@@ -73,10 +73,8 @@
                             </div>
                             <div class="content-section-content">
                                 <div id="domain-fragment-controls-placeholder"></div>
-                                <div class="domain-fragment-plot-section" id="domain-fragment-plot-p1-section">
-                                    <!-- Domain/Fragment Plot will be rendered here by JavaScript -->
-                                </div>
-                                <p id="fragments-fallback-message-df" style="text-align:center; display:none; margin-top: 15px;">
+                                <div id="domain-fragment-plots-container"></div>
+                                <p id="domain-fragments-fallback-message" style="text-align:center; display:none; margin-top: 15px;">
                                     Information about domains and fragments will be shown here if available.
                                 </p>
                             </div>
@@ -265,6 +263,8 @@
         import * as filter from './js/filter.js';
         import * as pagination from './js/pagination.js';
         import * as stats from './js/stats.js';
+        import { fetchProteinData } from './js/data.js';
+        import { updatePageTitle } from './js/page-title.js';
         import { initializeChordPlot } from './js/chord-plot.js';
         import { fetchAndParseCSV, loadInteractionData } from './js/data.js';
         import { initializePromiscuityPlots, updateAllPromiscuityPlots, getPromiscuityFilterState } from './js/promiscuity-plot.js';
@@ -280,129 +280,8 @@
         let chordPlotShowDomains = true;
         let chordPlotExpandQuery = false;
 
-        function updatePageTitleWithProtein() {
-            const f1_id = decodeURIComponent(urlParams.get('f1_id') || '');
-
-            const pageTitleElement = document.querySelector('.page-main-heading');
-
-            if (p1) {
-                if (pageTitleElement) {
-                    pageTitleElement.textContent = p1;
-                }
-                loadAndDisplayProteinInfo(p1);
-
-            } else {
-                if (pageTitleElement) {
-                    pageTitleElement.textContent = "Centrosome Predicted Interaction Data Explorer";
-                }
-                document.title = "Centrosome Predicted Interaction Data Explorer";
-                console.warn("Protein p1 not provided in URL parameters.");
-                const accessionElement = document.getElementById('uniprot-accession');
-                const subheadingElement = document.getElementById('uniprot-accession-subheading');
-                if (accessionElement) {
-                    accessionElement.textContent = 'N/A (Protein not specified)';
-                }
-                if (subheadingElement) {
-                    subheadingElement.textContent = 'Protein not specified';
-                }
-                if (fragmentImageElement) {
-                    fragmentImageElement.style.display = 'none';
-                }
-                if (fragmentImageCaptionElement) {
-                    fragmentImageCaptionElement.textContent = 'Protein not specified for fragment image.';
-                }
-            }
-        }
-
-        async function loadAndDisplayProteinInfo(proteinName) {
-            const accessionElement = document.getElementById('uniprot-accession');
-            const subheadingElement = document.getElementById('uniprot-accession-subheading');
-            if (!accessionElement || !subheadingElement) {
-                console.error('Required elements for protein info not found.');
-                if (accessionElement) accessionElement.textContent = 'Page error';
-                if (subheadingElement) subheadingElement.textContent = 'Page error';
-                return;
-            }
-
-            try {
-                const response = await fetch('all_fragments_2025.06.04.csv');
-                if (!response.ok) {
-                    accessionElement.textContent = 'Error loading data';
-                    subheadingElement.textContent = 'Error loading data';
-                    console.error('Failed to load CSV for accession ID:', response.statusText);
-                    return;
-                }
-                const csvText = await response.text();
-                Papa.parse(csvText, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: function (results) {
-                        const allFragmentsData = results.data;
-                        const proteinInfoRow = allFragmentsData.find(row => row.name === proteinName);
-
-                        if (proteinInfoRow && proteinInfoRow.accession_id) {
-                            const accessionId = proteinInfoRow.accession_id;
-                            accessionElement.textContent = accessionId;
-                            subheadingElement.innerHTML = `<a href="https://www.uniprot.org/uniprotkb/${accessionId}/entry" target="_blank" rel="noopener noreferrer">${accessionId}</a>`;
-
-                            let afDomainRanges = [];
-                            const domainDataString = proteinInfoRow.domains;
-
-                            if (domainDataString && typeof domainDataString === 'string') {
-                                try {
-                                    const matches = domainDataString.matchAll(/\('AF_D\d*',\s*\((\d+),\s*(\d+)\)\)/g);
-                                    for (const match of matches) {
-                                        const start = parseInt(match[1], 10);
-                                        const end = parseInt(match[2], 10);
-                                        if (!isNaN(start) && !isNaN(end) && start > 0 && end >= start) {
-                                            afDomainRanges.push({ start, end });
-                                        }
-                                    }
-                                } catch (e) {
-                                    console.error("[ProtHTML] Error parsing 'domains' string with regex:", e);
-                                }
-                            } else {
-                                console.warn("[ProtHTML] No 'domains' string available for AF domain parsing.");
-                            }
-
-                            if (afDomainRanges.length === 0) {
-                                console.warn("[ProtHTML] No AF domains found.");
-                            }
-
-                            fetchAndLoadAlphaFoldStructure(accessionId, afDomainRanges);
-                        } else {
-                            accessionElement.textContent = 'Not found';
-                            subheadingElement.textContent = 'Accession ID Not Found';
-                            console.warn(`Accession ID for ${proteinName} not found in CSV, or 'accession_id' column missing/empty.`);
-                            const fallbackElement = document.getElementById('structure-viewer-fallback-protein');
-                            const controls = document.querySelector('#structure-viewer-section .structure-controls');
-                            if (fallbackElement) {
-                                fallbackElement.textContent = 'UniProt Accession ID not found, cannot fetch structure.';
-                                fallbackElement.style.display = 'block';
-                            }
-                            if (document.querySelector('#structure-viewer-section .structure-viewer')) {
-                                document.querySelector('#structure-viewer-section .structure-viewer').innerHTML = `<p id="structure-viewer-fallback-protein" style="text-align:center; padding-top:50px; color:grey;">UniProt Accession ID not found, cannot fetch structure.</p>`;
-                            }
-                            if (controls) controls.style.display = 'none';
-                        }
-                    },
-                    error: function (error) {
-                        accessionElement.textContent = 'Error parsing data';
-                        subheadingElement.textContent = 'Error parsing data';
-                        console.error('Error parsing CSV for accession ID:', error);
-                    }
-                });
-            } catch (error) {
-                accessionElement.textContent = 'Error fetching data';
-                subheadingElement.textContent = 'Error fetching data';
-                console.error('Error fetching or parsing CSV for accession ID:', error);
-            }
-        }
-
         async function fetchAndLoadAlphaFoldStructure(accessionId, afDomainRanges) {
             const viewerSection = document.getElementById('structure-viewer-section');
-            if (!viewerSection) return;
-
             const viewerElement = viewerSection.querySelector('.structure-viewer');
             const fallbackElement = viewerSection.querySelector('#structure-viewer-fallback-protein');
             const controlsElement = viewerSection.querySelector('.structure-controls');
@@ -435,13 +314,7 @@
                 }
             } catch (error) {
                 console.error("Error fetching/loading AlphaFold PDB URL:", error);
-                if (currentFallback) {
-                    currentFallback.textContent = `Failed to load structure: ${error.message}.`;
-                    currentFallback.style.display = 'block';
-                } else if (viewerElement) {
-                    viewerElement.innerHTML = `<p id="structure-viewer-fallback-protein" style="text-align:center; padding-top:50px; color:red;">Failed to load structure: ${error.message}.</p>`;
-                }
-                if (viewerElement && typeof window.displayStructureInViewer !== 'function') {
+                if (viewerElement) {
                     viewerElement.innerHTML = `<p id="structure-viewer-fallback-protein" style="text-align:center; padding-top:50px; color:red;">Failed to load structure: ${error.message}.</p>`;
                 }
                 if (controlsElement) controlsElement.style.display = 'none';
@@ -500,7 +373,16 @@
             const proteinLengthData = await fetchAndParseCSV('all_fragments_2025.06.04.csv');
             const interfaceData = await fetchAndParseCSV('all_interface_analysis_2025.06.05_shifted.csv');
 
-            updatePageTitleWithProtein();
+            updatePageTitle([p1]);
+            const proteinData = await fetchProteinData(p1);
+            console.log("Fetched protein data:", proteinData);
+            const accessionId = proteinData ? proteinData.accessionId : null;
+            const accessionElement = document.getElementById('uniprot-accession');
+            const subheadingElement = document.getElementById('uniprot-accession-subheading');
+            accessionElement.textContent = accessionId ? accessionId : 'Not found';
+            subheadingElement.innerHTML = accessionId ? `<a href="https://www.uniprot.org/uniprotkb/${accessionId}/entry" target="_blank" rel="noopener noreferrer">${accessionId}</a>` : 'Accession ID Not Found';
+
+            fetchAndLoadAlphaFoldStructure(accessionId, proteinData.alphafoldDomains);
             initCollapsibleSectionsComplex();
 
             const chordDomainsBtn = document.getElementById('chord-domains-btn');
@@ -542,7 +424,7 @@
 
             await initializeDomainFragmentPlots({
                 proteins: [p1],
-                fallbackMessageSelector: '#fragments-fallback-message-df'
+                fallbackMessageSelector: '#domain-fragments-fallback-message'
             });
 
             await initializeChordPlotWrapper();
