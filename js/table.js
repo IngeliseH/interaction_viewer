@@ -167,7 +167,7 @@ function initColumnHeaders() {
             if (!infoBtn) {
                 infoBtn = document.createElement('span');
                 infoBtn.className = 'info-btn';
-                infoBtn.textContent = 'ⓘ';
+                infoBtn.appendChild(document.createElement('i')).className = 'fas fa-info-circle';
                 infoBtn.setAttribute('tabindex', '0');
                 header.appendChild(infoBtn);
                 const tooltip = document.createElement('div');

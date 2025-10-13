@@ -29,7 +29,14 @@ th > .info-tooltip {
 th > .info-btn:hover + .info-tooltip,
 th > .info-btn:focus + .info-tooltip {
     visibility: visible;
+    overflow: visible;
+    z-index: 1000;
     opacity: 1;
+}
+
+.sidebar-content:has(.info-btn:hover) {
+    z-index: 10;
+    position: relative;
 }
 
 .info-tooltip h4,

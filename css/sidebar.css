@@ -88,8 +88,7 @@ aside.sidebar.collapsed .sidebar-content {
 
 .sidebar-section .sidebar-content {
     max-height: 2000px;
-    overflow-y: visible;
-    overflow-x: hidden;
+    overflow: visible;
     opacity: 1;
     transition: max-height 0.3s, opacity 0.3s;
 }
