@@ -34,11 +34,6 @@ th > .info-btn:focus + .info-tooltip {
     opacity: 1;
 }
 
-.sidebar-content:has(.info-btn:hover) {
-    z-index: 10;
-    position: relative;
-}
-
 .info-tooltip h4,
 th > .info-tooltip h4 {
     margin: 0 0 8px 0;
