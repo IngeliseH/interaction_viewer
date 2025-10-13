@@ -202,6 +202,27 @@ export function parseLocation2(loc) {
         });
 }
 
+export function parseResidueLocations(locStr, shift) {
+    // Parses a string like "2, 5-38" into an array of residue numbers as strings ['2', '5', '6', .....], applying a shift if provided
+    console.log('Parsing residue locations from:', locStr, 'with shift:', shift);
+    if (!locStr) return null;
+    const expanded = [];
+    locStr.split(',').forEach(resi => {
+        resi = resi.trim();
+        const match = resi.match(/(\d+)(?:-(\d+))?/);
+        if (match) {
+            const start = parseInt(match[1], 10) - shift;
+            const end = match[2] ? parseInt(match[2], 10) - shift : start;
+            for (let i = start; i <= end; i++) {
+                expanded.push(i.toString());
+            }
+        } else {
+            expanded.push(resi);
+        }
+    });
+    return expanded;
+}
+
 function _parseDomainString(domainsRaw) {
     if (!domainsRaw) return { alphafoldDomains: [], uniprotDomains: [] };
     

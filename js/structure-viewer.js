@@ -1,3 +1,197 @@
+import { parseResidueLocations } from "./data.js";
+import { displayInfo } from "./plot-utility.js";
+
+export async function setUpStructureViewer(urlParams, proteins, proteinMetadata) {
+    const { viewerDiv, gridContainer } = _findContainerElements();
+    if (!viewerDiv) return;
+
+    if (gridContainer) {
+        if (proteins.length !== 2) {
+            displayInfo(gridContainer, "Structure grid requires exactly two proteins to compare.", true);
+            return;
+        }
+
+        await _setUpStructurePickerGrid(gridContainer, viewerDiv, urlParams, proteins[0], proteins[1]);
+        return;
+    }
+
+    if (proteins.length === 1) {
+        const accessionId = proteinMetadata ? proteinMetadata.accessionId : null;
+        const pdbUrl = await _getAlphaFoldPdb(viewerDiv, accessionId);
+        const domainRanges = proteinMetadata.alphafoldDomains || null;
+        _displayStructureInViewer(viewerDiv, pdbUrl, { domainRangesArray: domainRanges });
+        return;
+    }
+
+    const f1_id = decodeURIComponent(urlParams.get('f1_id') || '');
+    const f2_id = decodeURIComponent(urlParams.get('f2_id') || '');
+
+    if (proteins.length != 2 || !f1_id || !f2_id) {
+        displayInfo(viewerElement, "Protein/fragment parameters missing.", true);
+        return;
+    }
+
+    const pdbFiles = await _getPdbFiles();
+    const pdbFile = _findPdbFile(pdbFiles, proteins[0], f1_id, proteins[1], f2_id);
+
+    if (!pdbFile) {
+        displayInfo(viewerDiv, "PDB file not found for this interaction.");
+        return;
+    }
+
+    const f1_shift = parseInt(urlParams.get('f1_shift'));
+    const f2_shift = parseInt(urlParams.get('f2_shift'));
+    const f1_loc = parseResidueLocations(urlParams.get('f1_loc'), f1_shift);
+    const f2_loc = parseResidueLocations(urlParams.get('f2_loc'), f2_shift);
+    const f1_selection = f1_loc ? {resi: f1_loc, chain: 'A'} : null;
+    const f2_selection = f2_loc ? {resi: f2_loc, chain: 'B'} : null;
+    const zoomSelection = (f1_selection && f2_selection) ? {or: [f1_selection, f2_selection]} : (f1_selection || f2_selection);
+
+    _displayStructureInViewer(viewerDiv, `structures/${pdbFile}`, {zoomSelection, f1_loc, f2_loc});
+
+}
+
+async function _setUpStructurePickerGrid(gridContainer, viewerDiv, urlParams, p1, p2) {
+    const f1_id = decodeURIComponent(urlParams.get('f1_id') || '');
+    const f2_id = decodeURIComponent(urlParams.get('f2_id') || '');
+    const f1Fragments = f1_id ? f1_id.split(',').map(f => f.trim()).filter(f => f) : null;
+    const f2Fragments = f2_id ? f2_id.split(',').map(f => f.trim()).filter(f => f) : null;
+    if (f1Fragments.length === 0 || f2Fragments.length === 0) {
+        displayInfo(gridContainer, "Fragment information not available.", true);
+        return;
+    }
+
+    const [proteinForX, fragmentsForX, proteinForY, fragmentsForY] = 
+        f1Fragments.length < f2Fragments.length 
+            ? [p2, f2Fragments, p1, f1Fragments]
+            : [p1, f1Fragments, p2, f2Fragments];
+    const pdbFiles = await _getPdbFiles();
+
+    gridContainer.innerHTML = '';
+
+    const proteinXLabel = document.createElement('div');
+    proteinXLabel.className = 'structure-grid-protein-x-label';
+    proteinXLabel.textContent = proteinForX;
+    gridContainer.appendChild(proteinXLabel);
+
+    const yLabelTableContainer = document.createElement('div');
+    yLabelTableContainer.className = 'structure-grid-y-label-table-container';
+    gridContainer.appendChild(yLabelTableContainer);
+
+    const proteinYLabel = document.createElement('div');
+    proteinYLabel.className = 'structure-grid-protein-y-label';
+    proteinYLabel.textContent = proteinForY;
+    yLabelTableContainer.appendChild(proteinYLabel);
+
+    const table = document.createElement('table');
+    table.className = 'structure-grid';
+    yLabelTableContainer.appendChild(table);
+
+    const headerRow = table.insertRow();
+    headerRow.appendChild(document.createElement('th'));
+    fragmentsForX.forEach(fX => {
+        const th = document.createElement('th');
+        th.className = 'structure-grid-col-header';
+        th.textContent = fX;
+        headerRow.appendChild(th);
+    });
+
+    fragmentsForY.forEach(fY => {
+        const row = table.insertRow();
+        const rowHeader = document.createElement('th');
+        rowHeader.className = 'structure-grid-row-header';
+        rowHeader.textContent = fY;
+        row.appendChild(rowHeader);
+        
+        fragmentsForX.forEach(fX => {
+            const cell = row.insertCell();
+            cell.className = 'structure-grid-cell';
+
+            const pdbFile = _findPdbFile(pdbFiles, proteinForX, `F${fX}`, proteinForY, `F${fY}`);
+            const filePath = pdbFile ? `structures/${pdbFile}` : "";
+
+            const button = document.createElement('button');
+            button.className = 'structure-cell-btn';
+            button.dataset.file = filePath;
+
+            if (filePath) {
+                button.title = `View structure for ${proteinForX} F${fX} + ${proteinForY} F${fY}`;
+                button.innerHTML = '&#128269;'; // Magnifying glass
+            } else {
+                button.title = `Structure not available for ${proteinForX} F${fX} + ${proteinForY} F${fY}`;
+                button.innerHTML = '&#10060;'; // Cross mark
+                button.disabled = true;
+            }
+
+            cell.appendChild(button);
+        });
+    }); 
+
+    gridContainer.addEventListener('click', function(event) {
+        const button = event.target.closest('.structure-cell-btn');
+        if (!button || button.disabled) {return};
+
+        const currentlySelected = gridContainer.querySelector('.structure-grid-cell.selected');
+        if (currentlySelected) {currentlySelected.classList.remove('selected')};
+
+        const cell = button.closest('.structure-grid-cell');
+        if (cell) {cell.classList.add('selected')};
+
+        if (button.dataset.file && viewerDiv) {
+            _displayStructureInViewer(viewerDiv, button.dataset.file);
+        }
+    });
+}
+
+function _findContainerElements() {
+    const viewerDiv = document.getElementById('structure-viewer');
+    const gridContainer = document.getElementById('structure-grid-container');
+    const fallback = document.getElementById('structure-viewer-fallback');
+    if (!viewerDiv) {
+        displayInfo(fallback, "Structure viewer component missing from page.", true);
+    }
+    return { viewerDiv, gridContainer };
+}
+
+async function _getAlphaFoldPdb(container, accessionId) {
+    try {
+        const afResponse = await fetch(`https://alphafold.ebi.ac.uk/api/prediction/${accessionId}`);
+        if (!afResponse.ok) {
+            displayInfo(container, `Error fetching AlphaFold API: ${afResponse.status} ${afResponse.statusText}`, true);
+            return;
+        }
+        const afData = await afResponse.json();
+
+        if (!afData || afData.length == 0 || !afData[0].pdbUrl) {
+            displayInfo(container, 'PDB URL not found in AlphaFold API response.', true);
+            return;
+        }
+        return afData[0].pdbUrl
+    } catch (error) {
+        displayInfo(container, `Error fetching/loading AlphaFold PDB URL: ${error.message}`, true);
+    }
+}
+
+function _findPdbFile(pdbFiles, p1, f1, p2, f2) {
+    const prefix1 = `${p1}_${f1}_${p2}_${f2}`;
+    const prefix2 = `${p2}_${f2}_${p1}_${f1}`;
+    return pdbFiles.find(f => f.startsWith(prefix1) || f.startsWith(prefix2));
+}
+
+async function _getPdbFiles() {
+        try {
+        const response = await fetch('structures/pdb_files.txt');
+        if (!response.ok) {
+            throw new Error('Could not fetch structures/pdb_files.txt. Please ensure it exists.');
+        }
+        const fileListText = await response.text();
+        return fileListText.split('\n').filter(f => f.endsWith('.pdb'));
+    } catch (error) {
+        console.error('Error fetching PDB file list:', error);
+                        throw error;
+    }
+}
+
 function _isValidDomainRanges(ranges) {
     return Array.isArray(ranges) && ranges.length > 0 &&
         ranges.every(r => r && typeof r.start === 'number' && typeof r.end === 'number' &&
@@ -15,44 +209,185 @@ function _getDomainColor(atom, useDomainColoring, ranges) {
     return 'ghostwhite';
 }
 
-function displayStructureInViewer(container, pdbPath, options = {}) {
+function _createButton(iconClass, text, title, clickHandler) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'control-button';
+    button.title = title;
+    button.innerHTML = `<i class="fas ${iconClass}"></i> ${text}`;
+    button.addEventListener('click', clickHandler);
+    return button;
+}
+
+function _setupStructureViewerControls(placeholder, callbacks) {
+    if (!placeholder) return null;
+
+    placeholder.innerHTML = '';
+
+    const controlBar = document.createElement('div');
+    controlBar.className = 'control-bar';
+
+    const buttonGroup = document.createElement('div');
+    buttonGroup.className = 'control-button-group';
+
+    const resetButton = _createButton('fa-undo', 'Reset', 'Reset View', callbacks.onReset);
+    const atomsButton = _createButton('fa-grip-lines', 'Atoms', 'Atoms', callbacks.onToggleAtoms);
+    const surfaceButton = _createButton('fa-layer-group', 'Surface', 'Surface', callbacks.onToggleSurface);
+    const colorModeButton = _createButton('fa-palette', 'Spectrum', 'Toggle Color Mode', callbacks.onToggleColorMode);
+
+    buttonGroup.append(resetButton, atomsButton, surfaceButton, colorModeButton);
+    controlBar.appendChild(buttonGroup);
+    
+    const controlsContainer = document.createElement('div');
+    controlsContainer.className = 'structure-controls';
+    controlsContainer.appendChild(controlBar);
+    placeholder.appendChild(controlsContainer);
+
+    return {
+        container: controlsContainer,
+        atomsBtn: atomsButton,
+        surfaceBtn: surfaceButton,
+        colorModeBtn: colorModeButton
+    };
+}
+
+function _applyViewerState(structureConfig) {
+    const { viewer, modelLoaded, atomsShown, surfaceShown, colorMode, useDomainColoring, domainRangesArray, f1_loc, f2_loc } = structureConfig;
+    if (!modelLoaded) return;
+    viewer.setStyle({}, {});
+    viewer.removeAllSurfaces();
+
+    let styles;
+    if (colorMode === 'spectrum') {
+        styles = { cartoon: { color: 'spectrum' } };
+        if (atomsShown) {
+            styles.stick = { color: 'spectrum', radius: 0.2 };
+        }
+    } else {
+        let colorFunc;
+        if (colorMode === 'alphafold') {
+            colorFunc = atom => _getDomainColor(atom, useDomainColoring, domainRangesArray);
+        } else {
+            function baseChainColorFunc(atom) {
+                if (f1_loc && atom.chain === 'A' && f1_loc.includes(atom.resi.toString())) return 'red';
+                if (f2_loc && atom.chain === 'B' && f2_loc.includes(atom.resi.toString())) return 'blue';
+                if (atom.chain === 'A') return 'lightcoral';
+                if (atom.chain === 'B') return 'lightskyblue';
+                return 'lightgray';
+            }
+            colorFunc = atom => baseChainColorFunc(atom)
+        }
+        styles = { cartoon: { colorfunc: colorFunc } };
+        if (atomsShown) {
+            styles.stick = { colorfunc: colorFunc, radius: 0.2 };
+        }
+    }
+    viewer.setStyle({}, styles);
+
+    if (!atomsShown) {
+        const highlightStyle = (color) => ({ cartoon: { color, thickness: 1.0 }, stick: { color, thickness: 1.0 } });
+        if (f1_loc) viewer.setStyle({ chain: 'A', resi: f1_loc }, highlightStyle("red"));
+        if (f2_loc) viewer.setStyle({ chain: 'B', resi: f2_loc }, highlightStyle("blue"));
+    }
+
+    if (surfaceShown) {
+        if (colorMode === 'chain') {
+            const surfaceColors = [
+                { color: 'lightcoral', sel: { chain: 'A' } },
+                { color: 'lightskyblue', sel: { chain: 'B' } },
+                { color: 'lightgray', sel: { chain: { $ne: 'A', $ne: 'B' } } }
+            ];
+            surfaceColors.forEach(s => viewer.addSurface($3Dmol.SurfaceType.VDW, { opacity: 0.7, color: s.color }, s.sel));
+        } else {
+            viewer.addSurface($3Dmol.SurfaceType.VDW, { opacity: 0.7, color: 'white' });
+        }
+    }
+    viewer.render();
+}
+
+export function _displayStructureInViewer(container, pdbPath, options={}) {
+    const {domainRangesArray, zoomSelection, f1_loc, f2_loc} = options || {};
     if (!container) return;
     container.innerHTML = '';
 
-    const {
-        domainRangesArray,
-        zoomSelection,
-        baseChainColorFunc,
-        highlightStyle,
-        f1_loc,
-        f2_loc,
-        surfaceOptions,
-        surfaceColors
-    } = options;
-
-    const useDomainColoring = _isValidDomainRanges(domainRangesArray);
-    const fallbackId = "structure-viewer-fallback-protein";
-    let fallback = container.querySelector(`#${fallbackId}`) || container.querySelector('p');
     if (!window.$3Dmol) {
-        container.innerHTML = '<p style="color:red;text-align:center;">3Dmol.js library not loaded.</p>';
+        displayInfo(container, "3Dmol.js library not loaded.", true);
         return;
     }
     if (!pdbPath) {
-        if (fallback) {
-            fallback.textContent = 'No PDB path provided for structure viewer.';
-            fallback.style.display = 'block';
-        } else {
-            container.innerHTML = '<p style="color:grey;text-align:center;">No PDB path provided.</p>';
-        }
-        const controls = container.closest('.content-section-content')?.querySelector('.structure-controls');
+        displayInfo(container, "No PDB path provided.", true);
+        const controls = container.getElementById("structure-controls");
         if (controls) controls.style.display = 'none';
         return;
     }
+    const controlsPlaceholder = document.getElementById("structure-controls-placeholder");
 
-    const controls = container.closest('.content-section-content')?.querySelector('.structure-controls');
     let viewer = $3Dmol.createViewer(container, { defaultcolors: $3Dmol.rasmolElementColors });
-    let modelLoaded = false;
-    if (controls) controls.style.display = 'none';
+    const useDomainColoring = _isValidDomainRanges(domainRangesArray);
+    const initialColorMode = useDomainColoring ? 'alphafold' : 'chain';
+
+    const structureConfig = {
+        viewer: viewer,
+        f1_loc: f1_loc,
+        f2_loc: f2_loc,
+        modelLoaded: false,
+        atomsShown: false,
+        surfaceShown: false,
+        colorMode: initialColorMode,
+        useDomainColoring: useDomainColoring,
+        domainRangesArray: useDomainColoring ? domainRangesArray : []
+    }
+    const callbacks = {
+        onReset: () => {
+            structureConfig.atomsShown = false;
+            structureConfig.surfaceShown = false;
+            structureConfig.colorMode = initialColorMode;
+            _applyViewerState(structureConfig);
+            
+            if (zoomSelection) {
+                viewer.zoomTo(zoomSelection);
+            } else {
+                viewer.zoomTo();
+            }
+            viewer.render();
+            updateColorModeButtonText();
+            controls.atomsBtn.classList.remove('active');
+            controls.surfaceBtn.classList.remove('active');
+        },
+        onToggleAtoms: function() {
+            structureConfig.atomsShown = !structureConfig.atomsShown;
+            this.classList.toggle('active', structureConfig.atomsShown);
+            _applyViewerState(structureConfig);
+        },
+        onToggleSurface: function() {
+            structureConfig.surfaceShown = !structureConfig.surfaceShown;
+            this.classList.toggle('active', structureConfig.surfaceShown);
+            _applyViewerState(structureConfig);
+        },
+        onToggleColorMode: () => {
+            if (useDomainColoring) {
+                structureConfig.colorMode = structureConfig.colorMode === 'alphafold' ? 'spectrum' : 'alphafold';
+            } else {
+                structureConfig.colorMode = structureConfig.colorMode === 'chain' ? 'spectrum' : 'chain';
+            }
+            updateColorModeButtonText();
+            _applyViewerState(structureConfig);
+        }
+    };
+    const controls = _setupStructureViewerControls(controlsPlaceholder, callbacks);
+
+    if (controls) controls.container.style.display = 'none';
+
+    function updateColorModeButtonText() {
+        if (!controls?.colorModeBtn) return;
+        let nextModeText;
+        if (useDomainColoring) {
+            nextModeText = structureConfig.colorMode === 'alphafold' ? 'Spectrum' : 'AlphaFold domain';
+        } else {
+            nextModeText = structureConfig.colorMode === 'chain' ? 'Spectrum' : 'By Chain';
+        }
+        controls.colorModeBtn.innerHTML = `<i class="fas fa-palette"></i> ${nextModeText}`;
+    }
 
     fetch(pdbPath)
         .then(response => {
@@ -67,141 +402,15 @@ function displayStructureInViewer(container, pdbPath, options = {}) {
                 viewer.zoomTo();
             }
             viewer.render();
-            modelLoaded = true;
-            if (controls) controls.style.display = '';
+            structureConfig.modelLoaded = true;
+            if (controls) controls.container.style.display = '';
+            const fallback = document.getElementById("structure-viewer-fallback")
             if (fallback) fallback.style.display = 'none';
-            applyViewerState();
+            _applyViewerState(structureConfig);
+            updateColorModeButtonText();
         })
         .catch(error => {
-            container.innerHTML = `<p style="color:red;text-align:center;">Could not load structure: ${error.message}.</p>`;
-            if (controls) controls.style.display = 'none';
+            displayInfo(container, `Could not load structure: ${error.message}.`, true);
+            if (controls) controls.container.style.display = 'none';
         });
-
-    if (controls) {
-        let atomsShown = false;
-        let surfaceShown = false;
-        let colorMode = useDomainColoring ? 'alphafold' : 'chain';
-        const initialColorMode = colorMode;
-
-        function applyViewerState() {
-            if (!modelLoaded) return;
-            viewer.setStyle({}, {});
-            viewer.removeAllSurfaces();
-
-            let styles;
-            if (colorMode === 'spectrum') {
-                styles = { cartoon: { color: 'spectrum' } };
-                if (atomsShown) {
-                    styles.stick = { color: 'spectrum', radius: 0.2 };
-                }
-            } else {
-                let colorFunc;
-                if (colorMode === 'alphafold') {
-                    colorFunc = atom => _getDomainColor(atom, useDomainColoring, domainRangesArray);
-                } else { // 'chain'
-                    colorFunc = baseChainColorFunc || (atom => atom.chain === 'A' ? 'lightcoral' : 'lightskyblue');
-                }
-                styles = { cartoon: { colorfunc: colorFunc } };
-                if (atomsShown) {
-                    styles.stick = { colorfunc: colorFunc, radius: 0.2 };
-                }
-            }
-            viewer.setStyle({}, styles);
-
-            if (!atomsShown && highlightStyle) {
-                if (f1_loc) viewer.setStyle({ chain: 'A', resi: f1_loc }, highlightStyle("red"));
-                if (f2_loc) viewer.setStyle({ chain: 'B', resi: f2_loc }, highlightStyle("blue"));
-            }
-
-            if (surfaceShown) {
-                const defaultSurfaceOptions = { opacity: 0.7 };
-                const finalSurfaceOptions = { ...defaultSurfaceOptions, ...(surfaceOptions || {}) };
-
-                if (colorMode === 'chain' && surfaceColors) {
-                    surfaceColors.forEach(s => viewer.addSurface($3Dmol.SurfaceType.VDW, { ...finalSurfaceOptions, color: s.color }, s.sel));
-                } else {
-                    viewer.addSurface($3Dmol.SurfaceType.VDW, { ...finalSurfaceOptions, color: 'white' });
-                }
-            }
-            viewer.render();
-        }
-
-        function updateColorModeButtonText(btn) {
-            if (!btn) return;
-            let nextModeText;
-            if (useDomainColoring) {
-                nextModeText = colorMode === 'alphafold' ? 'Spectrum' : 'AlphaFold domain';
-            } else {
-                nextModeText = colorMode === 'chain' ? 'Spectrum' : 'By Chain';
-            }
-            btn.innerHTML = `<i class="fas fa-palette"></i> ${nextModeText}`;
-        }
-
-        controls.querySelector('.control-button.reset')?.addEventListener('click', () => {
-            if (!modelLoaded) return;
-            atomsShown = false;
-            surfaceShown = false;
-            colorMode = initialColorMode;
-            
-            applyViewerState();
-            
-            if (zoomSelection) {
-                viewer.zoomTo(zoomSelection);
-            } else {
-                viewer.zoomTo();
-            }
-            viewer.render();
-            updateColorModeButtonText(controls.querySelector('.control-button.color-mode'));
-            controls.querySelector('.control-button.atoms-btn')?.classList.remove('active');
-            controls.querySelector('.control-button.surface-btn')?.classList.remove('active');
-        });
-
-        controls.querySelector('.control-button.atoms-btn')?.addEventListener('click', function() {
-            if (!modelLoaded) return;
-            atomsShown = !atomsShown;
-            this.classList.toggle('active', atomsShown);
-            applyViewerState();
-        });
-
-        controls.querySelector('.control-button.surface-btn')?.addEventListener('click', function() {
-            if (!modelLoaded) return;
-            surfaceShown = !surfaceShown;
-            this.classList.toggle('active', surfaceShown);
-            applyViewerState();
-        });
-
-        const colorModeBtn = controls.querySelector('.control-button.color-mode');
-        if (colorModeBtn) {
-            colorModeBtn.addEventListener('click', () => {
-                if (!modelLoaded) return;
-                if (useDomainColoring) {
-                    colorMode = colorMode === 'alphafold' ? 'spectrum' : 'alphafold';
-                } else {
-                    colorMode = colorMode === 'chain' ? 'spectrum' : 'chain';
-                }
-                updateColorModeButtonText(colorModeBtn);
-                applyViewerState();
-            });
-            updateColorModeButtonText(colorModeBtn);
-        }
-    }
 }
-
-//TODO: export rather than attaching to window?
-window.displayStructureInViewer = displayStructureInViewer;
-
-//TODO: probably a better way to manage this
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.structure-viewer').forEach(container => {
-        const pdbPath = container.getAttribute('data-pdb');
-        if (pdbPath && pdbPath.trim() !== "") {
-            // This auto-initialization is mainly for protein.html's single viewer.
-            // interaction.html and protein_pair.html have specific logic to call the viewer.
-            // The check for the fallback element ID is a bit of a hack to prevent
-            // this from running on protein.html before the specific data is ready.
-            if (!document.getElementById('structure-viewer-fallback-protein')) {
-                displayStructureInViewer(container, pdbPath, {});
-            }
-        }
-    });
-});

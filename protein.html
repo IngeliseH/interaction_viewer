@@ -75,7 +75,7 @@
                                 <div id="domain-fragment-controls-placeholder"></div>
                                 <div id="domain-fragment-plots-container"></div>
                                 <p id="domain-fragments-fallback-message" style="text-align:center; display:none; margin-top: 15px;">
-                                    Information about domains and fragments will be shown here if available.
+                                    Loading domain and fragment plot...
                                 </p>
                             </div>
                         </div>
@@ -221,30 +221,10 @@
                                 <i class="fas fa-chevron-up"></i>
                             </div>
                             <div class="content-section-content" style="position: relative;">
-                                <!-- Structure viewer controls -->
-                                <div class="structure-controls">
-                                    <div class="control-bar">
-                                        <div class="control-button-group">
-                                            <button type="button" class="control-button reset" title="Reset View">
-                                                <i class="fas fa-undo"></i> Reset
-                                            </button>
-                                            <button type="button" class="control-button atoms-btn" title="Atoms">
-                                                <i class="fas fa-grip-lines"></i> Atoms
-                                            </button>
-                                            <button type="button" class="control-button surface-btn" title="Surface">
-                                                <i class="fas fa-layer-group"></i> Surface
-                                            </button>
-                                            <button type="button" class="control-button color-mode" title="Toggle Color Mode">
-                                                <i class="fas fa-palette"></i> Spectrum
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="structure-viewer" data-pdb="">
-                                    <!-- PDB path can be set dynamically if a structure for p1 is known -->
-                                    <p id="structure-viewer-fallback-protein"
-                                        style="text-align:center; padding-top:50px; color:grey;">Structure will be
-                                        loaded here if available for the protein.</p>
+                                <div id="structure-controls-placeholder"></div>
+                                <div id="structure-viewer"  class="structure-viewer">
+                                    <p id="structure-viewer-fallback"
+                                        style="text-align:center; padding-top:50px; color:grey;">Loading structure...</p>
                                 </div>
                             </div>
                         </div>
@@ -256,7 +236,6 @@
     <div id="footer-placeholder"></div>
 
     <script src="https://3dmol.org/build/3Dmol-min.js"></script>
-    <script src="js/structure-viewer.js"></script>
     <script type="module" src="js/promiscuity-plot.js"></script>
     <script type="module">
         import * as table from './js/table.js';
@@ -271,6 +250,7 @@
         import { loadHTMLIncludes } from './js/header-footer.js';
         import { initCollapsibleSectionsComplex } from './js/collapsible-section.js';
         import { initializeDomainFragmentPlots } from './js/domain-fragment-plot.js';
+        import { setUpStructureViewer } from './js/structure-viewer.js';
 
         // --- GLOBAL ACTIVE FILTERS OBJECT ---
         window.activeFilters = {};
@@ -279,48 +259,6 @@
 
         let chordPlotShowDomains = true;
         let chordPlotExpandQuery = false;
-
-        async function fetchAndLoadAlphaFoldStructure(accessionId, afDomainRanges) {
-            const viewerSection = document.getElementById('structure-viewer-section');
-            const viewerElement = viewerSection.querySelector('.structure-viewer');
-            const fallbackElement = viewerSection.querySelector('#structure-viewer-fallback-protein');
-            const controlsElement = viewerSection.querySelector('.structure-controls');
-
-            if (!viewerElement || !controlsElement) {
-                console.error("Structure viewer components (viewer div or controls) not found for AlphaFold fetch.");
-                if (viewerElement && !fallbackElement) {
-                    viewerElement.innerHTML = `<p id="structure-viewer-fallback-protein" style="color:red;text-align:center;">Page error: Fallback element missing.</p>`;
-                } else if (fallbackElement) {
-                    fallbackElement.textContent = 'Page error: Structure viewer components missing.';
-                    fallbackElement.style.display = 'block';
-                }
-                if (controlsElement) controlsElement.style.display = 'none';
-                return;
-            }
-
-            try {
-                const afResponse = await fetch(`https://alphafold.ebi.ac.uk/api/prediction/${accessionId}`);
-                if (!afResponse.ok) {
-                    throw new Error(`AlphaFold API request failed: ${afResponse.status} ${afResponse.statusText}`);
-                }
-                const afData = await afResponse.json();
-
-                if (afData && afData.length > 0 && afData[0].pdbUrl) {
-                    const pdbUrl = afData[0].pdbUrl;
-                    viewerElement.dataset.pdb = pdbUrl;
-                    window.displayStructureInViewer(viewerElement, pdbUrl, { domainRangesArray: afDomainRanges });
-                } else {
-                    throw new Error('PDB URL not found in AlphaFold API response.');
-                }
-            } catch (error) {
-                console.error("Error fetching/loading AlphaFold PDB URL:", error);
-                if (viewerElement) {
-                    viewerElement.innerHTML = `<p id="structure-viewer-fallback-protein" style="text-align:center; padding-top:50px; color:red;">Failed to load structure: ${error.message}.</p>`;
-                }
-                if (controlsElement) controlsElement.style.display = 'none';
-            }
-        }
-
 
         async function initializeChordPlotWrapper() {
             const filteredData = filter.getFilteredData();
@@ -382,7 +320,7 @@
             accessionElement.textContent = accessionId ? accessionId : 'Not found';
             subheadingElement.innerHTML = accessionId ? `<a href="https://www.uniprot.org/uniprotkb/${accessionId}/entry" target="_blank" rel="noopener noreferrer">${accessionId}</a>` : 'Accession ID Not Found';
 
-            fetchAndLoadAlphaFoldStructure(accessionId, proteinData.alphafoldDomains);
+            setUpStructureViewer(urlParams, [p1], proteinData);
             initCollapsibleSectionsComplex();
 
             const chordDomainsBtn = document.getElementById('chord-domains-btn');
@@ -404,7 +342,7 @@
                 });
             }
 
-            const initialNumericFiltersForProteinPage = {
+            const initialNumericFilters = {
                 min_pae: { max: 5 },
                 avg_pae: { max: 15 },
                 rop: { min: 2 }
@@ -418,13 +356,12 @@
                 await initializeChordPlotWrapper();
             });
 
-            filter.setColumnFilters(initialNumericFiltersForProteinPage);
+            filter.setColumnFilters(initialNumericFilters);
 
             await initializePPITableForProtein();
 
             await initializeDomainFragmentPlots({
-                proteins: [p1],
-                fallbackMessageSelector: '#domain-fragments-fallback-message'
+                proteins: [p1]
             });
 
             await initializeChordPlotWrapper();

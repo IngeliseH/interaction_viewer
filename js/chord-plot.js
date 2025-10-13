@@ -1,6 +1,6 @@
-import { createSvgElement, createProteinLabel, createHoverLabel, createArcPath, 
-         createGradient, setupHoverEffect, getArcAngles,
-         createDomainPath, calculateChordAngles, createLabelGroup, createChordGroup } from './plot-utility.js';
+import { displayInfo, createSvgElement, createProteinLabel, createHoverLabel, createArcPath, 
+         createGradient, setupHoverEffect, getArcAngles, createDomainPath, calculateChordAngles,
+         createLabelGroup, createChordGroup} from './plot-utility.js';
 import { createInteractionLink } from './table.js';
 import { loadProteinMetadata } from './data.js';
 
@@ -28,18 +28,17 @@ export async function initializeChordPlot({
   if (!container) return;
   const padAngle = 2;
 
-  container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">Loading interaction data for chord plot...</p>`;
+  displayInfo(container, "Loading interaction data...");
 
   try {
     if (!data || data.length === 0) {
-      container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">No interactions to display in chord plot.</p>`;
-      console.log("[ChordPlot] No data available for chord plot.");
+      displayInfo(container, "No interaction data available to display chord plot.");
       return;
     }
 
     if (!Array.isArray(data)) {
-      container.innerHTML = `<p style="text-align:center; color:red; padding-top: 20px;">Error: Chord plot data is not an array.</p>`;
-      console.error("[ChordPlot] Data passed is not an array:", data);
+      displayInfo(container, "Error: Incorrect data format for chord plot", true);
+      console.error("Expected array, got ", data);
       return;
     }
 
@@ -114,8 +113,7 @@ export async function initializeChordPlot({
     drawArcs({ namesOrdered, angles, seqLens, g, arcInner, arcOuter, palettes, showDomainsOnArcs, arcColoringMode }, allProteinLengths, queryProteins);
     drawChords({ ifaceData, data, angles, seqLens, g, arcInner, defs, names, palettes, coloringMode, queryProteins });
   } catch (error) {
-    console.error('Error initializing chord plot:', error);
-    container.innerHTML = `<p style="text-align:center; color:red; padding-top: 20px;">Could not load chord plot: ${error.message}</p>`;
+    displayInfo(container, `Could not load chord plot: ${error.message}`, true);
   }
 }
 

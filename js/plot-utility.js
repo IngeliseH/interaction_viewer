@@ -1,5 +1,5 @@
 // =============================================================================
-// General SVG Utility Functions
+// General Utility Functions
 // =============================================================================
 export function createSvgElement(tag, attributes = {}, textContent = '') {
     const svgNS = "http://www.w3.org/2000/svg";
@@ -11,6 +11,14 @@ export function createSvgElement(tag, attributes = {}, textContent = '') {
         element.textContent = textContent;
     }
     return element;
+}
+
+export function displayInfo(container, message, isWarning = false) {
+    const color = isWarning ? 'red' : 'grey';
+    if (isWarning) {console.error(message)};
+    if (container) {
+        container.innerHTML = `<p style="color${color}}; text-align:center; padding-top: 20px;">${message}</p>`;
+    }
 }
 
 // =============================================================================

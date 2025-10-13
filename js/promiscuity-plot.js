@@ -1,4 +1,4 @@
-import { createSvgElement, createProteinLabel, createHoverLabel, setupHoverEffect } from './plot-utility.js';
+import { displayInfo, createSvgElement, createProteinLabel, createHoverLabel, setupHoverEffect } from './plot-utility.js';
 
 let _plotInstances = {};
 
@@ -266,8 +266,8 @@ function _drawPromiscuityBasePlot(options) {
     container.innerHTML = '';
 
     if (!proteinName || !proteinLength) {
-        const msg = proteinName ? `Length data not available for ${proteinName}.` : 'Protein not specified.';
-        container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">${msg}</p>`;
+        const message = proteinName ? `Length data not available for ${proteinName}.` : 'Protein not specified.';
+        displayInfo(container, message, true);
         return null;
     }
 

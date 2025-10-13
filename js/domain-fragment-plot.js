@@ -1,5 +1,5 @@
 import { fetchProteinData } from './data.js';
-import { createSvgElement, createProteinLabel, createHoverLabel } from './plot-utility.js';
+import { displayInfo, createSvgElement, createProteinLabel, createHoverLabel } from './plot-utility.js';
 
 let _plotInstances = {};
 
@@ -18,16 +18,16 @@ let _currentColorIndex = 0;
 // =============================================================================
 // Public API Functions
 // =============================================================================
-export async function initializeDomainFragmentPlots({ proteins, fallbackMessageSelector, interactionRegions = [] }) {
+export async function initializeDomainFragmentPlots({ proteins, interactionRegions = [] }) {
     _setupGlobalPlotControls();
 
-    const fallbackMessage = document.querySelector(fallbackMessageSelector);
+    const fallbackMessage = document.getElementById('domain-fragments-fallback-message');
     if (fallbackMessage) fallbackMessage.style.display = 'none';
 
     for (let i = 1; i <= proteins.length; i++) {
         const protein = proteins[i-1];
         const interactionRegion = (interactionRegions.length >= i) ? interactionRegions[i-1] : [];
-        const plotSectionsContainer = document.querySelector('#domain-fragment-plots-container');
+        const plotSectionsContainer = document.getElementById('domain-fragment-plots-container');
 
         await _initializePlotInstance({
             instanceId:`p${i}`,
@@ -53,7 +53,7 @@ async function _initializePlotInstance({instanceId, proteinName, interactionRegi
     const container = document.createElement('div');
     container.id = `domain-fragment-plot-container-${instanceId}`;
     container.className = 'domain-fragment-plot-container';
-    container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">Loading data for domain/fragment plot...</p>`;
+    displayInfo(container, "Loading data for domain/fragment plot...");
 
     section.appendChild(subheading);
     section.appendChild(container);
@@ -75,7 +75,7 @@ async function _initializePlotInstance({instanceId, proteinName, interactionRegi
     const proteinData = await fetchProteinData(proteinName);
     if (proteinData.length === null || isNaN(proteinData.length)) {
         const message = proteinName ? `Length data not available or invalid for ${proteinName}.` : 'Protein not specified.';
-        container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">${message}</p>`;
+        displayInfo(container, message, true);
         return;
     }
     
@@ -104,8 +104,8 @@ function _updatePlot(instanceId) {
     }
     container.innerHTML = '';
     if (!proteinName || !instance.proteinLength) {
-        const msg = proteinName ? `Length data not available for ${proteinName}.` : 'Protein not specified.';
-        container.innerHTML = `<p style="text-align:center; color:grey; padding-top: 20px;">${msg}</p>`;
+        const message = proteinName ? `Length data not available for ${proteinName}.` : 'Protein not specified.';
+        displayInfo(container, message, true);
         return null;
     }
 
