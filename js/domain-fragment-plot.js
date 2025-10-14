@@ -97,14 +97,14 @@ function _updatePlot(instanceId) {
         return;
     }
 
-    const container = document.querySelector(instance.containerSelector);
+    const container = document.getElementById(instance.containerSelector);
     if (!container) {
         console.error(`Domain/Fragment Plot: Container not found using selector "${instance.containerSelector}" for instance ${instanceId}`);
         return;
     }
     container.innerHTML = '';
-    if (!proteinName || !instance.proteinLength) {
-        const message = proteinName ? `Length data not available for ${proteinName}.` : 'Protein not specified.';
+    if (!instance.proteinName || !instance.proteinLength) {
+        const message = instance.proteinName ? `Length data not available for ${instance.proteinName}.` : 'Protein not specified.';
         displayInfo(container, message, true);
         return null;
     }
