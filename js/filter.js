@@ -34,8 +34,10 @@ export function setOnFiltersChanged(fn) { state.setState({ onFiltersChanged: fn 
 
 export function updateActiveFilterDisplay() {
     const activeFilters = document.getElementById('active-filters');
+    const selectedProteinsDiv = document.getElementById('selected-proteins');
     if (!activeFilters) return;
     activeFilters.innerHTML = '';
+    if (selectedProteinsDiv) selectedProteinsDiv.innerHTML = '';
 
     const urlParams = new URLSearchParams(window.location.search);
     const queryP1 = decodeURIComponent(urlParams.get('p1') || '');
@@ -45,16 +47,23 @@ export function updateActiveFilterDisplay() {
     if (filterState.selectedProteins && Array.isArray(filterState.selectedProteins)) {
         filterState.selectedProteins.forEach(protein => {
             if (proteinsFromUrl.includes(protein)) return;
-            const tag = document.createElement('div');
-            tag.className = 'filter-tag protein-tag-active';
-            tag.innerHTML = `Protein: ${protein} <span class="remove-tag" data-type="protein" data-value="${protein}">&times;</span>`;
-            tag.querySelector('.remove-tag').addEventListener('click', () => {
-                setSelectedProteins(filterState.selectedProteins.filter(p => p !== protein));
-                setCurrentPage(1);
-                renderTable();
-                if (typeof state.onFiltersChanged === 'function') state.onFiltersChanged();
-            });
-            activeFilters.appendChild(tag);
+            const createTag = () => {
+                const tag = document.createElement('div');
+                tag.className = 'filter-tag protein-tag-active';
+                tag.innerHTML = `Protein: ${protein} <span class="remove-tag" data-type="protein" data-value="${protein}">&times;</span>`;
+                tag.querySelector('.remove-tag').addEventListener('click', () => {
+                    setSelectedProteins(filterState.selectedProteins.filter(p => p !== protein));
+                    setCurrentPage(1);
+                    renderTable();
+                    if (typeof state.onFiltersChanged === 'function') state.onFiltersChanged();
+                });
+                return tag;
+            };
+
+            activeFilters.appendChild(createTag());
+            if (selectedProteinsDiv) {
+                selectedProteinsDiv.appendChild(createTag());
+            }
         });
     }
 
