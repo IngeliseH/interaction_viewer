@@ -2,6 +2,7 @@
     position: relative;
     cursor: help;
     color: var(--secondary);
+    padding: 5px;
 }
 
 .info-btn .info-tooltip,
@@ -22,6 +23,11 @@ th > .info-tooltip {
     font-size: 0.8rem;
     font-weight: normal;
     line-height: 1.5;
+}
+
+.info-tooltip.visible {
+    visibility: visible;
+    opacity: 1;
 }
 
 .info-btn:hover .info-tooltip,

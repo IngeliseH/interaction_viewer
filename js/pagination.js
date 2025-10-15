@@ -7,19 +7,15 @@ export function setCurrentPage(page) {
     state.setState({ currentPage: page });
 }
 
-export function setUpdatePaginationUI(fn) {
-    state.setState({ updatePaginationUI: fn });
+export function setupdatePaginationControls(fn) {
+    state.setState({ updatePaginationControls: fn });
 }
 
 export function initPagination() {
-    setUpdatePaginationUI(updatePaginationControls);
-
+    setCurrentPage(1);
+    setupdatePaginationControls(updatePaginationControls);
     const totalRows = state.tableData.length;
     updatePaginationControls(totalRows);
-}
-
-export function updatePaginationUI(totalItems) {
-    updatePaginationControls(totalItems);
 }
 
 export function paginateData(data, currentPage, rowsPerPage) {
@@ -28,7 +24,7 @@ export function paginateData(data, currentPage, rowsPerPage) {
     return data.slice(start, end);
 }
 
-function updatePaginationControls(totalRows) {
+export function updatePaginationControls(totalRows) {
     const pagination = document.getElementById('pagination');
     if (!pagination) return;
     pagination.innerHTML = '';

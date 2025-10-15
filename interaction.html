@@ -113,9 +113,7 @@
                                 <i class="fas fa-chevron-up"></i>
                             </div>
                             <div class="content-section-content">
-                                <!-- Placeholder for global controls -->
                                 <div id="promiscuity-controls-placeholder"></div>
-                                <!-- Container for promiscuity plots -->
                                 <div id="promiscuity-plots-container"></div>
                                 <p id="promiscuity-fallback-message" style="text-align:center; display:block; margin-top: 15px;">
                                     Loading promiscuity plots...
@@ -141,62 +139,36 @@
                                                 <tr>
                                                     <th data-column="location">Location</th>
                                                     <th data-column="min_pae">
-                                                        <span class="header-main-text">min_pae</span> 
-                                                        <span class="filter-icon">
-                                                            <i class="fas fa-filter"></i>
-                                                        </span>
+                                                        <span class="header-main-text">min_pae</span>
                                                     </th>
                                                     <th data-column="avg_pae">
-                                                        <span class="header-main-text">avg_pae</span> 
-                                                        <span class="filter-icon">
-                                                            <i class="fas fa-filter"></i>
-                                                        </span>
+                                                        <span class="header-main-text">avg_pae</span>
                                                     </th>
                                                     <th data-column="iptm">
-                                                        <span class="header-main-text">ipTM</span> 
-                                                        <span class="filter-icon">
-                                                            <i class="fas fa-filter"></i>
-                                                        </span>
+                                                        <span class="header-main-text">ipTM</span>
                                                     </th>
                                                     <th data-column="pdockq">
-                                                        <span class="header-main-text">pDockQ</span> 
-                                                        <span class="filter-icon">
-                                                            <i class="fas fa-filter"></i>
-                                                        </span>
+                                                        <span class="header-main-text">pDockQ</span>
                                                     </th>
                                                     <th data-column="max_promiscuity">
                                                         <span class="header-main-text">Max Promiscuity</span> 
-                                                        <span class="filter-icon">
-                                                            <i class="fas fa-filter"></i>
-                                                        </span>
                                                     </th>
                                                     <th data-column="rop">
-                                                        <span class="header-main-text">ROP</span> 
-                                                        <span class="filter-icon">
-                                                            <i class="fas fa-filter"></i>
-                                                        </span>
+                                                        <span class="header-main-text">ROP</span>
                                                     </th>
                                                     <th data-column="size">
-                                                        <span class="header-main-text">Size</span> 
-                                                        <span class="filter-icon">
-                                                            <i class="fas fa-filter"></i>
-                                                        </span>
+                                                        <span class="header-main-text">Size</span>
                                                     </th>
                                                     <th data-column="evenness">
-                                                        <span class="header-main-text">Evenness</span> 
-                                                        <span class="filter-icon">
-                                                            <i class="fas fa-filter"></i>
-                                                        </span>
+                                                        <span class="header-main-text">Evenness</span>
                                                     </th>
                                                 </tr>
                                             </thead>
                                             <tbody id="tableBody">
-                                                <!-- Data will be populated by JavaScript -->
                                             </tbody>
                                         </table>
                                     </div>
                                     <div class="pagination" id="pagination">
-                                        <!-- Pagination will be generated here -->
                                     </div>
                                 </div>
                             </div>
@@ -209,10 +181,8 @@
     <div id="footer-placeholder"></div>
     <script type="module" src="js/promiscuity-plot.js"></script>
     <script type="module">
-        import * as table from './js/table.js';
-        import * as filter from './js/filter.js';
-        import * as pagination from './js/pagination.js';
-        import * as stats from './js/stats.js';
+        import { initializeTable } from './js/table.js';
+        import { setOnFiltersChanged, updateActiveFilterDisplay } from './js/filter.js';
         import { updatePageTitle } from './js/page-title.js';
         import { fetchAndParseCSV, parseLocation2 } from './js/data.js';
         import { initializePromiscuityPlots, updateAllPromiscuityPlots, getPromiscuityFilterState } from './js/promiscuity-plot.js';
@@ -236,65 +206,7 @@
             const proteinLengthData = await fetchAndParseCSV('all_fragments_2025.06.04.csv');
             const interfaceData = await fetchAndParseCSV('all_interface_analysis_2025.06.05_shifted.csv');
 
-            pagination.initPagination();
-            pagination.setUpdatePaginationUI(pagination.updatePaginationControls);
-
             updateInteractionStatsFromURL(urlParams);
-
-            async function loadOtherInteractions() {
-                const container = document.getElementById('other-interactions-list');
-
-                if (!p1 || !p2 || !container) {
-                    const tableBody = document.querySelector('#other-interactions-list #tableBody');
-                    if (tableBody) tableBody.innerHTML = '<tr><td colspan="9"><p>Protein pair not specified.</p></td></tr>';
-                    return;
-                }
-
-                // Define initial filters, same as protein_pair.html
-                const initialNumericFilters = {
-                    min_pae: { max: 5 },
-                    avg_pae: { max: 15 },
-                    rop: { min: 2 }
-                };
-
-                const columnDescriptions = {
-                    "query_fragment": "Query protein fragment (domain or fragment name).",
-                    "partner": "Partner protein name.",
-                    "partner_id": "UniProt accession ID of the partner protein.",
-                    "Category": "Functional category of the partner protein.",
-                    "min_pae": "Minimum Predicted Aligned Error (PAE) value. Lower values indicate higher confidence.",
-                    "avg_pae": "Average Predicted Aligned Error (PAE) across the interface.",
-                    "iptm": "Interface predicted TM-score (ipTM). Higher values indicate higher model quality (0-1).",
-                    "pdockq": "pDockQ score estimates the confidence in the modeled interaction.",
-                    "max_promiscuity": "Maximum promiscuity score of the two domains.",
-                    "rop": "Residue Overlap Score (ROP) measures the proportion of residues in the domain that are involved in the interface.",
-                    "size": "Size of the interaction interface in square Angstroms (Å²).",
-                    "evenness": "How evenly distributed the interface residues are between the two proteins.",
-                    "location": "Location of the interaction on each protein chain."
-                };
-
-                await table.loadTableData();
-                table.setColumnDescriptions(columnDescriptions);
-                filter.setColumnFilters(initialNumericFilters);
-
-                filter.setOnFiltersChanged(() => {
-                    filter.updateActiveFilterDisplay();
-                    if (getPromiscuityFilterState()) {
-                        updateAllPromiscuityPlots();
-                    }
-                });
-
-                await table.loadTableData();
-                filter.setColumnFilters(initialNumericFilters);
-                filter.setSelectedProteins([p1, p2]);
-                table.setSearchMode("pair-exact");
-                pagination.setCurrentPage(1);
-                pagination.setUpdatePaginationUI(table.updatePaginationControls);
-                stats.setUpdateStatsUI(null);
-                table.initTable();
-                filter.updateActiveFilterDisplay();
-                table.renderTable();
-            }
 
             const interactionRegions = [
                 parseLocation2(urlParams.get('f1_loc')),
@@ -315,7 +227,14 @@
                 applyFilters: false
             });
 
-            loadOtherInteractions();
+            setOnFiltersChanged(() => {
+                updateActiveFilterDisplay();
+                if (getPromiscuityFilterState()) {
+                    updateAllPromiscuityPlots();
+                }
+            });
+
+            await initializeTable({selectedProteins: [p1, p2], searchMode: "pair-exact"});
             setUpStructureViewer(urlParams, [p1, p2], null);
         });
     </script>

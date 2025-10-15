@@ -1,7 +1,7 @@
 import { loadInteractionData, loadProteinMetadata, parseLocation, indicesToRanges, formatNumber } from './data.js';
 import { statColorConfig, getStatColor } from './stats.js';
-import { showColumnFilterPopup, applyFiltersToData } from './filter.js';
-import { paginateData } from './pagination.js';
+import { showColumnFilterPopup, applyFiltersToData, setColumnFilters, updateActiveFilterDisplay, setSelectedProteins } from './filter.js';
+import { initPagination, paginateData } from './pagination.js';
 
 // =============================================================================
 // Public API Functions
@@ -19,7 +19,7 @@ export async function loadTableData() {
             loadInteractionData(),
             loadProteinMetadata()
         ]);
-        
+
         setTableData(interactions);
 
         state.uniqueProteins.clear();
@@ -36,15 +36,14 @@ export async function loadTableData() {
             if (data.accessionId) accessionMap[proteinName] = data.accessionId;
             if (data.category) categoryMap[proteinName] = data.category;
         });
-        
+
         setProteinNameToAccessionMap(accessionMap);
         setProteinNameToCategoryMap(categoryMap);
 
-        // Ensure pagination UI is updated after data is loaded
-        if (state.updatePaginationUI) {
-            state.updatePaginationUI(interactions.length);
+        if (state.updatePaginationControls) {
+            state.updatePaginationControls(interactions.length);
         }
-        
+
         return interactions;
     } catch (error) {
         console.error('Failed to load table data:', error);
@@ -56,14 +55,22 @@ export async function loadTableData() {
     }
 }
 
-export function initTable() {
+export async function initializeTable({selectedProteins = [], searchMode = "includes"}) {
+    await loadTableData();
+
+    if (selectedProteins.length > 0) setSelectedProteins(selectedProteins);
+    if (searchMode) setSearchMode(searchMode);
+
+    initPagination();
+    setColumnFilters({
+        min_pae: { max: 5 },
+        avg_pae: { max: 15 },
+        rop: { min: 2 }
+    });
     initColumnHeaders();
     sortTable('min_pae');
-    if (typeof state.updatePaginationUI !== 'function') {
-        import('./pagination.js').then(module => {
-            module.initPagination();
-        });
-    }
+    updateActiveFilterDisplay();
+    renderTable();
 }
 
 export function renderTable() {
@@ -72,13 +79,13 @@ export function renderTable() {
     tableBody.innerHTML = '<tr><td colspan="10" class="loading"><i class="fas fa-spinner"></i><p>Loading data...</p></td></tr>';
 
     setTimeout(() => {
-                let filteredData = applyFiltersToData(state.tableData);
+        let filteredData = applyFiltersToData(state.tableData);
 
         if (typeof state.onFilteredDataUpdated === 'function') {
             state.onFilteredDataUpdated(filteredData);
         }
 
-        if (state.updatePaginationUI) state.updatePaginationUI(filteredData.length);
+        if (state.updatePaginationControls) state.updatePaginationControls(filteredData.length);
         const pageData = paginateData(filteredData, state.currentPage, state.rowsPerPage);
         tableBody.innerHTML = '';
 
@@ -160,37 +167,78 @@ export function createInteractionLink(row) {
 // Core Logic
 // =============================================================================
 function initColumnHeaders() {
+
     document.querySelectorAll('th[data-column]').forEach(header => {
         const column = header.dataset.column;
-        if (state.columnDescriptions && state.columnDescriptions[column]) {
-            let infoBtn = header.querySelector('.info-btn');
-            if (!infoBtn) {
-                infoBtn = document.createElement('span');
-                infoBtn.className = 'info-btn';
-                infoBtn.appendChild(document.createElement('i')).className = 'fas fa-info-circle';
-                infoBtn.setAttribute('tabindex', '0');
-                header.appendChild(infoBtn);
-                const tooltip = document.createElement('div');
-                tooltip.className = 'info-tooltip';
-                tooltip.innerHTML = `<h4>${column.replace(/_/g, ' ')}</h4><p>${state.columnDescriptions[column]}</p>`;
-                header.appendChild(tooltip);
-            }
+        const columnDescriptions = {
+            "Proteins": "Proteins involved in the interaction, and the fragments used in the prediction in which this interaction is seen. Multiple interactions may be seen between the same proteins and the same fragments.",
+            "min_pae": "Minimum PAE value for the interface. PAE gives the predicted error in the relative positioning of 2 residues, with lower values indicating more confident relative positioning. This is the best (lowest) PAE for any pair of residues from different proteins in this interface.",
+            "avg_pae": "Average PAE across the interface. PAE gives the predicted error in the relative positioning of 2 residues, with lower values indicating more confident relative positioning. This is the average PAE for all pairs of residues from different proteins in this interface.",
+            "iptm": "Interface predicted TM-score (ipTM). Higher values indicate higher model quality (0-1). Values above 0.55 indicate an interaction. Scores are typically lower on coiled coil predictions and predictions with larger input, especially when multiple regions of the predicted structure are within interaction distance with varying confidences. ",
+            "pdockq": "pDockQ score estimates the goodness of fit of the modeled interaction interface (0-1). It is based on the actual structure rather than prediction confidence. Scores above 0.23 indicate a plausible interaction. Can be biased towards coiled-coil structures.",
+            "rop": "Repeatability of Prediction. How many times (out of 4) the same interface was predicted in repeat runs. A score of 4 indicates high consistency.",
+            "max_promiscuity": "The higher of the two partners' promiscuity scores. Represents the number of other interactions predicted for the same interface region. A high score may indicate a non-specific binding site, or completion bias.",
+            "size": "The number of residue pairs within interaction distance at the interface.",
+            "evenness": "How evenly balanced the interaction confidence is in each direction (Protein 1 -> Protein 2 vs. Protein 2 -> Protein 1).",
+            "location": "Location of the regions involved in this predicted interaction in each full length protein. This is not necessarily every interacting region between these proteins or these fragments.",
+            "relative_location": "The interacting residue ranges within the protein fragments used for prediction. Useful for mapping to the predicted structure.",
+            "partner": "Partner protein name.",
+            "query_fragment": "Fragment of the query protein used in this prediction",
+            "partner_id": "UniProt accession ID of the partner protein.",
+            "function": "Category of the partner protein.",
+        };
+
+        const iconsContainer = document.createElement('div');
+        iconsContainer.className = 'header-icons';
+
+        if (columnDescriptions[column]) {
+            const infoBtn = document.createElement('span');
+            infoBtn.className = 'info-btn';
+            infoBtn.appendChild(document.createElement('i')).className = 'fas fa-info-circle';
+            infoBtn.setAttribute('tabindex', '0');
+            iconsContainer.appendChild(infoBtn);
+            const tooltip = document.createElement('div');
+            tooltip.className = 'info-tooltip';
+            tooltip.innerHTML = `<h4>${column.replace(/_/g, ' ')}</h4><p>${columnDescriptions[column]}</p>`;
+            header.appendChild(tooltip);
+
+            infoBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isVisible = tooltip.classList.contains('visible');
+                document.querySelectorAll('.info-tooltip').forEach(tt => tt.classList.remove('visible'));
+                if (!isVisible) {
+                    tooltip.classList.add('visible');
+                }
+            });
+        } else {
+            console.log(`No description for column: ${column}`);
         }
-        let filterIcon = header.querySelector('.filter-icon');
-        if (filterIcon && column !== 'Proteins' && column !== 'location') {
+
+        if (['min_pae', 'avg_pae', 'iptm', 'pdockq', 'max_promiscuity', 'rop', 'size', 'evenness'].includes(column)) {
+            const filterIcon = document.createElement('span');
+            filterIcon.className = 'filter-icon';
+            filterIcon.innerHTML = '<i class="fas fa-filter"></i>';
+            iconsContainer.appendChild(filterIcon);
+
             filterIcon.addEventListener('click', (e) => {
                 e.stopPropagation();
                 showColumnFilterPopup(column, filterIcon);
             });
-        } else if (filterIcon) {
-            filterIcon.style.display = 'none';
         }
+        header.appendChild(iconsContainer);
+
         if (column !== 'location' && column !== 'relative_location') {
             header.classList.add('sortable');
             header.addEventListener('click', (event) => {
                 if (event.target.closest('.filter-icon') || event.target.closest('.info-btn')) return;
                 sortTable(column);
             });
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.info-btn') && !e.target.closest('.info-tooltip')) {
+            document.querySelectorAll('.info-tooltip.visible').forEach(tt => tt.classList.remove('visible'));
         }
     });
 }
@@ -255,10 +303,10 @@ function renderCellContent(col, row, queryProteinName) {
         cellHtml = state.proteinNameToCategoryMap[partnerProtein] || 'N/A';
     } else if (col === 'location') {
         cellHtml = createLocationCellContent('protein1', row.absolute_location, row.Protein1 || 'Protein 1') +
-                   createLocationCellContent('protein2', row.absolute_location, row.Protein2 || 'Protein 2');
+            createLocationCellContent('protein2', row.absolute_location, row.Protein2 || 'Protein 2');
     } else if (col === 'relative_location') {
         cellHtml = createLocationCellContent('protein1', row.location, row.Protein1_Domain || 'Protein 1 Domain') +
-                   createLocationCellContent('protein2', row.location, row.Protein2_Domain || 'Protein 2 Domain');
+            createLocationCellContent('protein2', row.location, row.Protein2_Domain || 'Protein 2 Domain');
     } else if (['min_pae', 'avg_pae', 'iptm', 'pdockq', 'evenness'].includes(col)) {
         cellHtml = formatNumber(row[col]);
     } else if (['max_promiscuity', 'rop', 'size'].includes(col)) {
@@ -284,7 +332,7 @@ function createLocationCellContent(proteinName, locationData, domainName) {
             } else if (typeof val === 'string' && val) {
                 locationVal = val;
             }
-        } catch {}
+        } catch { }
     }
     return `<div class="location-cell-content"><div><strong>${domainName}</strong>: ${locationVal}</div></div>`;
 }
@@ -320,19 +368,19 @@ export const state = {
     proteinNameToAccessionMap: {},
     proteinNameToCategoryMap: {},
     uniqueProteins: new Set(),
-    updatePaginationUI: null,
+    updatePaginationControls: null,
     updateStatsUI: null,
     onFiltersChanged: null,
     onFilteredDataUpdated: null,
 
     setState(updates, options = { render: true }) {
         Object.assign(this, updates);
-        
+
         if (updates.columnFilters && this.onFiltersChanged) {
             this.onFiltersChanged();
         }
-        
-        if (options.render && (updates.tableData || updates.columnFilters || 
+
+        if (options.render && (updates.tableData || updates.columnFilters ||
             updates.currentPage || updates.selectedProteins)) {
             renderTable();
         }

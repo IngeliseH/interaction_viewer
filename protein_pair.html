@@ -77,64 +77,36 @@
                                             <tr>
                                                 <th data-column="location">Location</th>
                                                 <th data-column="min_pae">
-                                                    <span class="header-main-text">min_pae</span> 
-                                                    <span class="filter-icon">
-                                                        <i class="fas fa-filter"></i>
-                                                    </span>
+                                                    <span class="header-main-text">min_pae</span>
                                                 </th>
                                                 <th data-column="avg_pae">
-                                                    <span class="header-main-text">avg_pae</span> 
-                                                    <span class="filter-icon">
-                                                        <i class="fas fa-filter"></i>
-                                                    </span>
+                                                    <span class="header-main-text">avg_pae</span>
                                                 </th>
                                                 <th data-column="iptm">
-                                                    <span class="header-main-text">ipTM</span> 
-                                                    <span class="filter-icon">
-                                                        <i class="fas fa-filter"></i>
-                                                    </span>
+                                                    <span class="header-main-text">ipTM</span>
                                                 </th>
                                                 <th data-column="pdockq">
-                                                    <span class="header-main-text">pDockQ</span> 
-                                                    <span class="filter-icon">
-                                                        <i class="fas fa-filter"></i>
-                                                    </span>
+                                                    <span class="header-main-text">pDockQ</span>
                                                 </th>
                                                 <th data-column="max_promiscuity">
-                                                    <span class="header-main-text">Max Promiscuity</span> 
-                                                    <span class="filter-icon">
-                                                        <i class="fas fa-filter"></i>
-                                                    </span>
+                                                    <span class="header-main-text">Max Promiscuity</span>
                                                 </th>
                                                 <th data-column="rop">
-                                                    <span class="header-main-text">ROP</span> 
-                                                    <span class="filter-icon">
-                                                        <i class="fas fa-filter"></i>
-                                                    </span>
+                                                    <span class="header-main-text">ROP</span>
                                                 </th>
                                                 <th data-column="size">
-                                                    <span class="header-main-text">Size</span> 
-                                                    <span class="filter-icon">
-                                                        <i class="fas fa-filter"></i>
-                                                    </span>
+                                                    <span class="header-main-text">Size</span>
                                                 </th>
                                                 <th data-column="evenness">
-                                                    <span class="header-main-text">Evenness</span> 
-                                                    <span class="filter-icon">
-                                                        <i class="fas fa-filter"></i>
-                                                    </span>
+                                                    <span class="header-main-text">Evenness</span>
                                                 </th>
                                                 <th data-column="relative_location">Relative Location</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="tableBody">
-                                            <!-- Data will be populated by JavaScript -->
-                                        </tbody>
+                                        <tbody id="tableBody"></tbody>
                                     </table>
                                 </div>
-                                <div class="pagination" id="pagination">
-                                    <!-- Pagination will be generated here -->
-                                </div>
+                                <div class="pagination" id="pagination"></div>
                             </div>
                         </div>
                     </main>
@@ -152,12 +124,10 @@
                                         </button>
                                     </div>
                                 </div>
-                                <div class="chord-plot-container">
-                                    <!-- Chord plot will be rendered here -->
+                                <div class="chord-plot-container"></div>
                             </div>
                         </div>
                     </main>
-                    <!-- Structure Section Start -->
                     <main class="content-area">
                         <div class="content-section" id="structure-viewer-section">
                             <div class="content-section-title">
@@ -173,7 +143,6 @@
                             </div>
                         </div>
                     </main>
-                    <!-- Structure Section End -->
                 </div>
             </div>
         </div>
@@ -181,18 +150,14 @@
     <div id="footer-placeholder"></div>
 
     <script type="module">
-        import * as table from './js/table.js';
-        import * as filter from './js/filter.js';
-        import * as pagination from './js/pagination.js';
+        import { initializeTable} from './js/table.js';
+        import { getFilteredData, setOnFiltersChanged, updateActiveFilterDisplay } from './js/filter.js';
         import { updatePageTitle } from './js/page-title.js';
-        import { setUpdateStatsUI } from './js/stats.js';
         import { initializeChordPlot } from './js/chord-plot.js';
         import { loadHTMLIncludes } from './js/header-footer.js';
         import { initCollapsibleSectionsComplex } from './js/collapsible-section.js';
         import { initializeDomainFragmentPlots } from './js/domain-fragment-plot.js';
         import { setUpStructureViewer } from './js/structure-viewer.js';
-
-        window.activeFilters = {};
 
         let chordPlotShowDomains = true;
         const urlParams = new URLSearchParams(window.location.search);
@@ -200,7 +165,7 @@
         const p2 = decodeURIComponent(urlParams.get('p2') || '');
 
         async function initializeChordPlotWrapper() {
-            const filteredData = filter.getFilteredData();
+            const filteredData = getFilteredData();
 
             await initializeChordPlot({
                 queryProteins: [p1, p2],
@@ -212,40 +177,11 @@
             });
         }
 
-        // --- Table column descriptions for info tooltips ---
-        table.setColumnDescriptions({
-            "location": "Location of the regions involved in this predicted interaction in each full length protein. This is not necessarily every interacting region between these proteins or these fragments.",
-            "min_pae": "Minimum PAE value for the interface. PAE gives the predicted error in the relative positioning of 2 residues, with lower values indicating more confident relative positioning. This is the best (lowest) PAE for any pair of residues from different proteins in this interface.",
-            "avg_pae": "Average PAE across the interface. PAE gives the predicted error in the relative positioning of 2 residues, with lower values indicating more confident relative positioning. This is the average PAE for all pairs of residues from different proteins in this interface.",
-            "iptm": "Interface predicted TM-score (ipTM). Higher values indicate higher model quality (0-1). Values above 0.55 indicate an interaction. Scores are typically lower on coiled coil predictions and predictions with larger input, especially when multiple regions of the predicted structure are within interaction distance with varying confidences. ",
-            "pdockq": "pDockQ score estimates the goodness of fit of the modeled interaction interface (0-1). It is based on the actual structure rather than prediction confidence. Scores above 0.23 indicate a plausible interaction. Can be biased towards coiled-coil structures.",
-            "max_promiscuity": "The higher of the two partners' promiscuity scores. Represents the number of other interactions predicted for the same interface region. A high score may indicate a non-specific binding site, or completion bias.",
-            "rop": "Repeatability of Prediction. How many times (out of 4) the same interface was predicted in repeat runs. A score of 4 indicates high consistency.",
-            "size": "The number of residue pairs within interaction distance at the interface.",
-            "evenness": "How evenly balanced the interaction confidence is in each direction (Protein 1 -> Protein 2 vs. Protein 2 -> Protein 1).",
-            "relative_location": "The interacting residue ranges within the protein fragments used for prediction. Useful for mapping to the predicted structure."
-        });
-
-        // --- Table initialization and filtering ---
-        async function initializePPITableForProtein() {
-            await table.loadTableData();
-            filter.setSelectedProteins([p1, p2]);
-            table.setSearchMode("pair-exact");
-            pagination.setCurrentPage(1);
-            pagination.setUpdatePaginationUI(pagination.updatePaginationControls);
-            setUpdateStatsUI(null);
-            table.initTable();
-            filter.updateActiveFilterDisplay();
-            table.renderTable();
-        }
-
-        // Initialize the app when DOM is loaded
         document.addEventListener('DOMContentLoaded', async () => {
             await loadHTMLIncludes('navProteinPairs');
             updatePageTitle([p1, p2]);
             initCollapsibleSectionsComplex();
 
-            // Chord plot controls
             const chordDomainsBtn = document.getElementById('chord-domains-btn');
             if (chordDomainsBtn) {
                 chordDomainsBtn.classList.toggle('active', chordPlotShowDomains);
@@ -256,23 +192,13 @@
                 });
             }
 
-            // Define initial filters
-            const initialNumericFilters = {
-                min_pae: { max: 5 },
-                avg_pae: { max: 15 },
-                rop: { min: 2 }
-            };
-
-            filter.setOnFiltersChanged(async () => {
-                filter.updateActiveFilterDisplay();
+            setOnFiltersChanged(async () => {
+                updateActiveFilterDisplay();
                 await initializeChordPlotWrapper();
             });
 
-            if (!p1 || !p2) {
-                console.warn("Protein names not provided in URL parameters.");
-            }
-            filter.setColumnFilters(initialNumericFilters, false);
-            await initializePPITableForProtein();
+            await initializeTable({selectedProteins: [p1, p2], searchMode: "pair-exact"});
+
             await initializeDomainFragmentPlots({
                 proteins: p1 === p2 ? [p1] : [p1, p2]
             });

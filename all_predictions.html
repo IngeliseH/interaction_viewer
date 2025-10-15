@@ -147,52 +147,28 @@
                                         Proteins 
                                     </th>
                                     <th data-column="min_pae">
-                                        <span class="header-main-text">min_pae</span> 
-                                        <span class="filter-icon">
-                                            <i class="fas fa-filter"></i>
-                                        </span>
+                                        <span class="header-main-text">min_pae</span>
                                     </th>
                                     <th data-column="avg_pae">
-                                        <span class="header-main-text">avg_pae</span> 
-                                        <span class="filter-icon">
-                                            <i class="fas fa-filter"></i>
-                                        </span>
+                                        <span class="header-main-text">avg_pae</span>
                                     </th>
                                     <th data-column="iptm">
-                                        <span class="header-main-text">ipTM</span> 
-                                        <span class="filter-icon">
-                                            <i class="fas fa-filter"></i>
-                                        </span>
+                                        <span class="header-main-text">ipTM</span>
                                     </th>
                                     <th data-column="pdockq">
-                                        <span class="header-main-text">pDockQ</span> 
-                                        <span class="filter-icon">
-                                            <i class="fas fa-filter"></i>
-                                        </span>
+                                        <span class="header-main-text">pDockQ</span>
                                     </th>
                                     <th data-column="rop">
-                                        <span class="header-main-text">ROP</span> 
-                                        <span class="filter-icon">
-                                            <i class="fas fa-filter"></i>
-                                        </span>
+                                        <span class="header-main-text">ROP</span>
                                     </th>
                                     <th data-column="max_promiscuity">
-                                        <span class="header-main-text">Max Promiscuity</span> 
-                                        <span class="filter-icon">
-                                            <i class="fas fa-filter"></i>
-                                        </span>
+                                        <span class="header-main-text">Max Promiscuity</span>
                                     </th>
                                     <th data-column="size">
-                                        <span class="header-main-text">Size</span> 
-                                        <span class="filter-icon">
-                                            <i class="fas fa-filter"></i>
-                                        </span>
+                                        <span class="header-main-text">Size</span>
                                     </th>
                                     <th data-column="evenness">
-                                        <span class="header-main-text">Evenness</span> 
-                                        <span class="filter-icon">
-                                            <i class="fas fa-filter"></i>
-                                        </span>
+                                        <span class="header-main-text">Evenness</span>
                                     </th>
                                     <th data-column="location">
                                         Location 
@@ -220,25 +196,9 @@
         import { loadHTMLIncludes } from './js/header-footer.js';
         import * as table from './js/table.js';
         import * as filter from './js/filter.js';
-        import * as pagination from './js/pagination.js';
         import * as stats from './js/stats.js';
         import { initializeChordPlot } from './js/chord-plot.js';
         import { initCollapsibleSectionsSimple } from './js/collapsible-section.js';
-
-        // Set up column descriptions for info tooltips
-        table.setColumnDescriptions({
-            "Proteins": "Proteins involved in the interaction, and the fragments used in the prediction in which this interaction is seen. Multiple interactions may be seen between the same proteins and the same fragments.",
-            "min_pae": "Minimum PAE value for the interface. PAE gives the predicted error in the relative positioning of 2 residues, with lower values indicating more confident relative positioning. This is the best (lowest) PAE for any pair of residues from different proteins in this interface.",
-            "avg_pae": "Average PAE across the interface. PAE gives the predicted error in the relative positioning of 2 residues, with lower values indicating more confident relative positioning. This is the average PAE for all pairs of residues from different proteins in this interface.",
-            "iptm": "Interface predicted TM-score (ipTM). Higher values indicate higher model quality (0-1). Values above 0.55 indicate an interaction. Scores are typically lower on coiled coil predictions and predictions with larger input, especially when multiple regions of the predicted structure are within interaction distance with varying confidences. ",
-            "pdockq": "pDockQ score estimates the goodness of fit of the modeled interaction interface (0-1). It is based on the actual structure rather than prediction confidence. Scores above 0.23 indicate a plausible interaction. Can be biased towards coiled-coil structures.",
-            "rop": "Repeatability of Prediction. How many times (out of 4) the same interface was predicted in repeat runs. A score of 4 indicates high consistency.",
-            "max_promiscuity": "The higher of the two partners' promiscuity scores. Represents the number of other interactions predicted for the same interface region. A high score may indicate a non-specific binding site, or completion bias.",
-            "size": "The number of residue pairs within interaction distance at the interface.",
-            "evenness": "How evenly balanced the interaction confidence is in each direction (Protein 1 -> Protein 2 vs. Protein 2 -> Protein 1).",
-            "location": "Location of the regions involved in this predicted interaction in each full length protein. This is not necessarily every interacting region between these proteins or these fragments.",
-            "relative_location": "The interacting residue ranges within the protein fragments used for prediction. Useful for mapping to the predicted structure."
-        });
 
         // --- Sidebar Event Listeners ---
         function setupSidebarEventListeners() {
@@ -251,7 +211,6 @@
                 });
             });
 
-            // Sidebar filter apply
             document.getElementById('applyFilter').addEventListener('click', () => {
                 const column = document.getElementById('filterColumn').value;
                 const condition = document.getElementById('filterCondition').value;
@@ -352,8 +311,6 @@
         document.addEventListener('DOMContentLoaded', async () => {
             await loadHTMLIncludes('navAllPredictions');
             initCollapsibleSectionsSimple();
-            await table.loadTableData();
-            pagination.initPagination();
             
             // Set UI update hooks and filter change callback first
             stats.setUpdateStatsUI(updateStats);
@@ -363,16 +320,8 @@
             });
 
             setupProteinSearch();
-
-            const initialNumericFilters = {
-                min_pae: { max: 5 },
-                avg_pae: { max: 15 },
-                rop: { min: 2 }
-            };
-            filter.setColumnFilters(initialNumericFilters);
-            pagination.setUpdatePaginationUI(table.updatePaginationControls);
             
-            table.initTable();
+            await table.initializeTable({});
             setupSidebarEventListeners();
         });
     </script>
