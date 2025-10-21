@@ -299,7 +299,7 @@ function _applyViewerState(structureConfig) {
                 if (atom.chain === 'B') return 'lightskyblue';
                 return 'lightgray';
             }
-            colorFunc = atom => baseChainColorFunc(atom)
+            colorFunc = atom => baseChainColorFunc(atom);
         }
         styles = { cartoon: { colorfunc: colorFunc } };
         if (atomsShown) {
@@ -309,10 +309,51 @@ function _applyViewerState(structureConfig) {
     viewer.setStyle({}, styles);
 
     if (!atomsShown) {
-        const highlightStyle = (color) => ({ cartoon: { color, thickness: 1.0 }, stick: { color, thickness: 1.0 } });
-        if (f1_loc) viewer.setStyle({ chain: 'A', resi: f1_loc }, highlightStyle("red"));
-        if (f2_loc) viewer.setStyle({ chain: 'B', resi: f2_loc }, highlightStyle("blue"));
+        const highlightStyle = (color) => ({ cartoon: { color, thickness: 1.0 }, stick: { color, radius: 0.2 } });
+        if (f1_loc) viewer.setStyle({ chain: 'A', resi: f1_loc, byres: true }, highlightStyle("red"));
+        if (f2_loc) viewer.setStyle({ chain: 'B', resi: f2_loc, byres: true }, highlightStyle("blue"));
     }
+
+    viewer.setHoverable({}, true,
+        function(atom, viewerInstance, event, container) {
+            const selResidue = { chain: atom.chain, resi: atom.resi, byres: true };
+            const residueInfo = `${atom.resn} ${atom.resi}`;
+            atom._hoverLabel = viewerInstance.addLabel(residueInfo, {position: atom, backgroundColor: 'white', fontColor: 'black', fontSize: 14});
+
+            atom._origSelection = selResidue;
+            atom._origAtomsShown = atomsShown;
+            atom._origWasInteraction  = (
+                (f1_loc && atom.chain === 'A' && f1_loc.includes(atom.resi.toString())) ||
+                (f2_loc && atom.chain === 'B' && f2_loc.includes(atom.resi.toString()))
+            );
+            atom._origStyle = styles;
+
+            viewerInstance.setStyle(selResidue, { cartoon: { color: 'yellow', thickness: 1.5 }, stick:   { color: 'yellow', radius: 0.4 }});
+            viewerInstance.render();
+        },
+        function(atom, viewerInstance) {
+            if (atom._hoverLabel) {
+                viewerInstance.removeLabel(atom._hoverLabel);
+                delete atom._hoverLabel;
+            }
+
+            let restoreStyle;
+            if (atom._origWasInteraction && !atom._origAtomsShown) {
+                restoreStyle = { cartoon: { color: (atom.chain === 'A' ? 'red' : 'blue'), thickness: 1.0 }, stick: { color: (atom.chain === 'A' ? 'red' : 'blue'), radius: 0.2 }};
+            } else {
+                restoreStyle = atom._origStyle;
+                if (!atom._origAtomsShown) delete restoreStyle.stick;
+            }
+
+            viewerInstance.setStyle(atom._origSelection, restoreStyle);
+            viewerInstance.render();
+
+            delete atom._origSelection;
+            delete atom._origAtomsShown;
+            delete atom._origWasInteraction;
+            delete atom._origStyle;
+        }
+    );
 
     if (surfaceShown) {
         if (colorMode === 'chain') {
