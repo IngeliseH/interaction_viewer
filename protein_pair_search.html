@@ -27,9 +27,8 @@
 
                     <div id="protein1-optional-inputs" style="visibility: hidden;">
                         <p>Fragment(s) (optional)
-                            <span class="info-btn">
+                            <span class="info-btn" data-tooltip="To select multiple non-adjacent fragments, hold Ctrl (Windows/Linux) or Cmd (Mac) and click on your desired options.">
                                 <i class="fas fa-info-circle"></i>
-                                <span class="info-tooltip">To select multiple non-adjacent fragments, hold Ctrl (Windows/Linux) or Cmd (Mac) and click on your desired options.</span>
                             </span>
                         </p>
                         <select id="fragment1" multiple>
@@ -48,9 +47,8 @@
 
                     <div id="protein2-optional-inputs" style="visibility: hidden;">
                         <p>Fragment(s) (optional)
-                            <span class="info-btn">
+                            <span class="info-btn" data-tooltip="To select multiple non-adjacent fragments, hold Ctrl (Windows/Linux) or Cmd (Mac) and click on your desired options.">
                                 <i class="fas fa-info-circle"></i>
-                                <span class="info-tooltip">To select multiple non-adjacent fragments, hold Ctrl (Windows/Linux) or Cmd (Mac) and click on your desired options.</span>
                             </span>
                         </p>
                         <select id="fragment2" multiple>
@@ -72,6 +70,7 @@
     <div id="footer-placeholder"></div>
     <script type="module">
         import { loadHTMLIncludes } from './js/header-footer.js';
+        import { showTooltip, hideAllTooltips } from './js/tooltip.js';
         let fragmentData = []; // To store data from all_fragments_2025.06.04.csv
         let uniqueProteins = []; // Declare uniqueProteins in a broader scope
 
@@ -361,6 +360,18 @@
                 }
 
                 window.location.href = url;
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.querySelector('.container');
+
+            container.addEventListener('click', (e) => {
+                const infoBtn = e.target.closest('.info-btn');
+                if (infoBtn) {
+                    const tooltipContent = infoBtn.dataset.tooltip;
+                    showTooltip(infoBtn, tooltipContent);
+                }
             });
         });
     </script>
