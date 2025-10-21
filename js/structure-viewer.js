@@ -47,7 +47,7 @@ export async function setUpStructureViewer(urlParams, proteins, proteinMetadata)
     const f2_selection = f2_loc ? {resi: f2_loc, chain: 'B'} : null;
     const zoomSelection = (f1_selection && f2_selection) ? {or: [f1_selection, f2_selection]} : (f1_selection || f2_selection);
 
-    _displayStructureInViewer(viewerDiv, `structures/${pdbFile}`, {zoomSelection, f1_loc, f2_loc});
+    _displayStructureInViewer(viewerDiv, `structures/${pdbFile}`, {zoomSelection, f1_loc, f2_loc, proteins});
 
 }
 
@@ -138,7 +138,7 @@ async function _setUpStructurePickerGrid(gridContainer, viewerDiv, urlParams, p1
         if (cell) {cell.classList.add('selected')};
 
         if (button.dataset.file && viewerDiv) {
-            _displayStructureInViewer(viewerDiv, button.dataset.file);
+            _displayStructureInViewer(viewerDiv, button.dataset.file, {proteins: [p1, p2]});
         }
     });
 }
@@ -251,6 +251,30 @@ function _setupStructureViewerControls(placeholder, callbacks) {
     };
 }
 
+function _createColorKeyLegend(keyPlaceholder, proteins, location) {
+    keyPlaceholder.innerHTML = '';
+    const keyContainer = document.createElement('div');
+    keyContainer.className = 'structure-key';
+
+    const createProteinKey = (color, text, interactionColor) => {
+        const proteinKey = document.createElement('div');
+        proteinKey.className = 'structure-key-protein';
+        proteinKey.innerHTML = `
+            <div class="structure-key-item">
+                <span class="structure-key-color" style="background-color:${color};"></span> ${text}
+            </div>
+            ${interactionColor ? `<div class="structure-key-item">
+                <span class="structure-key-color" style="background-color:${interactionColor};"></span> interaction region
+            </div>` : ''}
+        `;
+        return proteinKey;
+    };
+
+    keyContainer.appendChild(createProteinKey('lightcoral', proteins[0], location ? 'red' : null));
+    keyContainer.appendChild(createProteinKey('lightskyblue', proteins[1], location ? 'blue' : null));
+    keyPlaceholder.appendChild(keyContainer);
+}
+
 function _applyViewerState(structureConfig) {
     const { viewer, modelLoaded, atomsShown, surfaceShown, colorMode, useDomainColoring, domainRangesArray, f1_loc, f2_loc } = structureConfig;
     if (!modelLoaded) return;
@@ -306,7 +330,7 @@ function _applyViewerState(structureConfig) {
 }
 
 export function _displayStructureInViewer(container, pdbPath, options={}) {
-    const {domainRangesArray, zoomSelection, f1_loc, f2_loc} = options || {};
+    const {domainRangesArray, zoomSelection, f1_loc, f2_loc, proteins} = options || {};
     if (!container) return;
     container.innerHTML = '';
 
@@ -321,6 +345,7 @@ export function _displayStructureInViewer(container, pdbPath, options={}) {
         return;
     }
     const controlsPlaceholder = document.getElementById("structure-controls-placeholder");
+    const keyPlaceholder = document.getElementById("structure-key-placeholder");
 
     let viewer = $3Dmol.createViewer(container, { defaultcolors: $3Dmol.rasmolElementColors });
     const useDomainColoring = _isValidDomainRanges(domainRangesArray);
@@ -375,6 +400,11 @@ export function _displayStructureInViewer(container, pdbPath, options={}) {
         }
     };
     const controls = _setupStructureViewerControls(controlsPlaceholder, callbacks);
+
+    if (proteins && proteins.length >= 2) {
+        const interaction = (f1_loc || f2_loc) ? true : false;
+        _createColorKeyLegend(keyPlaceholder, proteins, interaction);
+    }
 
     if (controls) controls.container.style.display = 'none';
 

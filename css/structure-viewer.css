@@ -82,3 +82,35 @@ table.structure-grid {
 .structure-grid-cell.selected {
     background-color: var(--secondary);
 }
+
+.structure-key {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    background: var(--light);
+    border-radius: 8px;
+    margin: 0 auto 10px auto;
+    width: 100%;
+    box-shadow: var(--narrow-shadow);
+    max-width: 700px;
+}
+
+.structure-key-protein {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+}
+
+.structure-key-item {
+    display: flex;
+    align-items: center;
+    margin: 0 10px;
+}
+
+.structure-key-color {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border: 1px solid var(--text);
+    margin: 0 10px;
+}
