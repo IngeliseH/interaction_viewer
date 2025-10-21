@@ -1,24 +1,16 @@
 .info-btn {
-    position: relative;
     cursor: help;
     color: var(--secondary);
     padding: 5px;
 }
 
-.info-btn .info-tooltip,
-th > .info-tooltip {
-    visibility: hidden;
-    opacity: 0;
-    z-index: 1000;
+.info-tooltip {
     background-color: #333;
     color: white;
     width: 240px;
     padding: 10px 15px;
     border-radius: 6px;
     box-shadow: var(--shadow);
-    position: absolute;
-    top: 100%;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
     text-align: left;
     font-size: 0.8rem;
     font-weight: normal;
@@ -30,18 +22,7 @@ th > .info-tooltip {
     opacity: 1;
 }
 
-.info-btn:hover .info-tooltip,
-.info-btn:focus-within .info-tooltip,
-th > .info-btn:hover + .info-tooltip,
-th > .info-btn:focus + .info-tooltip {
-    visibility: visible;
-    overflow: visible;
-    z-index: 1000;
-    opacity: 1;
-}
-
-.info-tooltip h4,
-th > .info-tooltip h4 {
+.info-tooltip h4 {
     margin: 0 0 8px 0;
     font-size: 1em;
     color: var(--light);

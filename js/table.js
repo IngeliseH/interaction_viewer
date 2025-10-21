@@ -2,6 +2,7 @@ import { loadInteractionData, loadProteinMetadata, parseLocation, indicesToRange
 import { statColorConfig, getStatColor } from './stats.js';
 import { showColumnFilterPopup, applyFiltersToData, setColumnFilters, updateActiveFilterDisplay, setSelectedProteins } from './filter.js';
 import { initPagination, paginateData } from './pagination.js';
+import { showTooltip, hideAllTooltips } from './tooltip.js';
 
 // =============================================================================
 // Public API Functions
@@ -197,18 +198,11 @@ function initColumnHeaders() {
             infoBtn.appendChild(document.createElement('i')).className = 'fas fa-info-circle';
             infoBtn.setAttribute('tabindex', '0');
             iconsContainer.appendChild(infoBtn);
-            const tooltip = document.createElement('div');
-            tooltip.className = 'info-tooltip';
-            tooltip.innerHTML = `<h4>${column.replace(/_/g, ' ')}</h4><p>${columnDescriptions[column]}</p>`;
-            header.appendChild(tooltip);
 
             infoBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const isVisible = tooltip.classList.contains('visible');
-                document.querySelectorAll('.info-tooltip').forEach(tt => tt.classList.remove('visible'));
-                if (!isVisible) {
-                    tooltip.classList.add('visible');
-                }
+                const tooltipContent = `<h4>${column.replace(/_/g, ' ')}</h4><p>${columnDescriptions[column]}</p>`;
+                showTooltip(infoBtn, tooltipContent);
             });
         } else {
             console.log(`No description for column: ${column}`);
@@ -238,8 +232,12 @@ function initColumnHeaders() {
 
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.info-btn') && !e.target.closest('.info-tooltip')) {
-            document.querySelectorAll('.info-tooltip.visible').forEach(tt => tt.classList.remove('visible'));
+            hideAllTooltips();
         }
+    });
+
+    document.addEventListener('scroll', () => {
+        hideAllTooltips();
     });
 }
 

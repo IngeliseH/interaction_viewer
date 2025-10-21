@@ -45,18 +45,16 @@
                                 <div class="mode-option">
                                     <input type="radio" id="modeIncludes" name="searchMode" value="includes" checked>
                                     <label for="modeIncludes">Including
-                                        <span class="info-btn">
+                                        <span class="info-btn" data-tooltip="Show all rows including any of the searched proteins.">
                                             <i class="fas fa-info-circle"></i>
-                                        <div class="info-tooltip">Show all rows including any of the searched proteins.</div>
                                         </span>
                                     </label>
                                 </div>
                                 <div class="mode-option">
                                     <input type="radio" id="modeOnly" name="searchMode" value="only">
                                     <label for="modeOnly">Only
-                                        <span class="info-btn">
+                                        <span class="info-btn" data-tooltip="Show only rows where both proteins involved are in your selected protein list.">
                                             <i class="fas fa-info-circle"></i>
-                                        <div class="info-tooltip">Show only rows where both proteins involved are in your selected protein list.</div>
                                         </span>
                                     </label>
                                 </div>
@@ -200,10 +198,9 @@
         import * as stats from './js/stats.js';
         import { initializeChordPlot } from './js/chord-plot.js';
         import { initCollapsibleSectionsSimple } from './js/collapsible-section.js';
+        import { initTooltips } from './js/tooltip.js';
 
-        // --- Sidebar Event Listeners ---
         function setupSidebarEventListeners() {
-            // Search mode
             document.querySelectorAll('input[name="searchMode"]').forEach(input => {
                 input.addEventListener('change', function() {
                     table.setSearchMode(this.value);
@@ -232,7 +229,6 @@
                 document.getElementById('filterValue').value = '';
             });
         }
-
     
         function updateStats(filteredData, allData) {
             const proteinCount = document.getElementById('proteinCount');
@@ -321,6 +317,7 @@
             });
 
             setupProteinSearch();
+            initTooltips('.sidebar');
             
             await table.initializeTable({});
             setupSidebarEventListeners();
