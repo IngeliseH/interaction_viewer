@@ -1,4 +1,5 @@
 import { displayInfo, createSvgElement, createProteinLabel, createHoverLabel, setupHoverEffect } from './plot-utility.js';
+import { getAllFilters } from './filter.js';
 
 let _plotInstances = {};
 
@@ -17,7 +18,6 @@ export async function initializePromiscuityPlots({
     interactionRegions = [],
     proteinLengthData,
     interfaceData,
-    filter,
     applyFilters
 }) {
     _applyPromiscuityFilters = applyFilters;;
@@ -42,7 +42,6 @@ export async function initializePromiscuityPlots({
             interactionRegion: interactionRegions[index] || null,
             proteinLengthData,
             interfaceData,
-            filter,
             plotSectionsContainer
         });
     });
@@ -156,7 +155,6 @@ function _initializePlotInstance(instanceId, proteinName, config) {
         interactionRegion,
         proteinLengthData,
         interfaceData,
-        filter,
         plotSectionsContainer
     } = config;
 
@@ -190,7 +188,6 @@ function _initializePlotInstance(instanceId, proteinName, config) {
         interactionRegion: interactionRegion || null,
         proteinLengthData,
         interfaceData,
-        filter,
         plotElements
     };
 }
@@ -206,11 +203,10 @@ function _updatePromiscuityPlot(instanceId) {
         proteinName,
         proteinLengthData,
         interfaceData,
-        filter,
         plotElements
     } = instance;
 
-    const filterCriteria = _applyPromiscuityFilters ? _convertTableFiltersToPromiscuityCriteria(filter.getAllFilters()) : {};
+    const filterCriteria = _applyPromiscuityFilters ? _convertTableFiltersToPromiscuityCriteria(getAllFilters()) : {};
 
     const proteinInfoRow = proteinLengthData.find(row => row.name === proteinName);
     const proteinLength = parseInt(proteinInfoRow?.length, 10);
