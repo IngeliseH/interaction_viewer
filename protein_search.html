@@ -32,32 +32,6 @@
         import { loadProteinMetadata } from './js/data.js';
         import { populateProteinSuggestionList } from './js/search.js';
 
-        function setupSearchButton(uniqueProteins) {
-            const searchButton = document.getElementById('protein-search-button');
-            const proteinInput = document.getElementById('protein-search-input');
-            const searchErrorMessageElement = document.getElementById('search-error-message');
-
-            if (!searchButton || !proteinInput || !searchErrorMessageElement) {
-                console.error("Search button or related elements not found.");
-                return;
-            }
-
-            searchButton.addEventListener('click', () => {
-                searchErrorMessageElement.textContent = '';
-                const proteinName = proteinInput.value.trim();
-
-                if (!proteinName) {
-                    searchErrorMessageElement.textContent = "Protein name is required.";
-                    return;
-                }
-                if (!uniqueProteins.includes(proteinName)) {
-                    searchErrorMessageElement.textContent = `Protein "${proteinName}" is not a valid selection. Please choose from the suggestions.`;
-                    return;
-                }
-                window.location.href = `protein.html?p1=${encodeURIComponent(proteinName)}`;
-            });
-        }
-
         document.addEventListener('DOMContentLoaded', async () => {
             await loadHTMLIncludes('navProteins');
             const unprocessedProteinMetadata = await loadProteinMetadata();
@@ -77,7 +51,24 @@
             const uniqueProteins = Array.from(proteinNameSet).sort();
             populateProteinSuggestionList(proteinMetadata, uniqueProteins);
             populateProteinSuggestionList(proteinMetadata, uniqueProteins);
-            setupSearchButton(uniqueProteins);
+
+            const searchButton = document.getElementById('protein-search-button');
+            const proteinInput = document.getElementById('protein-search-input');
+            const searchErrorMessageElement = document.getElementById('search-error-message');
+
+            searchButton.addEventListener('click', () => {
+                searchErrorMessageElement.textContent = '';
+                const proteinName = proteinInput.value.trim();
+                if (!proteinName) {
+                    searchErrorMessageElement.textContent = "Protein name is required.";
+                    return;
+                }
+                if (!uniqueProteins.includes(proteinName)) {
+                    searchErrorMessageElement.textContent = `Protein "${proteinName}" is not a valid selection. Please choose from the suggestions.`;
+                    return;
+                }
+                window.location.href = `protein.html?p1=${encodeURIComponent(proteinName)}`;
+            });
             
         });
     </script>
