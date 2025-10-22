@@ -1,4 +1,4 @@
-import { parseResidueLocations } from "./data.js";
+import { fetchProteinData, parseResidueLocations } from "./data.js";
 import { displayInfo } from "./plot-utility.js";
 
 export async function setUpStructureViewer(urlParams, proteins, proteinMetadata) {
@@ -46,8 +46,7 @@ export async function setUpStructureViewer(urlParams, proteins, proteinMetadata)
     const f1_selection = f1_loc ? {resi: f1_loc, chain: 'A'} : null;
     const f2_selection = f2_loc ? {resi: f2_loc, chain: 'B'} : null;
     const zoomSelection = (f1_selection && f2_selection) ? {or: [f1_selection, f2_selection]} : (f1_selection || f2_selection);
-
-    _displayStructureInViewer(viewerDiv, `structures/${pdbFile}`, {zoomSelection, f1_loc, f2_loc, proteins});
+    _displayStructureInViewer(viewerDiv, `structures/${pdbFile}`, {zoomSelection, f1_loc, f2_loc, f1_shift, f2_shift, proteins});
 
 }
 
@@ -66,6 +65,9 @@ async function _setUpStructurePickerGrid(gridContainer, viewerDiv, urlParams, p1
             ? [p2, f2Fragments, p1, f1Fragments]
             : [p1, f1Fragments, p2, f2Fragments];
     const pdbFiles = await _getPdbFiles();
+
+    const xData = await fetchProteinData(proteinForX)
+    const yData = await fetchProteinData(proteinForY)
 
     gridContainer.innerHTML = '';
 
@@ -123,6 +125,9 @@ async function _setUpStructurePickerGrid(gridContainer, viewerDiv, urlParams, p1
                 button.disabled = true;
             }
 
+            button.dataset.fxShift = xData.fragmentIndices[fX -1][0] - 1;
+            button.dataset.fyShift = yData.fragmentIndices[fY -1][0] - 1;
+
             cell.appendChild(button);
         });
     }); 
@@ -138,7 +143,7 @@ async function _setUpStructurePickerGrid(gridContainer, viewerDiv, urlParams, p1
         if (cell) {cell.classList.add('selected')};
 
         if (button.dataset.file && viewerDiv) {
-            _displayStructureInViewer(viewerDiv, button.dataset.file, {proteins: [p1, p2]});
+            _displayStructureInViewer(viewerDiv, button.dataset.file, {proteins: [p1, p2], f1_shift: parseInt(button.dataset.fxShift), f2_shift: parseInt(button.dataset.fyShift)});
         }
     });
 }
@@ -275,6 +280,51 @@ function _createColorKeyLegend(keyPlaceholder, proteins, location) {
     keyPlaceholder.appendChild(keyContainer);
 }
 
+function _setupResidueHover(styles, structureConfig) {
+    const { viewer, atomsShown, f1_loc, f2_loc, f1_shift, f2_shift } = structureConfig;
+    viewer.setHoverable({}, true,
+      function(atom, viewerInstance, event, container) {
+        atom._origSelection = { chain: atom.chain, resi: atom.resi, byres: true };
+        atom._origAtomsShown = atomsShown;
+        atom._origWasInteraction = (
+          (f1_loc && atom.chain === 'A' && f1_loc.includes(atom.resi.toString())) ||
+          (f2_loc && atom.chain === 'B' && f2_loc.includes(atom.resi.toString()))
+        );
+        atom._origStyle = styles;
+        const shift = atom.chain === 'A' ? f1_shift : f2_shift;
+        const residueInfo = `${atom.resn} ${atom.resi + shift}`;
+  
+        atom._hoverLabel = viewerInstance.addLabel(residueInfo, {position: atom, backgroundColor: 'black', fontColor: 'white', fontSize: 14, showBackground: true});
+  
+        viewerInstance.setStyle(atom._origSelection, {cartoon: { color: 'yellow', thickness: 1.5 }, stick: { color: 'yellow', radius: 0.4 }});
+  
+        viewerInstance.render();
+      },
+      function(atom, viewerInstance) {
+        if (atom._hoverLabel) {
+          viewerInstance.removeLabel(atom._hoverLabel);
+          delete atom._hoverLabel;
+        }
+  
+        let restoreStyle;
+        if (atom._origWasInteraction && !atom._origAtomsShown) {
+          restoreStyle = {cartoon: { color: (atom.chain === 'A' ? 'red' : 'blue'), thickness: 1.0 }, stick: { color: (atom.chain === 'A' ? 'red' : 'blue'), radius: 0.2 }};
+        } else {
+          restoreStyle = atom._origStyle;
+          if (!atom._origAtomsShown) delete restoreStyle.stick;
+        }
+  
+        viewerInstance.setStyle(atom._origSelection, restoreStyle);
+        viewerInstance.render();
+  
+        delete atom._origSelection;
+        delete atom._origAtomsShown;
+        delete atom._origWasInteraction;
+        delete atom._origStyle;
+      }
+    );
+}
+
 function _applyViewerState(structureConfig) {
     const { viewer, modelLoaded, atomsShown, surfaceShown, colorMode, useDomainColoring, domainRangesArray, f1_loc, f2_loc } = structureConfig;
     if (!modelLoaded) return;
@@ -314,47 +364,8 @@ function _applyViewerState(structureConfig) {
         if (f2_loc) viewer.setStyle({ chain: 'B', resi: f2_loc, byres: true }, highlightStyle("blue"));
     }
 
-    viewer.setHoverable({}, true,
-        function(atom, viewerInstance, event, container) {
-            const selResidue = { chain: atom.chain, resi: atom.resi, byres: true };
-            const residueInfo = `${atom.resn} ${atom.resi}`;
-            atom._hoverLabel = viewerInstance.addLabel(residueInfo, {position: atom, backgroundColor: 'white', fontColor: 'black', fontSize: 14});
-
-            atom._origSelection = selResidue;
-            atom._origAtomsShown = atomsShown;
-            atom._origWasInteraction  = (
-                (f1_loc && atom.chain === 'A' && f1_loc.includes(atom.resi.toString())) ||
-                (f2_loc && atom.chain === 'B' && f2_loc.includes(atom.resi.toString()))
-            );
-            atom._origStyle = styles;
-
-            viewerInstance.setStyle(selResidue, { cartoon: { color: 'yellow', thickness: 1.5 }, stick:   { color: 'yellow', radius: 0.4 }});
-            viewerInstance.render();
-        },
-        function(atom, viewerInstance) {
-            if (atom._hoverLabel) {
-                viewerInstance.removeLabel(atom._hoverLabel);
-                delete atom._hoverLabel;
-            }
-
-            let restoreStyle;
-            if (atom._origWasInteraction && !atom._origAtomsShown) {
-                restoreStyle = { cartoon: { color: (atom.chain === 'A' ? 'red' : 'blue'), thickness: 1.0 }, stick: { color: (atom.chain === 'A' ? 'red' : 'blue'), radius: 0.2 }};
-            } else {
-                restoreStyle = atom._origStyle;
-                if (!atom._origAtomsShown) delete restoreStyle.stick;
-            }
-
-            viewerInstance.setStyle(atom._origSelection, restoreStyle);
-            viewerInstance.render();
-
-            delete atom._origSelection;
-            delete atom._origAtomsShown;
-            delete atom._origWasInteraction;
-            delete atom._origStyle;
-        }
-    );
-
+    _setupResidueHover(styles, structureConfig);
+  
     if (surfaceShown) {
         if (colorMode === 'chain') {
             const surfaceColors = [
@@ -371,7 +382,7 @@ function _applyViewerState(structureConfig) {
 }
 
 export function _displayStructureInViewer(container, pdbPath, options={}) {
-    const {domainRangesArray, zoomSelection, f1_loc, f2_loc, proteins} = options || {};
+    const {domainRangesArray, zoomSelection, f1_loc, f2_loc, f1_shift, f2_shift, proteins} = options || {};
     if (!container) return;
     container.innerHTML = '';
 
@@ -396,6 +407,8 @@ export function _displayStructureInViewer(container, pdbPath, options={}) {
         viewer: viewer,
         f1_loc: f1_loc,
         f2_loc: f2_loc,
+        f1_shift: f1_shift || 0,
+        f2_shift: f2_shift || 0,
         modelLoaded: false,
         atomsShown: false,
         surfaceShown: false,

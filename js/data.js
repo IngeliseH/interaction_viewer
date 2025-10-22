@@ -66,6 +66,17 @@ export async function loadProteinMetadata() {
         return dataCache.processedMetadata;
     }
 
+    function parseFragmentIndices(indicesStr) {
+        if (!indicesStr || typeof indicesStr !== 'string') return [];
+        const fragments = [];
+        const regex = /\((\d+),\s*(\d+)\)/g;
+        let match;
+        while ((match = regex.exec(indicesStr)) !== null) {
+            fragments.push([parseInt(match[1]), parseInt(match[2])]);
+        }
+        return fragments;
+    }
+
     const data = await fetchAndParseCSV('all_fragments_2025.06.04.csv');
     if (!data) return new Map();
     
@@ -77,7 +88,7 @@ export async function loadProteinMetadata() {
         
         proteinMap.set(row.name, {
             length: row.length ? parseInt(row.length, 10) : null,
-            fragmentIndices: row.fragment_indices || null,
+            fragmentIndices: parseFragmentIndices(row.fragment_indices) || null,
             alphafoldDomains,
             uniprotDomains,
             accessionId: row.accession_id || null,

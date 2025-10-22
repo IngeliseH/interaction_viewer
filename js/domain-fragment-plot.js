@@ -164,30 +164,12 @@ function _renderPlot(container, instanceId) {
         });
     }
 
-    if (showFragments && proteinName && proteinLength && fragmentIndices) {
-        let parsedFragments = [];
-        try {
-            if (typeof fragmentIndices === 'string') {
-                const jsonStr = fragmentIndices
-                    .replace(/'/g, '"')
-                    .replace(/\(/g, '[')
-                    .replace(/\)/g, ']')
-                    .replace(/,\s*\]/g, ']');
-                parsedFragments = JSON.parse(jsonStr);
-            } else if (Array.isArray(fragmentIndices)) {
-                parsedFragments = fragmentIndices;
-            }
-
-            if (parsedFragments.length > 0) {
-                _renderFragments(svgGroup, parsedFragments, instanceId, {
-                    plotWidth: dimensions.plotWidth,
-                    yPosition: dimensions.plotHeight / 2,
-                    height: dimensions.fragmentBarHeight
-                });
-            }
-        } catch (e) {
-            console.error('Fragment parsing error:', e);
-        }
+    if (showFragments && fragmentIndices && fragmentIndices.length > 0 && proteinLength) {
+        _renderFragments(svgGroup, fragmentIndices, instanceId, {
+            plotWidth: dimensions.plotWidth,
+            yPosition: dimensions.plotHeight / 2,
+            height: dimensions.fragmentBarHeight
+        });
     }
 
     const startLabel = createProteinLabel("1", -15, dimensions.plotHeight / 2, { textAnchor: "end" });
