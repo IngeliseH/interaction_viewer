@@ -22,9 +22,8 @@
             <div class="protein-input-columns">
                 <div class="protein-column">
                     <h3>Protein 1</h3>
-                    <label for="protein1">Protein name or id:</label>
-                    <input type="text" id="protein1" placeholder="e.g. Ana2">
-
+                    <label for="protein1-search-input">Protein name or id:</label>
+                    <input type="text" id="protein1-search-input" placeholder="e.g. Ana2">
                     <div id="protein1-optional-inputs" style="visibility: hidden;">
                         <p>Fragment(s) (optional)
                             <span class="info-btn" data-tooltip="To select multiple non-adjacent fragments, hold Ctrl (Windows/Linux) or Cmd (Mac) and click on your desired options.">
@@ -39,8 +38,8 @@
 
                 <div class="protein-column">
                     <h3>Protein 2</h3>
-                    <label for="protein2">Protein name or id:</label>
-                    <input type="text" id="protein2" placeholder="e.g. Plk4">
+                    <label for="protein2-search-input">Protein name or id:</label>
+                    <input type="text" id="protein2-search-input" placeholder="e.g. Plk4">
                     <div id="protein2-optional-inputs" style="visibility: hidden;">
                         <p>Fragment(s) (optional)
                             <span class="info-btn" data-tooltip="To select multiple non-adjacent fragments, hold Ctrl (Windows/Linux) or Cmd (Mac) and click on your desired options.">
@@ -55,7 +54,7 @@
             </div>
             <div style="text-align: center; margin-top: 20px;">
                 <button id="searchButton" class="big-button">Search</button>
-                <div id="searchErrorMessage"></div>
+                <div id="search-error-message"></div>
             </div>
         </div>
     </div>
@@ -65,63 +64,11 @@
         import { showTooltip, hideAllTooltips } from './js/tooltip.js';
         import { loadProteinMetadata } from './js/data.js';
         import { displayInfo } from './js/plot-utility.js';
-
-        function populateFragmentList(proteinName, proteinNum, proteinMetadata) {
-            const fragmentSelectElement = document.getElementById(`fragment${proteinNum}`);
-            const fragmentIndices = proteinMetadata.find(p => p.name === proteinName)?.fragment_indices;
-            if (!fragmentSelectElement || !fragmentIndices) return;
-            fragmentSelectElement.innerHTML = ''; 
-
-            if (fragmentIndices.length > 0) {
-                fragmentIndices.forEach((frag, index) => {
-                    const option = document.createElement('option');
-                    const fragmentName = `Fragment ${index + 1}`;
-                    option.value = fragmentName;
-                    option.textContent = `${fragmentName} (${frag[0]}-${frag[1]})`;
-                    option.selected = true;
-                    fragmentSelectElement.appendChild(option);
-                });
-                fragmentSelectElement.disabled = false;
-                fragmentSelectElement.size = Math.min(fragmentIndices.length, 4); 
-            } else {
-                const option = document.createElement('option');
-                option.textContent = "No fragments available";
-                option.disabled = true;
-                fragmentSelectElement.appendChild(option);
-                fragmentSelectElement.disabled = true;
-                fragmentSelectElement.size = 1;
-            }
-        }
-
-        function populateProteinSuggestionList(proteinMetadata, uniqueProteins, proteinNum) {
-            const proteinDatalist = document.createElement('datalist');
-            proteinDatalist.id = `protein${proteinNum}-list`;
-            document.body.appendChild(proteinDatalist);
-
-            uniqueProteins.forEach(protein => {
-                const option = document.createElement('option');
-                option.value = protein;
-                proteinDatalist.appendChild(option.cloneNode(true));
-            });
-
-            const proteinInput = document.getElementById(`protein${proteinNum}`);
-            proteinInput.setAttribute('list', proteinDatalist.id);
-
-            const optionsElement = document.getElementById(`protein${proteinNum}-optional-inputs`);
-
-            proteinInput.addEventListener('input', () => {
-                const proteinName = proteinInput.value;
-                if (uniqueProteins.includes(proteinName)) {
-                    optionsElement.style.visibility = 'visible';
-                    populateFragmentList(proteinName, proteinNum, proteinMetadata);
-                } else {
-                    optionsElement.style.visibility = 'hidden';
-                }
-            });
-        }
+        import { populateProteinSuggestionList } from './js/search.js';
 
         function constructUrl(proteinNum, uniqueProteins) {
-            const proteinInput = document.getElementById(`protein${proteinNum}`);
+            const searchErrorMessageElement = document.getElementById('search-error-message');
+            const proteinInput = document.getElementById(`protein${proteinNum}-search-input`);
             const pName = proteinInput.value.trim();
             if (!pName) {
                 displayInfo(searchErrorMessageElement, `Protein ${proteinNum} name is required.`, true);
@@ -146,7 +93,6 @@
             if (selectedFragElements.length > 0) {
                 const fragNumbersx = selectedFragElements.map(el => el.value.split(" ")[1]).join(',');
                 if (fragNumbersx) f_id_param = `${fragNumbersx}`;
-                console.log('Fragment IDs for Protein ' + proteinNum + ':', f_id_param);
             }
             let output = `&p${encodeURIComponent(proteinNum)}=${encodeURIComponent(pName)}`
             output += `&f${encodeURIComponent(proteinNum)}_id=${encodeURIComponent(f_id_param)}`;
@@ -174,7 +120,7 @@
             populateProteinSuggestionList(proteinMetadata, uniqueProteins, 2);
 
             const searchButton = document.getElementById('searchButton');
-            const searchErrorMessageElement = document.getElementById('searchErrorMessage');
+            const searchErrorMessageElement = document.getElementById('search-error-message');
             searchButton.addEventListener('click', () => {
                 searchErrorMessageElement.textContent = '';
                 const baseUrl = `protein_pair.html?`
