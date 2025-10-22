@@ -126,8 +126,8 @@ export function renderTable() {
 export function createInteractionLink(row) {
     const protein1Domain = row.Protein1_Domain || "";
     const protein2Domain = row.Protein2_Domain || "";
-    const [p1Name, f1Id] = protein1Domain.split('_');
-    const [p2Name, f2Id] = protein2Domain.split('_');
+    const [p1Name, f1Id] = protein1Domain.split('_F');
+    const [p2Name, f2Id] = protein2Domain.split('_F');
 
     let absLoc = {}, relLoc = {};
     if (row.absolute_location) {

@@ -1,7 +1,7 @@
-import { fetchProteinData, parseResidueLocations } from "./data.js";
+import { parseResidueLocations, loadProteinMetadata } from "./data.js";
 import { displayInfo } from "./plot-utility.js";
 
-export async function setUpStructureViewer(urlParams, proteins, proteinMetadata) {
+export async function setUpStructureViewer(urlParams, proteins, proteinData) {
     const { viewerDiv, gridContainer } = _findContainerElements();
     if (!viewerDiv) return;
 
@@ -16,10 +16,10 @@ export async function setUpStructureViewer(urlParams, proteins, proteinMetadata)
     }
 
     if (proteins.length === 1) {
-        const accessionId = proteinMetadata ? proteinMetadata.accessionId : null;
+        const accessionId = proteinData ? proteinData.accessionId : null;
         const pdbUrl = await _getAlphaFoldPdb(viewerDiv, accessionId);
-        const domainRanges = proteinMetadata.alphafoldDomains || null;
-        _displayStructureInViewer(viewerDiv, pdbUrl, { domainRangesArray: domainRanges });
+        const domainRanges = proteinData.alphafoldDomains || null;
+        _displayStructureInViewer(viewerDiv, pdbUrl, { domainRangesArray: domainRanges, proteinData, proteins });
         return;
     }
 
@@ -46,7 +46,7 @@ export async function setUpStructureViewer(urlParams, proteins, proteinMetadata)
     const f1_selection = f1_loc ? {resi: f1_loc, chain: 'A'} : null;
     const f2_selection = f2_loc ? {resi: f2_loc, chain: 'B'} : null;
     const zoomSelection = (f1_selection && f2_selection) ? {or: [f1_selection, f2_selection]} : (f1_selection || f2_selection);
-    _displayStructureInViewer(viewerDiv, `structures/${pdbFile}`, {zoomSelection, f1_loc, f2_loc, f1_shift, f2_shift, proteins});
+    _displayStructureInViewer(viewerDiv, `structures/${pdbFile}`, {zoomSelection, f1_loc, f2_loc, f1_id, f2_id, proteins});
 
 }
 
@@ -66,8 +66,7 @@ async function _setUpStructurePickerGrid(gridContainer, viewerDiv, urlParams, p1
             : [p1, f1Fragments, p2, f2Fragments];
     const pdbFiles = await _getPdbFiles();
 
-    const xData = await fetchProteinData(proteinForX)
-    const yData = await fetchProteinData(proteinForY)
+    const proteinMetadata = await loadProteinMetadata();
 
     gridContainer.innerHTML = '';
 
@@ -109,7 +108,7 @@ async function _setUpStructurePickerGrid(gridContainer, viewerDiv, urlParams, p1
             const cell = row.insertCell();
             cell.className = 'structure-grid-cell';
 
-            const pdbFile = _findPdbFile(pdbFiles, proteinForX, `F${fX}`, proteinForY, `F${fY}`);
+            const pdbFile = _findPdbFile(pdbFiles, proteinForX, fX, proteinForY, fY);
             const filePath = pdbFile ? `structures/${pdbFile}` : "";
 
             const button = document.createElement('button');
@@ -125,8 +124,8 @@ async function _setUpStructurePickerGrid(gridContainer, viewerDiv, urlParams, p1
                 button.disabled = true;
             }
 
-            button.dataset.fxShift = xData.fragmentIndices[fX -1][0] - 1;
-            button.dataset.fyShift = yData.fragmentIndices[fY -1][0] - 1;
+            button.dataset.fX = fX;
+            button.dataset.fY = fY;
 
             cell.appendChild(button);
         });
@@ -143,7 +142,7 @@ async function _setUpStructurePickerGrid(gridContainer, viewerDiv, urlParams, p1
         if (cell) {cell.classList.add('selected')};
 
         if (button.dataset.file && viewerDiv) {
-            _displayStructureInViewer(viewerDiv, button.dataset.file, {proteins: [p1, p2], f1_shift: parseInt(button.dataset.fxShift), f2_shift: parseInt(button.dataset.fyShift)});
+            _displayStructureInViewer(viewerDiv, button.dataset.file, {proteins: [proteinForX, proteinForY], f1_id: button.dataset.fX, f2_id: button.dataset.fY, proteinMetadata});
         }
     });
 }
@@ -178,8 +177,8 @@ async function _getAlphaFoldPdb(container, accessionId) {
 }
 
 function _findPdbFile(pdbFiles, p1, f1, p2, f2) {
-    const prefix1 = `${p1}_${f1}_${p2}_${f2}`;
-    const prefix2 = `${p2}_${f2}_${p1}_${f1}`;
+    const prefix1 = `${p1}_F${f1}_${p2}_F${f2}`;
+    const prefix2 = `${p2}_F${f2}_${p1}_F${f1}`;
     return pdbFiles.find(f => f.startsWith(prefix1) || f.startsWith(prefix2));
 }
 
@@ -278,6 +277,153 @@ function _createColorKeyLegend(keyPlaceholder, proteins, location) {
     keyContainer.appendChild(createProteinKey('lightcoral', proteins[0], location ? 'red' : null));
     keyContainer.appendChild(createProteinKey('lightskyblue', proteins[1], location ? 'blue' : null));
     keyPlaceholder.appendChild(keyContainer);
+}
+
+function _renderProteinSequence({sequencePlaceholder, proteins, location, fragmentIds, proteinMetadata}) {
+    const existing = document.getElementById('protein-sequence-collapsible-section');
+    if (existing && existing.parentElement === sequencePlaceholder) {
+        sequencePlaceholder.removeChild(existing);
+    }
+
+    const section = document.createElement('div');
+    section.className = 'collapsible-subsection collapsed';
+    section.id = 'protein-sequence-collapsible-section';
+
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'collapsible-subsection-title';
+
+    const titleText = document.createElement('h4');
+    const isPlural = Array.isArray(proteins) && proteins.length > 1;
+    titleText.textContent = isPlural ? 'Protein sequences' : 'Protein sequence';
+    titleDiv.appendChild(titleText);
+
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-chevron-up';
+    titleDiv.appendChild(icon);
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'collapsible-subsection-content';
+    for (const protein of proteins) {
+        const proteinInfo = proteinMetadata.get(protein);
+        const proteinSeqDiv = document.createElement('div');
+        proteinSeqDiv.className = 'protein-sequence-block';
+        const header = document.createElement('h4');
+        header.textContent = `${protein}`;
+        header.style.textAlign = 'center';
+        proteinSeqDiv.appendChild(header);
+
+        // Render per-row with selectable mid residues only (greyed regions are not selectable)
+        const seq = proteinInfo.sequence || '';
+        const fragForProteinIndex = proteins.indexOf(protein);
+        const fragmentIndices = (proteinInfo.fragmentIndices[fragmentIds?.[fragForProteinIndex] - 1] || [0, 0]);
+        const [fragStartRaw, fragEndRaw] = fragmentIndices;
+        const hasFragment = Number.isFinite(fragStartRaw) && Number.isFinite(fragEndRaw) && fragStartRaw > 0 && fragEndRaw >= fragStartRaw;
+        const fragStart = hasFragment ? Math.max(1, fragStartRaw) : 1;
+        const fragEnd = hasFragment ? Math.min(seq.length, fragEndRaw) : seq.length;
+
+        // Selection state and helpers (per protein)
+        let selecting = false;
+        let anchorRes = null;
+        let currentRes = null;
+        const clearSelection = () => {
+            const spans = proteinSeqDiv.querySelectorAll(`span[data-protein="${protein}"][data-region="mid"]`);
+            spans.forEach(s => { s.style.backgroundColor = ''; });
+        };
+        const applySelection = (a, b) => {
+            if (a == null || b == null) return;
+            const start = Math.max(fragStart, Math.min(a, b));
+            const end = Math.min(fragEnd, Math.max(a, b));
+            const spans = proteinSeqDiv.querySelectorAll(`span[data-protein="${protein}"][data-region="mid"]`);
+            spans.forEach(s => {
+                const r = parseInt(s.dataset.resi, 10);
+                s.style.backgroundColor = (r >= start && r <= end) ? '#fff3a1' : '';
+            });
+        };
+        const onMouseDownMid = (e) => {
+            e.preventDefault();
+            const resi = parseInt(e.currentTarget.dataset.resi, 10);
+            selecting = true;
+            anchorRes = resi;
+            currentRes = resi;
+            clearSelection();
+            applySelection(anchorRes, currentRes);
+            const onUp = () => {
+                if (!selecting) return;
+                selecting = false;
+                document.removeEventListener('mouseup', onUp);
+                const start = Math.max(fragStart, Math.min(anchorRes, currentRes));
+                const end = Math.min(fragEnd, Math.max(anchorRes, currentRes));
+                window.sequenceSelectedRange = { protein, start, end };
+            };
+            document.addEventListener('mouseup', onUp);
+        };
+        const onEnterMid = (e) => {
+            if (!selecting) return;
+            const resi = parseInt(e.currentTarget.dataset.resi, 10);
+            currentRes = resi;
+            applySelection(anchorRes, currentRes);
+            console.log({ protein, anchorRes, currentRes });
+        };
+
+        // Per-row rendering with grouping
+        const ROW_SIZE = 100;
+        const GROUP_SIZE = 5;
+        for (let rowStart = 1; rowStart <= seq.length; rowStart += ROW_SIZE) {
+            const rowEnd = Math.min(seq.length, rowStart + ROW_SIZE - 1);
+            const rowPre = document.createElement('pre');
+            rowPre.style.whiteSpace = 'pre-wrap';
+            rowPre.style.overflowWrap = 'anywhere';
+            rowPre.style.wordBreak = 'break-word';
+            rowPre.style.fontFamily = 'monospace';
+            rowPre.style.fontSize = '13px';
+            rowPre.style.margin = '0 0 2px 0';
+            rowPre.style.userSelect = 'none';
+
+            const labelSpan = document.createElement('span');
+            labelSpan.style.color = '#666';
+            labelSpan.textContent = String(rowStart).padStart(5, ' ') + '  ';
+            rowPre.appendChild(labelSpan);
+
+            for (let j = rowStart; j <= rowEnd; j++) {
+                const ch = seq[j - 1];
+                const inMid = j >= fragStart && j <= fragEnd;
+                const resSpan = document.createElement('span');
+                resSpan.textContent = ch;
+                resSpan.dataset.resi = String(j);
+                resSpan.dataset.protein = protein;
+                resSpan.dataset.region = inMid ? 'mid' : 'grey';
+                if (!inMid) {
+                    resSpan.style.color = 'lightgray';
+                } else {
+                    resSpan.style.cursor = 'pointer';
+                    resSpan.addEventListener('mousedown', onMouseDownMid);
+                    resSpan.addEventListener('mouseenter', onEnterMid);
+                }
+                rowPre.appendChild(resSpan);
+
+                const localPos = j - rowStart + 1;
+                if (localPos % GROUP_SIZE === 0 && j < rowEnd) {
+                    rowPre.appendChild(document.createTextNode(' '));
+                }
+            }
+            proteinSeqDiv.appendChild(rowPre);
+        }
+
+        const spacer = document.createElement('div');
+        spacer.style.height = '6px';
+        proteinSeqDiv.appendChild(spacer);
+
+        contentDiv.appendChild(proteinSeqDiv);
+    }
+
+    titleDiv.addEventListener('click', () => {
+        section.classList.toggle('collapsed');
+    });
+
+    section.appendChild(titleDiv);
+    section.appendChild(contentDiv);
+
+    sequencePlaceholder.appendChild(section);
 }
 
 function _setupResidueHover(styles, structureConfig) {
@@ -381,8 +527,8 @@ function _applyViewerState(structureConfig) {
     viewer.render();
 }
 
-export function _displayStructureInViewer(container, pdbPath, options={}) {
-    const {domainRangesArray, zoomSelection, f1_loc, f2_loc, f1_shift, f2_shift, proteins} = options || {};
+export async function _displayStructureInViewer(container, pdbPath, options={}) {
+    const {domainRangesArray, zoomSelection, f1_loc, f2_loc, f1_id, f2_id, proteins} = options || {};
     if (!container) return;
     container.innerHTML = '';
 
@@ -398,17 +544,25 @@ export function _displayStructureInViewer(container, pdbPath, options={}) {
     }
     const controlsPlaceholder = document.getElementById("structure-controls-placeholder");
     const keyPlaceholder = document.getElementById("structure-key-placeholder");
+    const sequencePlaceholder = document.getElementById("structure-sequence-placeholder");
+    sequencePlaceholder.innerHTML = '';
 
     let viewer = $3Dmol.createViewer(container, { defaultcolors: $3Dmol.rasmolElementColors });
     const useDomainColoring = _isValidDomainRanges(domainRangesArray);
     const initialColorMode = useDomainColoring ? 'alphafold' : 'chain';
 
+    const proteinMetadata = await loadProteinMetadata();
+    const p1Data = proteins && proteins[0] ? proteinMetadata.get(proteins[0]) : null;
+    const p2Data = proteins && proteins[1] ? proteinMetadata.get(proteins[1]) : null;
+    const f1_shift = (p1Data && f1_id) ? p1Data.fragmentIndices[f1_id-1][0] : 0;
+    const f2_shift = (p2Data && f2_id) ? p2Data.fragmentIndices[f2_id-1][0] : 0;
+
     const structureConfig = {
-        viewer: viewer,
-        f1_loc: f1_loc,
-        f2_loc: f2_loc,
-        f1_shift: f1_shift || 0,
-        f2_shift: f2_shift || 0,
+        viewer,
+        f1_loc,
+        f2_loc,
+        f1_shift,
+        f2_shift,
         modelLoaded: false,
         atomsShown: false,
         surfaceShown: false,
@@ -455,10 +609,12 @@ export function _displayStructureInViewer(container, pdbPath, options={}) {
     };
     const controls = _setupStructureViewerControls(controlsPlaceholder, callbacks);
 
+    const interaction = (f1_loc || f2_loc) ? true : false;
     if (proteins && proteins.length >= 2) {
-        const interaction = (f1_loc || f2_loc) ? true : false;
         _createColorKeyLegend(keyPlaceholder, proteins, interaction);
-    }
+        }
+    const fragmentIds = [f1_id, f2_id];
+    _renderProteinSequence({sequencePlaceholder, proteins, interaction, fragmentIds, proteinMetadata});
 
     if (controls) controls.container.style.display = 'none';
 
