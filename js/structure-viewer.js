@@ -325,7 +325,7 @@ function _createProteinBlock({proteinInfo, structureConfig, activeHighlightsRef}
 }
 
 function _renderSequenceRow({proteinSeqDiv, proteinInfo, rowStart, handlers}) {
-    const {name, sequence, currentFragmentStart, currentFragmentEnd} = proteinInfo;
+    const {name, sequence, currentFragmentStart, currentFragmentEnd, interactionLoc, highlightColor} = proteinInfo;
     const ROW_SIZE = 100;
     const GROUP_SIZE = 5;
     const rowEnd = Math.min(sequence.length, rowStart + ROW_SIZE - 1);
@@ -354,6 +354,10 @@ function _renderSequenceRow({proteinSeqDiv, proteinInfo, rowStart, handlers}) {
         span.dataset.protein = name;
         span.dataset.region = inFragment ? 'mid' : 'grey';
         span.style.color = inFragment ? '' : 'lightgray';
+
+        if (inFragment && interactionLoc && interactionLoc.has(resi)) {
+            span.style.color = highlightColor || span.style.color;
+        }
 
         if (inFragment) {
             span.style.cursor = 'pointer';
@@ -450,10 +454,15 @@ function _renderProteinSequence({sequencePlaceholder, proteins, fragmentIds, pro
         const [fragStartRaw = 0, fragEndRaw = 0] = (proteinInfo.fragmentIndices?.[fragmentIds?.[idx] - 1] || [0, 0]);
         const hasFragment = fragStartRaw > 0 && fragEndRaw >= fragStartRaw;
         proteinInfo.currentFragmentStart = hasFragment ? Math.max(1, fragStartRaw) : 1;
-        proteinInfo.currentFragmentEnd = hasFragment ? Math.min(proteinInfo.sequence.length, fragEndRaw) : proteinInfo.sequencelength;
+        proteinInfo.currentFragmentEnd = hasFragment ? Math.min(proteinInfo.sequence.length, fragEndRaw) : proteinInfo.sequence.length;
+        const interaction = idx === 0 ?  structureConfig.f1_loc : structureConfig.f2_loc;
+        const relativeIntLoc = interaction.map(x => parseInt(x)).filter(n => !isNaN(n));
+        proteinInfo.interactionLoc = new Set(relativeIntLoc.map(n => proteinInfo.currentFragmentStart + n - 1));
+        proteinInfo.highlightColor = idx === 0 ? 'red' : 'blue';
+
         const proteinBlock = _createProteinBlock({
             proteinInfo, structureConfig,
-            activeHighlightsRef: { get: () => activeHighlights, set: (v) => activeHighlights = v }
+            activeHighlightsRef: { get: () => activeHighlights, set: (v) => activeHighlights = v },
         });
         contentDiv.appendChild(proteinBlock);
     });
