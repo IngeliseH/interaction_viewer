@@ -9,7 +9,8 @@ export async function fetchProteinData(proteinName) {
         alphafoldDomains: [],
         uniprotDomains: [],
         accessionId: null,
-        category: null
+        category: null,
+        sequence: null
     };
     
     return proteins.get(proteinName) || {
@@ -18,7 +19,8 @@ export async function fetchProteinData(proteinName) {
         alphafoldDomains: [],
         uniprotDomains: [],
         accessionId: null,
-        category: null
+        category: null,
+        sequence: null
     };
 }
 
@@ -92,7 +94,8 @@ export async function loadProteinMetadata() {
             alphafoldDomains,
             uniprotDomains,
             accessionId: row.accession_id || null,
-            category: row.category || null
+            category: row.category || null,
+            sequence: row.sequence || null
         });
     }
     

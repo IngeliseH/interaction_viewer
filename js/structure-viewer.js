@@ -279,11 +279,52 @@ function _createColorKeyLegend(keyPlaceholder, proteins, location) {
     keyPlaceholder.appendChild(keyContainer);
 }
 
-function _renderProteinSequence({sequencePlaceholder, proteins, location, fragmentIds, proteinMetadata}) {
-    const existing = document.getElementById('protein-sequence-collapsible-section');
-    if (existing && existing.parentElement === sequencePlaceholder) {
-        sequencePlaceholder.removeChild(existing);
+function _createResidueSpan (resCode, resi, inFragment, handlers) {
+    const span = document.createElement('span');
+    span.textContent = resCode;
+    span.dataset.resi = resi;
+    span.style.color = inFragment ? '' : 'lightgray';
+    if (inFragment) {
+        span.style.cursor = 'pointer';
+        span.addEventListener('mousedown', handlers.onMouseDown);
+        span.addEventListener('mouseenter', handlers.onMouseEnter);
     }
+    return span;
+};
+
+function _renderSequenceRow (proteinSeqDiv, seq, rowStart, fragStart, fragEnd, handlers) {
+    const ROW_SIZE = 100;
+    const GROUP_SIZE = 5;
+    const rowEnd = Math.min(seq.length, rowStart + ROW_SIZE - 1);
+    const rowPre = document.createElement('pre');
+    Object.assign(rowPre.style, {
+        whiteSpace: 'pre-wrap',
+        overflowWrap: 'anywhere',
+        wordBreak: 'break-word',
+        fontFamily: 'monospace',
+        fontSize: '13px',
+        margin: '0 0 2px 0',
+        userSelect: 'none'
+    });
+
+    const label = document.createElement('span');
+    label.style.color = '#666';
+    label.textContent = String(rowStart).padStart(5, ' ') + '  ';
+    rowPre.appendChild(label);
+
+    for (let resi = rowStart; resi <= rowEnd; resi++) {
+        const inFragment = resi >= fragStart && resi <= fragEnd;
+        rowPre.appendChild(_createResidueSpan(seq[resi - 1], resi, inFragment, handlers));
+        if ((resi - rowStart + 1) % GROUP_SIZE === 0 && resi < rowEnd) {
+            rowPre.appendChild(document.createTextNode(' '));
+        }
+    }
+
+    proteinSeqDiv.appendChild(rowPre);
+};
+
+function _renderProteinSequence({sequencePlaceholder, proteins, location, fragmentIds, proteinMetadata, viewer, f1_shift = 0, f2_shift = 0, structureConfig}) {
+    sequencePlaceholder.innerHTML = '';
 
     const section = document.createElement('div');
     section.className = 'collapsible-subsection collapsed';
@@ -291,62 +332,64 @@ function _renderProteinSequence({sequencePlaceholder, proteins, location, fragme
 
     const titleDiv = document.createElement('div');
     titleDiv.className = 'collapsible-subsection-title';
-
-    const titleText = document.createElement('h4');
-    const isPlural = Array.isArray(proteins) && proteins.length > 1;
-    titleText.textContent = isPlural ? 'Protein sequences' : 'Protein sequence';
-    titleDiv.appendChild(titleText);
-
-    const icon = document.createElement('i');
-    icon.className = 'fas fa-chevron-up';
-    titleDiv.appendChild(icon);
+    titleDiv.innerHTML = `
+        <h4>${proteins.length > 1 ? 'Protein sequences' : 'Protein sequence'}</h4>
+        <i class="fas fa-chevron-up"></i>
+    `;
+    titleDiv.addEventListener('click', () => section.classList.toggle('collapsed'));
+    section.appendChild(titleDiv);
 
     const contentDiv = document.createElement('div');
     contentDiv.className = 'collapsible-subsection-content';
-    for (const protein of proteins) {
-        const proteinInfo = proteinMetadata.get(protein);
-        const proteinSeqDiv = document.createElement('div');
-        proteinSeqDiv.className = 'protein-sequence-block';
-        const header = document.createElement('h4');
-        header.textContent = `${protein}`;
-        header.style.textAlign = 'center';
-        proteinSeqDiv.appendChild(header);
+    section.appendChild(contentDiv);
 
-        // Render per-row with selectable mid residues only (greyed regions are not selectable)
+    let activeHighlights = [];
+
+    proteins.forEach((protein, idx) => {
+        const proteinInfo = proteinMetadata.get(protein) || {};
         const seq = proteinInfo.sequence || '';
-        const fragForProteinIndex = proteins.indexOf(protein);
-        const fragmentIndices = (proteinInfo.fragmentIndices[fragmentIds?.[fragForProteinIndex] - 1] || [0, 0]);
-        const [fragStartRaw, fragEndRaw] = fragmentIndices;
-        const hasFragment = Number.isFinite(fragStartRaw) && Number.isFinite(fragEndRaw) && fragStartRaw > 0 && fragEndRaw >= fragStartRaw;
+        const [fragStartRaw = 0, fragEndRaw = 0] = (proteinInfo.fragmentIndices?.[fragmentIds?.[idx] - 1] || [0, 0]);
+        const hasFragment = fragStartRaw > 0 && fragEndRaw >= fragStartRaw;
         const fragStart = hasFragment ? Math.max(1, fragStartRaw) : 1;
         const fragEnd = hasFragment ? Math.min(seq.length, fragEndRaw) : seq.length;
 
-        // Selection state and helpers (per protein)
+        const proteinSeqDiv = document.createElement('div');
+        proteinSeqDiv.className = 'protein-sequence-block';
+
+        const header = document.createElement('h4');
+        header.textContent = protein;
+        header.style.textAlign = 'center';
+        proteinSeqDiv.appendChild(header);
+
         let selecting = false;
         let anchorRes = null;
         let currentRes = null;
-        const clearSelection = () => {
-            const spans = proteinSeqDiv.querySelectorAll(`span[data-protein="${protein}"][data-region="mid"]`);
-            spans.forEach(s => { s.style.backgroundColor = ''; });
-        };
+
+        const clearSelection = () =>
+            proteinSeqDiv.querySelectorAll(`span[data-protein="${protein}"][data-region="mid"]`)
+                .forEach(s => s.style.backgroundColor = '');
+
         const applySelection = (a, b) => {
             if (a == null || b == null) return;
             const start = Math.max(fragStart, Math.min(a, b));
             const end = Math.min(fragEnd, Math.max(a, b));
-            const spans = proteinSeqDiv.querySelectorAll(`span[data-protein="${protein}"][data-region="mid"]`);
-            spans.forEach(s => {
-                const r = parseInt(s.dataset.resi, 10);
-                s.style.backgroundColor = (r >= start && r <= end) ? '#fff3a1' : '';
-            });
+            proteinSeqDiv.querySelectorAll(`span[data-protein="${protein}"][data-region="mid"]`)
+                .forEach(s => {
+                    const r = parseInt(s.dataset.resi, 10);
+                    s.style.backgroundColor = (r >= start && r <= end) ? '#fff3a1' : '';
+                });
         };
-        const onMouseDownMid = (e) => {
+
+        const onMouseDown = (e) => {
             e.preventDefault();
+            clearSelection();
+            _restoreStructureViewerHighlightedResidues(viewer, activeHighlights);
+            activeHighlights = [];
             const resi = parseInt(e.currentTarget.dataset.resi, 10);
             selecting = true;
-            anchorRes = resi;
-            currentRes = resi;
-            clearSelection();
+            anchorRes = currentRes = resi;
             applySelection(anchorRes, currentRes);
+
             const onUp = () => {
                 if (!selecting) return;
                 selecting = false;
@@ -354,59 +397,30 @@ function _renderProteinSequence({sequencePlaceholder, proteins, location, fragme
                 const start = Math.max(fragStart, Math.min(anchorRes, currentRes));
                 const end = Math.min(fragEnd, Math.max(anchorRes, currentRes));
                 window.sequenceSelectedRange = { protein, start, end };
+
+                const chain = idx === 0 ? 'A' : 'B';
+                if (viewer) {
+                    const residues = [];
+                    for (let r = start; r <= end; r++) {
+                        residues.push({ chain: chain, resi: r-fragStart+1, resn: seq[r - 1] });
+                    }
+                    activeHighlights = residues;
+                    _highlightStructureViewerResidues(structureConfig, residues, {showLabels: false});
+                }
             };
             document.addEventListener('mouseup', onUp);
         };
-        const onEnterMid = (e) => {
+
+        const onMouseEnter = (e) => {
             if (!selecting) return;
-            const resi = parseInt(e.currentTarget.dataset.resi, 10);
-            currentRes = resi;
+            currentRes = parseInt(e.currentTarget.dataset.resi, 10);
             applySelection(anchorRes, currentRes);
-            console.log({ protein, anchorRes, currentRes });
         };
 
-        // Per-row rendering with grouping
-        const ROW_SIZE = 100;
-        const GROUP_SIZE = 5;
-        for (let rowStart = 1; rowStart <= seq.length; rowStart += ROW_SIZE) {
-            const rowEnd = Math.min(seq.length, rowStart + ROW_SIZE - 1);
-            const rowPre = document.createElement('pre');
-            rowPre.style.whiteSpace = 'pre-wrap';
-            rowPre.style.overflowWrap = 'anywhere';
-            rowPre.style.wordBreak = 'break-word';
-            rowPre.style.fontFamily = 'monospace';
-            rowPre.style.fontSize = '13px';
-            rowPre.style.margin = '0 0 2px 0';
-            rowPre.style.userSelect = 'none';
+        const handlers = { onMouseDown, onMouseEnter };
 
-            const labelSpan = document.createElement('span');
-            labelSpan.style.color = '#666';
-            labelSpan.textContent = String(rowStart).padStart(5, ' ') + '  ';
-            rowPre.appendChild(labelSpan);
-
-            for (let j = rowStart; j <= rowEnd; j++) {
-                const ch = seq[j - 1];
-                const inMid = j >= fragStart && j <= fragEnd;
-                const resSpan = document.createElement('span');
-                resSpan.textContent = ch;
-                resSpan.dataset.resi = String(j);
-                resSpan.dataset.protein = protein;
-                resSpan.dataset.region = inMid ? 'mid' : 'grey';
-                if (!inMid) {
-                    resSpan.style.color = 'lightgray';
-                } else {
-                    resSpan.style.cursor = 'pointer';
-                    resSpan.addEventListener('mousedown', onMouseDownMid);
-                    resSpan.addEventListener('mouseenter', onEnterMid);
-                }
-                rowPre.appendChild(resSpan);
-
-                const localPos = j - rowStart + 1;
-                if (localPos % GROUP_SIZE === 0 && j < rowEnd) {
-                    rowPre.appendChild(document.createTextNode(' '));
-                }
-            }
-            proteinSeqDiv.appendChild(rowPre);
+        for (let rowStart = 1; rowStart <= seq.length; rowStart += 100) {
+            _renderSequenceRow(proteinSeqDiv, seq, rowStart, fragStart, fragEnd, protein, handlers, viewer);
         }
 
         const spacer = document.createElement('div');
@@ -414,60 +428,96 @@ function _renderProteinSequence({sequencePlaceholder, proteins, location, fragme
         proteinSeqDiv.appendChild(spacer);
 
         contentDiv.appendChild(proteinSeqDiv);
-    }
-
-    titleDiv.addEventListener('click', () => {
-        section.classList.toggle('collapsed');
     });
-
-    section.appendChild(titleDiv);
-    section.appendChild(contentDiv);
 
     sequencePlaceholder.appendChild(section);
 }
 
-function _setupResidueHover(styles, structureConfig) {
-    const { viewer, atomsShown, f1_loc, f2_loc, f1_shift, f2_shift } = structureConfig;
-    viewer.setHoverable({}, true,
-      function(atom, viewerInstance, event, container) {
-        atom._origSelection = { chain: atom.chain, resi: atom.resi, byres: true };
-        atom._origAtomsShown = atomsShown;
-        atom._origWasInteraction = (
-          (f1_loc && atom.chain === 'A' && f1_loc.includes(atom.resi.toString())) ||
-          (f2_loc && atom.chain === 'B' && f2_loc.includes(atom.resi.toString()))
-        );
-        atom._origStyle = styles;
-        const shift = atom.chain === 'A' ? f1_shift : f2_shift;
-        const residueInfo = `${atom.resn} ${atom.resi + shift}`;
-  
-        atom._hoverLabel = viewerInstance.addLabel(residueInfo, {position: atom, backgroundColor: 'black', fontColor: 'white', fontSize: 14, showBackground: true});
-  
-        viewerInstance.setStyle(atom._origSelection, {cartoon: { color: 'yellow', thickness: 1.5 }, stick: { color: 'yellow', radius: 0.4 }});
-  
-        viewerInstance.render();
-      },
-      function(atom, viewerInstance) {
-        if (atom._hoverLabel) {
-          viewerInstance.removeLabel(atom._hoverLabel);
-          delete atom._hoverLabel;
+function _highlightStructureViewerResidues(structureConfig, residues, {showLabels = true}) {
+    const { viewer, atomsShown, f1_loc, f2_loc, f1_shift, f2_shift, styles } = structureConfig;
+    const highlightStyle = {cartoon: { color: 'yellow', thickness: 1.5 }, stick: { color: 'yellow', radius: 0.4 }};
+    const appliedLabels = [];
+
+    residues.forEach(res => {
+        const { chain, resi } = res;
+        const shift = chain === 'A' ? f1_shift : f2_shift;
+        const residueInfo = `${res.resn} ${resi + shift}`;
+
+        res._origSelection = { chain, resi, byres: true };
+        res._origAtomsShown = atomsShown;
+        res._origWasInteraction =
+            (f1_loc && chain === 'A' && f1_loc.includes(resi.toString())) ||
+            (f2_loc && chain === 'B' && f2_loc.includes(resi.toString()));
+        res._origStyle = styles;
+
+        const atomList = viewer.selectedAtoms({ chain, resi });
+        if (atomList.length > 0 && showLabels) {
+            const label = viewer.addLabel(residueInfo, {position: atomList[0], fontSize: 14});
+            appliedLabels.push(label);
         }
-  
+
+        viewer.setStyle(res._origSelection, highlightStyle);
+    });
+
+    viewer.render();
+    return appliedLabels;
+}
+
+function _restoreStructureViewerHighlightedResidues(viewer, residues) {
+    if (!viewer || !residues?.length) return;
+
+    residues.forEach(res => {
+        const selection = res._origSelection || { chain: res.chain, resi: res.resi, byres: true };
         let restoreStyle;
-        if (atom._origWasInteraction && !atom._origAtomsShown) {
-          restoreStyle = {cartoon: { color: (atom.chain === 'A' ? 'red' : 'blue'), thickness: 1.0 }, stick: { color: (atom.chain === 'A' ? 'red' : 'blue'), radius: 0.2 }};
+
+        if (res._origWasInteraction && !res._origAtomsShown) {
+            restoreStyle = {
+                cartoon: { color: res.chain === 'A' ? 'red' : 'blue', thickness: 1.0 },
+                stick: { color: res.chain === 'A' ? 'red' : 'blue', radius: 0.2 }
+            };
         } else {
-          restoreStyle = atom._origStyle;
-          if (!atom._origAtomsShown) delete restoreStyle.stick;
+            restoreStyle = res._origStyle || {};
+            if (!res._origAtomsShown) delete restoreStyle.stick;
         }
+
+        viewer.setStyle(selection, restoreStyle);
+
+        delete res._origSelection;
+        delete res._origAtomsShown;
+        delete res._origWasInteraction;
+        delete res._origStyle;
+    });
+
+    viewer.render();
+}
   
-        viewerInstance.setStyle(atom._origSelection, restoreStyle);
-        viewerInstance.render();
-  
-        delete atom._origSelection;
-        delete atom._origAtomsShown;
-        delete atom._origWasInteraction;
-        delete atom._origStyle;
-      }
+function _setupResidueHover(structureConfig) {
+    const { viewer } = structureConfig;
+
+    viewer.setHoverable({}, true,
+        function (atom, viewerInstance) {
+            if (atom._hoverActive) return;
+            atom._hoverActive = true;
+
+            const residue = {chain: atom.chain, resi: atom.resi, resn: atom.resn};
+            atom._hoverLabels = _highlightStructureViewerResidues(structureConfig, [residue], {});
+            atom._hoverResidue = residue;
+        },
+
+        function (atom, viewerInstance) {
+            if (!atom._hoverActive) return;
+            atom._hoverActive = false;
+
+            if (atom._hoverLabels) {
+                atom._hoverLabels.forEach(label => viewerInstance.removeLabel(label));
+                delete atom._hoverLabels;
+            }
+
+            if (atom._hoverResidue) {
+                _restoreStructureViewerHighlightedResidues(viewerInstance, [atom._hoverResidue]);
+                delete atom._hoverResidue;
+            }
+        }
     );
 }
 
@@ -503,6 +553,7 @@ function _applyViewerState(structureConfig) {
         }
     }
     viewer.setStyle({}, styles);
+    structureConfig.styles = styles;
 
     if (!atomsShown) {
         const highlightStyle = (color) => ({ cartoon: { color, thickness: 1.0 }, stick: { color, radius: 0.2 } });
@@ -510,7 +561,7 @@ function _applyViewerState(structureConfig) {
         if (f2_loc) viewer.setStyle({ chain: 'B', resi: f2_loc, byres: true }, highlightStyle("blue"));
     }
 
-    _setupResidueHover(styles, structureConfig);
+    _setupResidueHover(structureConfig);
   
     if (surfaceShown) {
         if (colorMode === 'chain') {
@@ -614,7 +665,7 @@ export async function _displayStructureInViewer(container, pdbPath, options={}) 
         _createColorKeyLegend(keyPlaceholder, proteins, interaction);
         }
     const fragmentIds = [f1_id, f2_id];
-    _renderProteinSequence({sequencePlaceholder, proteins, interaction, fragmentIds, proteinMetadata});
+    _renderProteinSequence({sequencePlaceholder, proteins, interaction, fragmentIds, proteinMetadata, viewer, structureConfig});
 
     if (controls) controls.container.style.display = 'none';
 
