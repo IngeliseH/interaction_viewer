@@ -1,9 +1,148 @@
 import { parseResidueLocations, loadProteinMetadata } from "./data.js";
 import { displayInfo } from "./plot-utility.js";
+import { renderProteinSequenceSection } from "./sequence-viewer.js";
+
+// =============================================================================
+// Public API Functions
+// =============================================================================
+export async function _displayStructureInViewer(container, pdbPath, options={}) {
+    const {domainRangesArray, zoomSelection, f1_loc, f2_loc, f1_id, f2_id, proteins} = options || {};
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (!window.$3Dmol) {
+        displayInfo(container, "3Dmol.js library not loaded.", true);
+        return;
+    }
+    if (!pdbPath) {
+        displayInfo(container, "No PDB path provided.", true);
+        const controls = container.getElementById("structure-controls");
+        if (controls) controls.style.display = 'none';
+        return;
+    }
+    const controlsPlaceholder = document.getElementById("structure-controls-placeholder");
+    const keyPlaceholder = document.getElementById("structure-key-placeholder");
+    const sequencePlaceholder = document.getElementById("structure-sequence-placeholder");
+    sequencePlaceholder.innerHTML = '';
+
+    let viewer = $3Dmol.createViewer(container, { defaultcolors: $3Dmol.rasmolElementColors });
+    const useDomainColoring = Array.isArray(domainRangesArray) && domainRangesArray.length > 0 &&
+        domainRangesArray.every(r => r && typeof r.start === 'number' && typeof r.end === 'number' &&
+        !isNaN(r.start) && !isNaN(r.end) && r.start > 0 && r.end >= r.start);
+    const initialColorMode = useDomainColoring ? 'alphafold' : 'chain';
+
+    const proteinMetadata = await loadProteinMetadata();
+    const p1Data = proteins && proteins[0] ? proteinMetadata.get(proteins[0]) : null;
+    const p2Data = proteins && proteins[1] ? proteinMetadata.get(proteins[1]) : null;
+    const f1_shift = (p1Data && f1_id) ? p1Data.fragmentIndices[f1_id-1][0] : 0;
+    const f2_shift = (p2Data && f2_id) ? p2Data.fragmentIndices[f2_id-1][0] : 0;
+
+    const structureConfig = {
+        viewer,
+        f1_loc,
+        f2_loc,
+        f1_shift,
+        f2_shift,
+        modelLoaded: false,
+        atomsShown: false,
+        surfaceShown: false,
+        colorMode: initialColorMode,
+        useDomainColoring: useDomainColoring,
+        domainRangesArray: useDomainColoring ? domainRangesArray : []
+    }
+    const callbacks = {
+        onReset: () => {
+            structureConfig.atomsShown = false;
+            structureConfig.surfaceShown = false;
+            structureConfig.colorMode = initialColorMode;
+            _applyViewerState(structureConfig);
+            
+            if (zoomSelection) {
+                viewer.zoomTo(zoomSelection);
+            } else {
+                viewer.zoomTo();
+            }
+            viewer.render();
+            updateColorModeButtonText();
+            controls.atomsBtn.classList.remove('active');
+            controls.surfaceBtn.classList.remove('active');
+        },
+        onToggleAtoms: function() {
+            structureConfig.atomsShown = !structureConfig.atomsShown;
+            this.classList.toggle('active', structureConfig.atomsShown);
+            _applyViewerState(structureConfig);
+        },
+        onToggleSurface: function() {
+            structureConfig.surfaceShown = !structureConfig.surfaceShown;
+            this.classList.toggle('active', structureConfig.surfaceShown);
+            _applyViewerState(structureConfig);
+        },
+        onToggleColorMode: () => {
+            if (useDomainColoring) {
+                structureConfig.colorMode = structureConfig.colorMode === 'alphafold' ? 'spectrum' : 'alphafold';
+            } else {
+                structureConfig.colorMode = structureConfig.colorMode === 'chain' ? 'spectrum' : 'chain';
+            }
+            updateColorModeButtonText();
+            _applyViewerState(structureConfig);
+        }
+    };
+    const controls = _setupStructureViewerControls(controlsPlaceholder, callbacks);
+
+    const interaction = (f1_loc || f2_loc) ? true : false;
+    if (proteins && proteins.length >= 2) {
+        _createColorKeyLegend(keyPlaceholder, proteins, interaction);
+        }
+    const fragmentIds = [f1_id, f2_id];
+    renderProteinSequenceSection({sequencePlaceholder, proteins, interaction, fragmentIds, proteinMetadata, viewer, structureConfig});
+
+    if (controls) controls.container.style.display = 'none';
+
+    function updateColorModeButtonText() {
+        if (!controls?.colorModeBtn) return;
+        let nextModeText;
+        if (useDomainColoring) {
+            nextModeText = structureConfig.colorMode === 'alphafold' ? 'Spectrum' : 'AlphaFold domain';
+        } else {
+            nextModeText = structureConfig.colorMode === 'chain' ? 'Spectrum' : 'By Chain';
+        }
+        controls.colorModeBtn.innerHTML = `<i class="fas fa-palette"></i> ${nextModeText}`;
+    }
+
+    fetch(pdbPath)
+        .then(response => {
+            if (!response.ok) throw new Error(`PDB file not found at ${pdbPath} (status: ${response.status})`);
+            return response.text();
+        })
+        .then(pdbData => {
+            viewer.addModel(pdbData, 'pdb');
+            if (zoomSelection) {
+                viewer.zoomTo(zoomSelection);
+            } else {
+                viewer.zoomTo();
+            }
+            viewer.render();
+            structureConfig.modelLoaded = true;
+            if (controls) controls.container.style.display = '';
+            const fallback = document.getElementById("structure-viewer-fallback")
+            if (fallback) fallback.style.display = 'none';
+            _applyViewerState(structureConfig);
+            updateColorModeButtonText();
+        })
+        .catch(error => {
+            displayInfo(container, `Could not load structure: ${error.message}.`, true);
+            if (controls) controls.container.style.display = 'none';
+        });
+}
 
 export async function setUpStructureViewer(urlParams, proteins, proteinData) {
-    const { viewerDiv, gridContainer } = _findContainerElements();
-    if (!viewerDiv) return;
+    const viewerDiv = document.getElementById('structure-viewer');
+    const gridContainer = document.getElementById('structure-grid-container');
+    const fallback = document.getElementById('structure-viewer-fallback');
+    if (!viewerDiv) {
+        displayInfo(fallback, "Structure viewer component missing from page.", true);
+        return;
+    }
 
     if (gridContainer) {
         if (proteins.length !== 2) {
@@ -48,6 +187,210 @@ export async function setUpStructureViewer(urlParams, proteins, proteinData) {
     const zoomSelection = (f1_selection && f2_selection) ? {or: [f1_selection, f2_selection]} : (f1_selection || f2_selection);
     _displayStructureInViewer(viewerDiv, `structures/${pdbFile}`, {zoomSelection, f1_loc, f2_loc, f1_id, f2_id, proteins});
 
+}
+
+export function highlightStructureViewerResidues({structureConfig, residues, showLabels = true}) {
+    const { viewer, atomsShown, f1_loc, f2_loc, f1_shift, f2_shift, styles } = structureConfig;
+    const highlightStyle = {cartoon: { color: 'yellow', thickness: 1.5 }, stick: { color: 'yellow', radius: 0.4 }};
+    const appliedLabels = [];
+
+    residues.forEach(res => {
+        const { chain, resi } = res;
+        const shift = chain === 'A' ? f1_shift : f2_shift;
+        const residueInfo = `${res.resn} ${resi + shift}`;
+
+        res._origSelection = { chain, resi, byres: true };
+        res._origAtomsShown = atomsShown;
+        res._origWasInteraction =
+            (f1_loc && chain === 'A' && f1_loc.includes(resi.toString())) ||
+            (f2_loc && chain === 'B' && f2_loc.includes(resi.toString()));
+        res._origStyle = styles;
+
+        const atomList = viewer.selectedAtoms({ chain, resi });
+        if (atomList.length > 0 && showLabels) {
+            const label = viewer.addLabel(residueInfo, {position: atomList[0], fontSize: 14});
+            appliedLabels.push(label);
+        }
+
+        viewer.setStyle(res._origSelection, highlightStyle);
+    });
+
+    viewer.render();
+    return appliedLabels;
+}
+
+export function restoreStructureViewerHighlightedResidues(viewer, residues) {
+    if (!viewer || !residues?.length) return;
+
+    residues.forEach(res => {
+        const selection = res._origSelection || { chain: res.chain, resi: res.resi, byres: true };
+        let restoreStyle;
+
+        if (res._origWasInteraction && !res._origAtomsShown) {
+            restoreStyle = {
+                cartoon: { color: res.chain === 'A' ? 'red' : 'blue', thickness: 1.0 },
+                stick: { color: res.chain === 'A' ? 'red' : 'blue', radius: 0.2 }
+            };
+        } else {
+            restoreStyle = res._origStyle || {};
+            if (!res._origAtomsShown) delete restoreStyle.stick;
+        }
+
+        viewer.setStyle(selection, restoreStyle);
+
+        delete res._origSelection;
+        delete res._origAtomsShown;
+        delete res._origWasInteraction;
+        delete res._origStyle;
+    });
+
+    viewer.render();
+}
+
+// =============================================================================
+// Structure viewer management
+// =============================================================================
+function _getDomainColor(atom, useDomainColoring, ranges) {
+    if (useDomainColoring && atom.chain === 'A' && Array.isArray(ranges)) {
+        for (const range of ranges) {
+            if (atom.resi >= range.start && atom.resi <= range.end) {
+                return 'dodgerblue';
+            }
+        }
+    }
+    return 'ghostwhite';
+}
+
+function _setupResidueHover(structureConfig) {
+    const { viewer } = structureConfig;
+
+    viewer.setHoverable({}, true,
+        function (atom, viewerInstance) {
+            if (atom._hoverActive) return;
+            atom._hoverActive = true;
+
+            const residue = {chain: atom.chain, resi: atom.resi, resn: atom.resn};
+            atom._hoverLabels = highlightStructureViewerResidues({structureConfig, residues: [residue]});
+            atom._hoverResidue = residue;
+        },
+
+        function (atom, viewerInstance) {
+            if (!atom._hoverActive) return;
+            atom._hoverActive = false;
+
+            if (atom._hoverLabels) {
+                atom._hoverLabels.forEach(label => viewerInstance.removeLabel(label));
+                delete atom._hoverLabels;
+            }
+
+            if (atom._hoverResidue) {
+                restoreStructureViewerHighlightedResidues(viewerInstance, [atom._hoverResidue]);
+                delete atom._hoverResidue;
+            }
+        }
+    );
+}
+
+function _applyViewerState(structureConfig) {
+    const { viewer, modelLoaded, atomsShown, surfaceShown, colorMode, useDomainColoring, domainRangesArray, f1_loc, f2_loc } = structureConfig;
+    if (!modelLoaded) return;
+    viewer.setStyle({}, {});
+    viewer.removeAllSurfaces();
+
+    let styles;
+    if (colorMode === 'spectrum') {
+        styles = { cartoon: { color: 'spectrum' } };
+        if (atomsShown) {
+            styles.stick = { color: 'spectrum', radius: 0.2 };
+        }
+    } else {
+        let colorFunc;
+        if (colorMode === 'alphafold') {
+            colorFunc = atom => _getDomainColor(atom, useDomainColoring, domainRangesArray);
+        } else {
+            function baseChainColorFunc(atom) {
+                if (f1_loc && atom.chain === 'A' && f1_loc.includes(atom.resi.toString())) return 'red';
+                if (f2_loc && atom.chain === 'B' && f2_loc.includes(atom.resi.toString())) return 'blue';
+                if (atom.chain === 'A') return 'lightcoral';
+                if (atom.chain === 'B') return 'lightskyblue';
+                return 'lightgray';
+            }
+            colorFunc = atom => baseChainColorFunc(atom);
+        }
+        styles = { cartoon: { colorfunc: colorFunc } };
+        if (atomsShown) {
+            styles.stick = { colorfunc: colorFunc, radius: 0.2 };
+        }
+    }
+    viewer.setStyle({}, styles);
+    structureConfig.styles = styles;
+
+    if (!atomsShown) {
+        const highlightStyle = (color) => ({ cartoon: { color, thickness: 1.0 }, stick: { color, radius: 0.2 } });
+        if (f1_loc) viewer.setStyle({ chain: 'A', resi: f1_loc, byres: true }, highlightStyle("red"));
+        if (f2_loc) viewer.setStyle({ chain: 'B', resi: f2_loc, byres: true }, highlightStyle("blue"));
+    }
+
+    _setupResidueHover(structureConfig);
+  
+    if (surfaceShown) {
+        if (colorMode === 'chain') {
+            const surfaceColors = [
+                { color: 'lightcoral', sel: { chain: 'A' } },
+                { color: 'lightskyblue', sel: { chain: 'B' } },
+                { color: 'lightgray', sel: { chain: { $ne: 'A', $ne: 'B' } } }
+            ];
+            surfaceColors.forEach(s => viewer.addSurface($3Dmol.SurfaceType.VDW, { opacity: 0.7, color: s.color }, s.sel));
+        } else {
+            viewer.addSurface($3Dmol.SurfaceType.VDW, { opacity: 0.7, color: 'white' });
+        }
+    }
+    viewer.render();
+}
+
+// =============================================================================
+// Structure section UI set up
+// =============================================================================
+function _createButton(iconClass, text, title, clickHandler) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'control-button';
+    button.title = title;
+    button.innerHTML = `<i class="fas ${iconClass}"></i> ${text}`;
+    button.addEventListener('click', clickHandler);
+    return button;
+}
+
+function _setupStructureViewerControls(placeholder, callbacks) {
+    if (!placeholder) return null;
+
+    placeholder.innerHTML = '';
+
+    const controlBar = document.createElement('div');
+    controlBar.className = 'control-bar';
+
+    const buttonGroup = document.createElement('div');
+    buttonGroup.className = 'control-button-group';
+
+    const resetButton = _createButton('fa-undo', 'Reset', 'Reset View', callbacks.onReset);
+    const atomsButton = _createButton('fa-grip-lines', 'Atoms', 'Atoms', callbacks.onToggleAtoms);
+    const surfaceButton = _createButton('fa-layer-group', 'Surface', 'Surface', callbacks.onToggleSurface);
+    const colorModeButton = _createButton('fa-palette', 'Spectrum', 'Toggle Color Mode', callbacks.onToggleColorMode);
+
+    buttonGroup.append(resetButton, atomsButton, surfaceButton, colorModeButton);
+    controlBar.appendChild(buttonGroup);
+    
+    const controlsContainer = document.createElement('div');
+    controlsContainer.className = 'structure-controls';
+    controlsContainer.appendChild(controlBar);
+    placeholder.appendChild(controlsContainer);
+
+    return {
+        container: controlsContainer,
+        atomsBtn: atomsButton,
+        surfaceBtn: surfaceButton,
+        colorModeBtn: colorModeButton
+    };
 }
 
 async function _setUpStructurePickerGrid(gridContainer, viewerDiv, urlParams, p1, p2) {
@@ -147,16 +490,33 @@ async function _setUpStructurePickerGrid(gridContainer, viewerDiv, urlParams, p1
     });
 }
 
-function _findContainerElements() {
-    const viewerDiv = document.getElementById('structure-viewer');
-    const gridContainer = document.getElementById('structure-grid-container');
-    const fallback = document.getElementById('structure-viewer-fallback');
-    if (!viewerDiv) {
-        displayInfo(fallback, "Structure viewer component missing from page.", true);
-    }
-    return { viewerDiv, gridContainer };
+function _createColorKeyLegend(keyPlaceholder, proteins, location) {
+    keyPlaceholder.innerHTML = '';
+    const keyContainer = document.createElement('div');
+    keyContainer.className = 'structure-key';
+
+    const createProteinKey = (color, text, interactionColor) => {
+        const proteinKey = document.createElement('div');
+        proteinKey.className = 'structure-key-protein';
+        proteinKey.innerHTML = `
+            <div class="structure-key-item">
+                <span class="structure-key-color" style="background-color:${color};"></span> ${text}
+            </div>
+            ${interactionColor ? `<div class="structure-key-item">
+                <span class="structure-key-color" style="background-color:${interactionColor};"></span> interaction region
+            </div>` : ''}
+        `;
+        return proteinKey;
+    };
+
+    keyContainer.appendChild(createProteinKey('lightcoral', proteins[0], location ? 'red' : null));
+    keyContainer.appendChild(createProteinKey('lightskyblue', proteins[1], location ? 'blue' : null));
+    keyPlaceholder.appendChild(keyContainer);
 }
 
+// =============================================================================
+// Pdb handling functions
+// =============================================================================
 async function _getAlphaFoldPdb(container, accessionId) {
     try {
         const afResponse = await fetch(`https://alphafold.ebi.ac.uk/api/prediction/${accessionId}`);
@@ -194,551 +554,4 @@ async function _getPdbFiles() {
         console.error('Error fetching PDB file list:', error);
                         throw error;
     }
-}
-
-function _isValidDomainRanges(ranges) {
-    return Array.isArray(ranges) && ranges.length > 0 &&
-        ranges.every(r => r && typeof r.start === 'number' && typeof r.end === 'number' &&
-            !isNaN(r.start) && !isNaN(r.end) && r.start > 0 && r.end >= r.start);
-}
-
-function _getDomainColor(atom, useDomainColoring, ranges) {
-    if (useDomainColoring && atom.chain === 'A' && Array.isArray(ranges)) {
-        for (const range of ranges) {
-            if (atom.resi >= range.start && atom.resi <= range.end) {
-                return 'dodgerblue';
-            }
-        }
-    }
-    return 'ghostwhite';
-}
-
-function _createButton(iconClass, text, title, clickHandler) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'control-button';
-    button.title = title;
-    button.innerHTML = `<i class="fas ${iconClass}"></i> ${text}`;
-    button.addEventListener('click', clickHandler);
-    return button;
-}
-
-function _setupStructureViewerControls(placeholder, callbacks) {
-    if (!placeholder) return null;
-
-    placeholder.innerHTML = '';
-
-    const controlBar = document.createElement('div');
-    controlBar.className = 'control-bar';
-
-    const buttonGroup = document.createElement('div');
-    buttonGroup.className = 'control-button-group';
-
-    const resetButton = _createButton('fa-undo', 'Reset', 'Reset View', callbacks.onReset);
-    const atomsButton = _createButton('fa-grip-lines', 'Atoms', 'Atoms', callbacks.onToggleAtoms);
-    const surfaceButton = _createButton('fa-layer-group', 'Surface', 'Surface', callbacks.onToggleSurface);
-    const colorModeButton = _createButton('fa-palette', 'Spectrum', 'Toggle Color Mode', callbacks.onToggleColorMode);
-
-    buttonGroup.append(resetButton, atomsButton, surfaceButton, colorModeButton);
-    controlBar.appendChild(buttonGroup);
-    
-    const controlsContainer = document.createElement('div');
-    controlsContainer.className = 'structure-controls';
-    controlsContainer.appendChild(controlBar);
-    placeholder.appendChild(controlsContainer);
-
-    return {
-        container: controlsContainer,
-        atomsBtn: atomsButton,
-        surfaceBtn: surfaceButton,
-        colorModeBtn: colorModeButton
-    };
-}
-
-function _createColorKeyLegend(keyPlaceholder, proteins, location) {
-    keyPlaceholder.innerHTML = '';
-    const keyContainer = document.createElement('div');
-    keyContainer.className = 'structure-key';
-
-    const createProteinKey = (color, text, interactionColor) => {
-        const proteinKey = document.createElement('div');
-        proteinKey.className = 'structure-key-protein';
-        proteinKey.innerHTML = `
-            <div class="structure-key-item">
-                <span class="structure-key-color" style="background-color:${color};"></span> ${text}
-            </div>
-            ${interactionColor ? `<div class="structure-key-item">
-                <span class="structure-key-color" style="background-color:${interactionColor};"></span> interaction region
-            </div>` : ''}
-        `;
-        return proteinKey;
-    };
-
-    keyContainer.appendChild(createProteinKey('lightcoral', proteins[0], location ? 'red' : null));
-    keyContainer.appendChild(createProteinKey('lightskyblue', proteins[1], location ? 'blue' : null));
-    keyPlaceholder.appendChild(keyContainer);
-}
-
-function _createProteinSequenceSection(numProteins) {
-    const section = document.createElement('div');
-    section.className = 'collapsible-subsection collapsed';
-    section.id = 'protein-sequence-collapsible-section';
-
-    const titleDiv = document.createElement('div');
-    titleDiv.className = 'collapsible-subsection-title';
-    titleDiv.innerHTML = `
-        <h4>${numProteins > 1 ? 'Protein sequences' : 'Protein sequence'}</h4>
-        <i class="fas fa-chevron-up"></i>
-    `;
-    titleDiv.addEventListener('click', () => section.classList.toggle('collapsed'));
-
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'collapsible-subsection-content';
-
-    section.appendChild(titleDiv);
-    section.appendChild(contentDiv);
-
-    return section;
-}
-
-function _createProteinBlock({proteinInfo, structureConfig, activeHighlightsRef}) {
-    const {name, sequence} = proteinInfo;
-    const proteinSeqDiv = document.createElement('div');
-    proteinSeqDiv.className = 'protein-sequence-block';
-
-    const header = document.createElement('h4');
-    header.textContent = name;
-    header.style.textAlign = 'center';
-    proteinSeqDiv.appendChild(header);
-
-    const handlers = _createProteinMouseHandlers({proteinInfo, structureConfig, activeHighlightsRef});
-
-    for (let rowStart = 1; rowStart <= sequence.length; rowStart += 100) {
-        _renderSequenceRow({proteinSeqDiv, proteinInfo, rowStart, handlers});
-    }
-
-    const spacer = document.createElement('div');
-    spacer.style.height = '6px';
-    proteinSeqDiv.appendChild(spacer);
-
-    return proteinSeqDiv;
-}
-
-function _renderSequenceRow({proteinSeqDiv, proteinInfo, rowStart, handlers}) {
-    const {name, sequence, currentFragmentStart, currentFragmentEnd, interactionLoc, highlightColor} = proteinInfo;
-    const ROW_SIZE = 100;
-    const GROUP_SIZE = 5;
-    const rowEnd = Math.min(sequence.length, rowStart + ROW_SIZE - 1);
-    const rowPre = document.createElement('pre');
-    Object.assign(rowPre.style, {
-        whiteSpace: 'pre-wrap',
-        overflowWrap: 'anywhere',
-        wordBreak: 'break-word',
-        fontFamily: 'monospace',
-        fontSize: '13px',
-        margin: '0 0 2px 0',
-        userSelect: 'none'
-    });
-
-    const label = document.createElement('span');
-    label.style.color = '#666';
-    label.textContent = String(rowStart).padStart(5, ' ') + '  ';
-    rowPre.appendChild(label);
-
-    for (let resi = rowStart; resi <= rowEnd; resi++) {
-        const inFragment = resi >= currentFragmentStart && resi <= currentFragmentEnd;
-
-        const span = document.createElement('span');
-        span.textContent = sequence[resi - 1];
-        span.dataset.resi = resi;
-        span.dataset.protein = name;
-        span.dataset.region = inFragment ? 'mid' : 'grey';
-        span.style.color = inFragment ? '' : 'lightgray';
-
-        if (inFragment && interactionLoc && interactionLoc.has(resi)) {
-            span.style.color = highlightColor || span.style.color;
-        }
-
-        if (inFragment) {
-            span.style.cursor = 'pointer';
-            span.addEventListener('mousedown', handlers.onMouseDown);
-            span.addEventListener('mouseenter', handlers.onMouseEnter);
-        }
-
-        rowPre.appendChild(span);
-        if ((resi - rowStart + 1) % GROUP_SIZE === 0 && resi < rowEnd) {
-            rowPre.appendChild(document.createTextNode(' '));
-        }
-    }
-
-    proteinSeqDiv.appendChild(rowPre);
-}
-
-function _createProteinMouseHandlers({proteinInfo, structureConfig, activeHighlightsRef}) {
-    const {viewer} = structureConfig;
-    const {name, idx, currentFragmentStart, currentFragmentEnd, sequence} = proteinInfo;
-    let selecting = false;
-    let anchorRes = null;
-    let currentRes = null;
-
-    const proteinSeqDivSelector = `span[data-protein="${name}"][data-region="mid"]`;
-
-    const clearSelection = () => {
-        document.querySelectorAll(proteinSeqDivSelector)
-            .forEach(s => s.style.backgroundColor = '');
-    };
-
-    const applySelection = (a, b) => {
-        if (a == null || b == null) return;
-        const start = Math.max(currentFragmentStart, Math.min(a, b));
-        const end = Math.min(currentFragmentEnd, Math.max(a, b));
-        document.querySelectorAll(proteinSeqDivSelector)
-            .forEach(s => {
-                const r = parseInt(s.dataset.resi);
-                s.style.backgroundColor = (r >= start && r <= end) ? '#fff3a1' : '';
-            });
-    };
-
-    const onMouseDown = (e) => {
-        e.preventDefault();
-        clearSelection();
-        _restoreStructureViewerHighlightedResidues(viewer, activeHighlightsRef.get());
-        activeHighlightsRef.set([]);
-        const resi = parseInt(e.currentTarget.dataset.resi);
-        selecting = true;
-        anchorRes = currentRes = resi;
-        applySelection(anchorRes, currentRes);
-
-        const onUp = () => {
-            if (!selecting) return;
-            selecting = false;
-            document.removeEventListener('mouseup', onUp);
-            const start = Math.max(currentFragmentStart, Math.min(anchorRes, currentRes));
-            const end = Math.min(currentFragmentEnd, Math.max(anchorRes, currentRes));
-            window.sequenceSelectedRange = { name, start, end };
-
-            const chain = idx === 0 ? 'A' : 'B';
-            if (viewer) {
-                const residues = [];
-                for (let r = start; r <= end; r++) {
-                    residues.push({chain, resi: r - currentFragmentStart + 1, resn: sequence[r - 1]});
-                }
-                activeHighlightsRef.set(residues);
-                _highlightStructureViewerResidues({structureConfig, residues, showLabels: false});
-            }
-        };
-        document.addEventListener('mouseup', onUp);
-    };
-
-    const onMouseEnter = (e) => {
-        if (!selecting) return;
-        currentRes = parseInt(e.currentTarget.dataset.resi, 10);
-        applySelection(anchorRes, currentRes);
-    };
-
-    return { onMouseDown, onMouseEnter };
-}
-
-function _renderProteinSequence({sequencePlaceholder, proteins, fragmentIds, proteinMetadata, structureConfig}) {
-    sequencePlaceholder.innerHTML = '';
-
-    const section = _createProteinSequenceSection(proteins.length);
-    const contentDiv = section.querySelector('.collapsible-subsection-content');
-
-    let activeHighlights = [];
-
-    proteins.forEach((protein, idx) => {
-        const proteinInfo = proteinMetadata.get(protein) || {};
-        proteinInfo.name = protein;
-        proteinInfo.idx = idx;
-        const [fragStartRaw = 0, fragEndRaw = 0] = (proteinInfo.fragmentIndices?.[fragmentIds?.[idx] - 1] || [0, 0]);
-        const hasFragment = fragStartRaw > 0 && fragEndRaw >= fragStartRaw;
-        proteinInfo.currentFragmentStart = hasFragment ? Math.max(1, fragStartRaw) : 1;
-        proteinInfo.currentFragmentEnd = hasFragment ? Math.min(proteinInfo.sequence.length, fragEndRaw) : proteinInfo.sequence.length;
-        const interaction = idx === 0 ?  structureConfig.f1_loc : structureConfig.f2_loc;
-        const relativeIntLoc = interaction.map(x => parseInt(x)).filter(n => !isNaN(n));
-        proteinInfo.interactionLoc = new Set(relativeIntLoc.map(n => proteinInfo.currentFragmentStart + n - 1));
-        proteinInfo.highlightColor = idx === 0 ? 'red' : 'blue';
-
-        const proteinBlock = _createProteinBlock({
-            proteinInfo, structureConfig,
-            activeHighlightsRef: { get: () => activeHighlights, set: (v) => activeHighlights = v },
-        });
-        contentDiv.appendChild(proteinBlock);
-    });
-
-    sequencePlaceholder.appendChild(section);
-}
-
-function _highlightStructureViewerResidues({structureConfig, residues, showLabels = true}) {
-    const { viewer, atomsShown, f1_loc, f2_loc, f1_shift, f2_shift, styles } = structureConfig;
-    const highlightStyle = {cartoon: { color: 'yellow', thickness: 1.5 }, stick: { color: 'yellow', radius: 0.4 }};
-    const appliedLabels = [];
-
-    residues.forEach(res => {
-        const { chain, resi } = res;
-        const shift = chain === 'A' ? f1_shift : f2_shift;
-        const residueInfo = `${res.resn} ${resi + shift}`;
-
-        res._origSelection = { chain, resi, byres: true };
-        res._origAtomsShown = atomsShown;
-        res._origWasInteraction =
-            (f1_loc && chain === 'A' && f1_loc.includes(resi.toString())) ||
-            (f2_loc && chain === 'B' && f2_loc.includes(resi.toString()));
-        res._origStyle = styles;
-
-        const atomList = viewer.selectedAtoms({ chain, resi });
-        if (atomList.length > 0 && showLabels) {
-            const label = viewer.addLabel(residueInfo, {position: atomList[0], fontSize: 14});
-            appliedLabels.push(label);
-        }
-
-        viewer.setStyle(res._origSelection, highlightStyle);
-    });
-
-    viewer.render();
-    return appliedLabels;
-}
-
-function _restoreStructureViewerHighlightedResidues(viewer, residues) {
-    if (!viewer || !residues?.length) return;
-
-    residues.forEach(res => {
-        const selection = res._origSelection || { chain: res.chain, resi: res.resi, byres: true };
-        let restoreStyle;
-
-        if (res._origWasInteraction && !res._origAtomsShown) {
-            restoreStyle = {
-                cartoon: { color: res.chain === 'A' ? 'red' : 'blue', thickness: 1.0 },
-                stick: { color: res.chain === 'A' ? 'red' : 'blue', radius: 0.2 }
-            };
-        } else {
-            restoreStyle = res._origStyle || {};
-            if (!res._origAtomsShown) delete restoreStyle.stick;
-        }
-
-        viewer.setStyle(selection, restoreStyle);
-
-        delete res._origSelection;
-        delete res._origAtomsShown;
-        delete res._origWasInteraction;
-        delete res._origStyle;
-    });
-
-    viewer.render();
-}
-  
-function _setupResidueHover(structureConfig) {
-    const { viewer } = structureConfig;
-
-    viewer.setHoverable({}, true,
-        function (atom, viewerInstance) {
-            if (atom._hoverActive) return;
-            atom._hoverActive = true;
-
-            const residue = {chain: atom.chain, resi: atom.resi, resn: atom.resn};
-            atom._hoverLabels = _highlightStructureViewerResidues({structureConfig, residues: [residue]});
-            atom._hoverResidue = residue;
-        },
-
-        function (atom, viewerInstance) {
-            if (!atom._hoverActive) return;
-            atom._hoverActive = false;
-
-            if (atom._hoverLabels) {
-                atom._hoverLabels.forEach(label => viewerInstance.removeLabel(label));
-                delete atom._hoverLabels;
-            }
-
-            if (atom._hoverResidue) {
-                _restoreStructureViewerHighlightedResidues(viewerInstance, [atom._hoverResidue]);
-                delete atom._hoverResidue;
-            }
-        }
-    );
-}
-
-function _applyViewerState(structureConfig) {
-    const { viewer, modelLoaded, atomsShown, surfaceShown, colorMode, useDomainColoring, domainRangesArray, f1_loc, f2_loc } = structureConfig;
-    if (!modelLoaded) return;
-    viewer.setStyle({}, {});
-    viewer.removeAllSurfaces();
-
-    let styles;
-    if (colorMode === 'spectrum') {
-        styles = { cartoon: { color: 'spectrum' } };
-        if (atomsShown) {
-            styles.stick = { color: 'spectrum', radius: 0.2 };
-        }
-    } else {
-        let colorFunc;
-        if (colorMode === 'alphafold') {
-            colorFunc = atom => _getDomainColor(atom, useDomainColoring, domainRangesArray);
-        } else {
-            function baseChainColorFunc(atom) {
-                if (f1_loc && atom.chain === 'A' && f1_loc.includes(atom.resi.toString())) return 'red';
-                if (f2_loc && atom.chain === 'B' && f2_loc.includes(atom.resi.toString())) return 'blue';
-                if (atom.chain === 'A') return 'lightcoral';
-                if (atom.chain === 'B') return 'lightskyblue';
-                return 'lightgray';
-            }
-            colorFunc = atom => baseChainColorFunc(atom);
-        }
-        styles = { cartoon: { colorfunc: colorFunc } };
-        if (atomsShown) {
-            styles.stick = { colorfunc: colorFunc, radius: 0.2 };
-        }
-    }
-    viewer.setStyle({}, styles);
-    structureConfig.styles = styles;
-
-    if (!atomsShown) {
-        const highlightStyle = (color) => ({ cartoon: { color, thickness: 1.0 }, stick: { color, radius: 0.2 } });
-        if (f1_loc) viewer.setStyle({ chain: 'A', resi: f1_loc, byres: true }, highlightStyle("red"));
-        if (f2_loc) viewer.setStyle({ chain: 'B', resi: f2_loc, byres: true }, highlightStyle("blue"));
-    }
-
-    _setupResidueHover(structureConfig);
-  
-    if (surfaceShown) {
-        if (colorMode === 'chain') {
-            const surfaceColors = [
-                { color: 'lightcoral', sel: { chain: 'A' } },
-                { color: 'lightskyblue', sel: { chain: 'B' } },
-                { color: 'lightgray', sel: { chain: { $ne: 'A', $ne: 'B' } } }
-            ];
-            surfaceColors.forEach(s => viewer.addSurface($3Dmol.SurfaceType.VDW, { opacity: 0.7, color: s.color }, s.sel));
-        } else {
-            viewer.addSurface($3Dmol.SurfaceType.VDW, { opacity: 0.7, color: 'white' });
-        }
-    }
-    viewer.render();
-}
-
-export async function _displayStructureInViewer(container, pdbPath, options={}) {
-    const {domainRangesArray, zoomSelection, f1_loc, f2_loc, f1_id, f2_id, proteins} = options || {};
-    if (!container) return;
-    container.innerHTML = '';
-
-    if (!window.$3Dmol) {
-        displayInfo(container, "3Dmol.js library not loaded.", true);
-        return;
-    }
-    if (!pdbPath) {
-        displayInfo(container, "No PDB path provided.", true);
-        const controls = container.getElementById("structure-controls");
-        if (controls) controls.style.display = 'none';
-        return;
-    }
-    const controlsPlaceholder = document.getElementById("structure-controls-placeholder");
-    const keyPlaceholder = document.getElementById("structure-key-placeholder");
-    const sequencePlaceholder = document.getElementById("structure-sequence-placeholder");
-    sequencePlaceholder.innerHTML = '';
-
-    let viewer = $3Dmol.createViewer(container, { defaultcolors: $3Dmol.rasmolElementColors });
-    const useDomainColoring = _isValidDomainRanges(domainRangesArray);
-    const initialColorMode = useDomainColoring ? 'alphafold' : 'chain';
-
-    const proteinMetadata = await loadProteinMetadata();
-    const p1Data = proteins && proteins[0] ? proteinMetadata.get(proteins[0]) : null;
-    const p2Data = proteins && proteins[1] ? proteinMetadata.get(proteins[1]) : null;
-    const f1_shift = (p1Data && f1_id) ? p1Data.fragmentIndices[f1_id-1][0] : 0;
-    const f2_shift = (p2Data && f2_id) ? p2Data.fragmentIndices[f2_id-1][0] : 0;
-
-    const structureConfig = {
-        viewer,
-        f1_loc,
-        f2_loc,
-        f1_shift,
-        f2_shift,
-        modelLoaded: false,
-        atomsShown: false,
-        surfaceShown: false,
-        colorMode: initialColorMode,
-        useDomainColoring: useDomainColoring,
-        domainRangesArray: useDomainColoring ? domainRangesArray : []
-    }
-    const callbacks = {
-        onReset: () => {
-            structureConfig.atomsShown = false;
-            structureConfig.surfaceShown = false;
-            structureConfig.colorMode = initialColorMode;
-            _applyViewerState(structureConfig);
-            
-            if (zoomSelection) {
-                viewer.zoomTo(zoomSelection);
-            } else {
-                viewer.zoomTo();
-            }
-            viewer.render();
-            updateColorModeButtonText();
-            controls.atomsBtn.classList.remove('active');
-            controls.surfaceBtn.classList.remove('active');
-        },
-        onToggleAtoms: function() {
-            structureConfig.atomsShown = !structureConfig.atomsShown;
-            this.classList.toggle('active', structureConfig.atomsShown);
-            _applyViewerState(structureConfig);
-        },
-        onToggleSurface: function() {
-            structureConfig.surfaceShown = !structureConfig.surfaceShown;
-            this.classList.toggle('active', structureConfig.surfaceShown);
-            _applyViewerState(structureConfig);
-        },
-        onToggleColorMode: () => {
-            if (useDomainColoring) {
-                structureConfig.colorMode = structureConfig.colorMode === 'alphafold' ? 'spectrum' : 'alphafold';
-            } else {
-                structureConfig.colorMode = structureConfig.colorMode === 'chain' ? 'spectrum' : 'chain';
-            }
-            updateColorModeButtonText();
-            _applyViewerState(structureConfig);
-        }
-    };
-    const controls = _setupStructureViewerControls(controlsPlaceholder, callbacks);
-
-    const interaction = (f1_loc || f2_loc) ? true : false;
-    if (proteins && proteins.length >= 2) {
-        _createColorKeyLegend(keyPlaceholder, proteins, interaction);
-        }
-    const fragmentIds = [f1_id, f2_id];
-    _renderProteinSequence({sequencePlaceholder, proteins, interaction, fragmentIds, proteinMetadata, viewer, structureConfig});
-
-    if (controls) controls.container.style.display = 'none';
-
-    function updateColorModeButtonText() {
-        if (!controls?.colorModeBtn) return;
-        let nextModeText;
-        if (useDomainColoring) {
-            nextModeText = structureConfig.colorMode === 'alphafold' ? 'Spectrum' : 'AlphaFold domain';
-        } else {
-            nextModeText = structureConfig.colorMode === 'chain' ? 'Spectrum' : 'By Chain';
-        }
-        controls.colorModeBtn.innerHTML = `<i class="fas fa-palette"></i> ${nextModeText}`;
-    }
-
-    fetch(pdbPath)
-        .then(response => {
-            if (!response.ok) throw new Error(`PDB file not found at ${pdbPath} (status: ${response.status})`);
-            return response.text();
-        })
-        .then(pdbData => {
-            viewer.addModel(pdbData, 'pdb');
-            if (zoomSelection) {
-                viewer.zoomTo(zoomSelection);
-            } else {
-                viewer.zoomTo();
-            }
-            viewer.render();
-            structureConfig.modelLoaded = true;
-            if (controls) controls.container.style.display = '';
-            const fallback = document.getElementById("structure-viewer-fallback")
-            if (fallback) fallback.style.display = 'none';
-            _applyViewerState(structureConfig);
-            updateColorModeButtonText();
-        })
-        .catch(error => {
-            displayInfo(container, `Could not load structure: ${error.message}.`, true);
-            if (controls) controls.container.style.display = 'none';
-        });
 }
