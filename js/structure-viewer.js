@@ -279,10 +279,12 @@ function _createColorKeyLegend(keyPlaceholder, proteins, location) {
     keyPlaceholder.appendChild(keyContainer);
 }
 
-function _createResidueSpan (resCode, resi, inFragment, handlers) {
+function _createResidueSpan(resCode, resi, inFragment, protein, handlers) {
     const span = document.createElement('span');
     span.textContent = resCode;
     span.dataset.resi = resi;
+    span.dataset.protein = protein;
+    span.dataset.region = 'mid';
     span.style.color = inFragment ? '' : 'lightgray';
     if (inFragment) {
         span.style.cursor = 'pointer';
@@ -290,9 +292,9 @@ function _createResidueSpan (resCode, resi, inFragment, handlers) {
         span.addEventListener('mouseenter', handlers.onMouseEnter);
     }
     return span;
-};
+}
 
-function _renderSequenceRow (proteinSeqDiv, seq, rowStart, fragStart, fragEnd, handlers) {
+function _renderSequenceRow({proteinSeqDiv, seq, rowStart, fragStart, fragEnd, protein, handlers}) {
     const ROW_SIZE = 100;
     const GROUP_SIZE = 5;
     const rowEnd = Math.min(seq.length, rowStart + ROW_SIZE - 1);
@@ -314,16 +316,16 @@ function _renderSequenceRow (proteinSeqDiv, seq, rowStart, fragStart, fragEnd, h
 
     for (let resi = rowStart; resi <= rowEnd; resi++) {
         const inFragment = resi >= fragStart && resi <= fragEnd;
-        rowPre.appendChild(_createResidueSpan(seq[resi - 1], resi, inFragment, handlers));
+        rowPre.appendChild(_createResidueSpan(seq[resi - 1], resi, inFragment, protein, handlers));
         if ((resi - rowStart + 1) % GROUP_SIZE === 0 && resi < rowEnd) {
             rowPre.appendChild(document.createTextNode(' '));
         }
     }
 
     proteinSeqDiv.appendChild(rowPre);
-};
+}
 
-function _renderProteinSequence({sequencePlaceholder, proteins, location, fragmentIds, proteinMetadata, viewer, f1_shift = 0, f2_shift = 0, structureConfig}) {
+function _renderProteinSequence({sequencePlaceholder, proteins, fragmentIds, proteinMetadata, viewer, structureConfig}) {
     sequencePlaceholder.innerHTML = '';
 
     const section = document.createElement('div');
@@ -420,7 +422,7 @@ function _renderProteinSequence({sequencePlaceholder, proteins, location, fragme
         const handlers = { onMouseDown, onMouseEnter };
 
         for (let rowStart = 1; rowStart <= seq.length; rowStart += 100) {
-            _renderSequenceRow(proteinSeqDiv, seq, rowStart, fragStart, fragEnd, protein, handlers, viewer);
+            _renderSequenceRow({proteinSeqDiv, protein, seq, rowStart, fragStart, fragEnd, handlers});
         }
 
         const spacer = document.createElement('div');
