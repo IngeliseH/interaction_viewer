@@ -16,7 +16,7 @@ export async function _displayStructureInViewer(container, pdbPath, options={}) 
     }
     if (!pdbPath) {
         displayInfo(container, "No PDB path provided.", true);
-        const controls = container.getElementById("structure-controls");
+        const controls = document.getElementById("structure-controls");
         if (controls) controls.style.display = 'none';
         return;
     }
@@ -166,7 +166,7 @@ export async function setUpStructureViewer(urlParams, proteins, proteinData) {
     const f2_id = decodeURIComponent(urlParams.get('f2_id') || '');
 
     if (proteins.length != 2 || !f1_id || !f2_id) {
-        displayInfo(viewerElement, "Protein/fragment parameters missing.", true);
+        displayInfo(viewerDiv, "Protein/fragment parameters missing.", true);
         return;
     }
 
@@ -189,10 +189,12 @@ export async function setUpStructureViewer(urlParams, proteins, proteinData) {
 
 }
 
-export function highlightStructureViewerResidues({structureConfig, residues, showLabels = true}) {
+export function highlightStructureViewerResidues({structureConfig, residues, showLabels = true, showHBonds = true}) {
     const { viewer, atomsShown, f1_loc, f2_loc, f1_shift, f2_shift, styles } = structureConfig;
     const highlightStyle = {cartoon: { color: 'yellow', thickness: 1.5 }, stick: { color: 'yellow', radius: 0.4 }};
     const appliedLabels = [];
+    const hbondLines = [];
+    const allAtoms = viewer.selectedAtoms({});
 
     residues.forEach(res => {
         const { chain, resi } = res;
@@ -202,9 +204,9 @@ export function highlightStructureViewerResidues({structureConfig, residues, sho
         res._origSelection = { chain, resi, byres: true };
         res._origAtomsShown = atomsShown;
         res._origWasInteraction =
-            (f1_loc && chain === 'A' && f1_loc.includes(resi.toString())) ||
-            (f2_loc && chain === 'B' && f2_loc.includes(resi.toString()));
-        res._origStyle = styles;
+            (f1_loc && chain === 'A' && _hasInteractionResidue(f1_loc, resi)) ||
+            (f2_loc && chain === 'B' && _hasInteractionResidue(f2_loc, resi));
+        res._origStyle = _cloneStyleShallow(styles);
 
         const atomList = viewer.selectedAtoms({ chain, resi });
         if (atomList.length > 0 && showLabels) {
@@ -213,13 +215,21 @@ export function highlightStructureViewerResidues({structureConfig, residues, sho
         }
 
         viewer.setStyle(res._origSelection, highlightStyle);
+
+        if (showHBonds) {
+            atomList.forEach(atom1 => {
+                allAtoms.forEach(atom2 => {
+                    _renderHBonds({viewer, atom1, atom2, hbondLines});
+                });
+            });
+        }
     });
 
     viewer.render();
-    return appliedLabels;
+    return {labels: appliedLabels, hbonds: hbondLines};
 }
 
-export function restoreStructureViewerHighlightedResidues(viewer, residues) {
+export function restoreStructureViewerHighlightedResidues({viewer, residues, hbonds=[]}) {
     if (!viewer || !residues?.length) return;
 
     residues.forEach(res => {
@@ -232,10 +242,11 @@ export function restoreStructureViewerHighlightedResidues(viewer, residues) {
                 stick: { color: res.chain === 'A' ? 'red' : 'blue', radius: 0.2 }
             };
         } else {
-            restoreStyle = res._origStyle || {};
+            restoreStyle = res._origStyle ? _cloneStyleShallow(res._origStyle) : {};
             if (!res._origAtomsShown) delete restoreStyle.stick;
         }
 
+        viewer.setStyle(selection, {});
         viewer.setStyle(selection, restoreStyle);
 
         delete res._origSelection;
@@ -243,6 +254,10 @@ export function restoreStructureViewerHighlightedResidues(viewer, residues) {
         delete res._origWasInteraction;
         delete res._origStyle;
     });
+
+    if (hbonds.length > 0) {
+        hbonds.forEach(line => viewer.removeShape(line));
+    }
 
     viewer.render();
 }
@@ -270,8 +285,10 @@ function _setupResidueHover(structureConfig) {
             atom._hoverActive = true;
 
             const residue = {chain: atom.chain, resi: atom.resi, resn: atom.resn};
-            atom._hoverLabels = highlightStructureViewerResidues({structureConfig, residues: [residue]});
+            const {labels: appliedLabels, hbonds} = highlightStructureViewerResidues({structureConfig, residues: [residue]});
+            atom._hoverLabels = appliedLabels;
             atom._hoverResidue = residue;
+            atom._hoverHbonds = hbonds;
         },
 
         function (atom, viewerInstance) {
@@ -284,11 +301,41 @@ function _setupResidueHover(structureConfig) {
             }
 
             if (atom._hoverResidue) {
-                restoreStructureViewerHighlightedResidues(viewerInstance, [atom._hoverResidue]);
+                restoreStructureViewerHighlightedResidues({viewer: viewerInstance, residues: [atom._hoverResidue], hbonds: atom._hoverHbonds || []});
                 delete atom._hoverResidue;
             }
         }
     );
+}
+
+function _renderHBonds({viewer, atom1, atom2, hbondLines}) {
+    if (atom1.serial === atom2.serial) return;
+    const dx = atom1.x - atom2.x;
+    const dy = atom1.y - atom2.y;
+    const dz = atom1.z - atom2.z;
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+    // Simple hydrogen bond heuristic (donor/acceptor distance ~2.5–3.5 Å)
+    function isDonor(atom) {
+        return atom.elem === 'N' || atom.elem === 'O';
+    }
+    function isAcceptor(atom) {
+        return atom.elem === 'O' || atom.elem === 'N';
+    }
+    if (dist > 2.5 && dist < 3.5) {
+        if (isDonor(atom1) && isAcceptor(atom2) || isDonor(atom2) && isAcceptor(atom1)) {
+            const line = viewer.addLine({
+                start: { x: atom1.x, y: atom1.y, z: atom1.z },
+                end: { x: atom2.x, y: atom2.y, z: atom2.z },
+                color: 'blue',
+                dashed: true,
+                dashLength: 0.2,
+                opacity: 1,
+            });
+            hbondLines.push(line);
+        }
+    }
+    return hbondLines;
 }
 
 function _applyViewerState(structureConfig) {
@@ -309,8 +356,8 @@ function _applyViewerState(structureConfig) {
             colorFunc = atom => _getDomainColor(atom, useDomainColoring, domainRangesArray);
         } else {
             function baseChainColorFunc(atom) {
-                if (f1_loc && atom.chain === 'A' && f1_loc.includes(atom.resi.toString())) return 'red';
-                if (f2_loc && atom.chain === 'B' && f2_loc.includes(atom.resi.toString())) return 'blue';
+                if (f1_loc && atom.chain === 'A' && _hasInteractionResidue(f1_loc, atom.resi)) return 'red';
+                if (f2_loc && atom.chain === 'B' && _hasInteractionResidue(f2_loc, atom.resi)) return 'blue';
                 if (atom.chain === 'A') return 'lightcoral';
                 if (atom.chain === 'B') return 'lightskyblue';
                 return 'lightgray';
@@ -515,7 +562,7 @@ function _createColorKeyLegend(keyPlaceholder, proteins, location) {
 }
 
 // =============================================================================
-// Pdb handling functions
+// Pdb handling
 // =============================================================================
 async function _getAlphaFoldPdb(container, accessionId) {
     try {
@@ -554,4 +601,21 @@ async function _getPdbFiles() {
         console.error('Error fetching PDB file list:', error);
                         throw error;
     }
+}
+
+// =============================================================================
+// Internal utility helpers
+// =============================================================================
+function _cloneStyleShallow(style) {
+    if (!style) return {};
+    const clone = {};
+    if (style.cartoon) clone.cartoon = { ...style.cartoon };
+    if (style.stick) clone.stick = { ...style.stick };
+    return clone;
+}
+
+function _hasInteractionResidue(list, resi) {
+    if (!Array.isArray(list)) return false;
+    const r = String(resi);
+    return list.includes(resi) || list.includes(r) || list.includes(parseInt(r, 10));
 }

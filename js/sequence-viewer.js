@@ -33,7 +33,7 @@ export function renderProteinSequenceSection({sequencePlaceholder, proteins, fra
                     proteinInfo.interactionLoc.add(r);
                 }
             });
-            proteinInfo.highlightColor = 'blue';
+            proteinInfo.highlightColor = 'dodgerblue';
         } else {
             proteinInfo.interactionLoc = null;
             proteinInfo.highlightColor = null;
@@ -79,10 +79,39 @@ function _renderSingleProteinSequence({proteinInfo, structureConfig, activeHighl
     const proteinSeqDiv = document.createElement('div');
     proteinSeqDiv.className = 'protein-sequence-block';
 
+    const headerRow = document.createElement('div');
+    headerRow.style.display = 'flex';
+    headerRow.style.alignItems = 'center';
+    headerRow.style.marginBottom = '8px';
+    headerRow.style.marginTop = '10px';
+
     const header = document.createElement('h4');
     header.textContent = name;
-    header.style.textAlign = 'center';
-    proteinSeqDiv.appendChild(header);
+    header.style.flex = '1 1 auto';
+    header.style.marginLeft = '8px';
+
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'compact-button';
+    clearBtn.title = 'Clear selection';
+    clearBtn.innerHTML = '<i class="fas fa-undo"></i> Clear Selection';
+    clearBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        proteinSeqDiv.querySelectorAll('span[data-region="mid"]').forEach(s => s.style.backgroundColor = '');
+        const { viewer } = structureConfig || {};
+        const chain = proteinInfo.idx === 0 ? 'A' : 'B';
+        const current = activeHighlightsRef.get() || [];
+        const toRestore = current.filter(r => r.chain === chain);
+        const remaining = current.filter(r => r.chain !== chain);
+        if (viewer && toRestore.length) restoreStructureViewerHighlightedResidues({ viewer, residues: toRestore });
+        activeHighlightsRef.set(remaining);
+        if (window.sequenceSelectedRange?.name === name) delete window.sequenceSelectedRange;
+    });
+
+    headerRow.appendChild(header);
+    headerRow.appendChild(clearBtn);
+    proteinSeqDiv.appendChild(headerRow);
 
     const handlers = _createSequenceMouseHandlers({proteinInfo, structureConfig, activeHighlightsRef});
 
@@ -178,7 +207,7 @@ function _createSequenceMouseHandlers({proteinInfo, structureConfig, activeHighl
     const onMouseDown = (e) => {
         e.preventDefault();
         clearSelection();
-        restoreStructureViewerHighlightedResidues(viewer, activeHighlightsRef.get());
+        restoreStructureViewerHighlightedResidues({viewer, residues: activeHighlightsRef.get()});
         activeHighlightsRef.set([]);
         const resi = parseInt(e.currentTarget.dataset.resi);
         selecting = true;
@@ -200,8 +229,11 @@ function _createSequenceMouseHandlers({proteinInfo, structureConfig, activeHighl
                     residues.push({chain, resi: r - currentFragmentStart + 1, resn: sequence[r - 1]});
                 }
                 activeHighlightsRef.set(residues);
-                highlightStructureViewerResidues({structureConfig, residues, showLabels: false});
+                highlightStructureViewerResidues({structureConfig, residues, showLabels: false, showHBonds: false});
             }
+
+            anchorRes = null;
+            currentRes = null;
         };
         document.addEventListener('mouseup', onUp);
     };
