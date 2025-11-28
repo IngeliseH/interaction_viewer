@@ -1,9 +1,11 @@
 import { displayInfo, createSvgElement, createProteinLabel, createHoverLabel, setupHoverEffect } from './plot-utility.js';
 import { getAllFilters } from './filter.js';
+import { getChainGroupings, parseLocation } from './data.js';
 
 let _plotInstances = {};
 
 let _applyPromiscuityFilters = true;
+const _chainGroupingCache = new Map();
 
 // =============================================================================
 // Public API Functions
@@ -88,13 +90,10 @@ export function highlightPromiscuityResidues(instanceId, start = null, end = nul
 // =============================================================================
 function _fetchRelevantInterfaces(proteinName, proteinLength, interfaceData, filterCriteria = {}) {
     const coverageArray = Array(proteinLength).fill(0);
-    const emptyResult = { filteredData: [], coverageArray };
-
     if (!interfaceData) {
         console.error('Promiscuity Plot: Interface data not provided.');
-        return emptyResult;
+        return coverageArray;
     }
-
     let filteredData = interfaceData.filter(row =>
         (row.Protein1 === proteinName || row.Protein2 === proteinName) &&
         Object.entries(filterCriteria).every(([key, filterFn]) => {
@@ -103,18 +102,38 @@ function _fetchRelevantInterfaces(proteinName, proteinLength, interfaceData, fil
     );
 
     filteredData.forEach(row => {
-        const key = row.Protein1 === proteinName ? 'Protein1' : 'Protein2';
+        const cacheKey = `${row.Protein1}+${row.Protein2}`;
+        if (!_chainGroupingCache.has(cacheKey)) {
+            try {
+                _chainGroupingCache.set(cacheKey, getChainGroupings(row.Protein1, row.Protein2));
+            } catch (err) {
+                console.warn('Promiscuity Plot: Failed to get chain groupings for', cacheKey, err);
+                _chainGroupingCache.set(cacheKey, null);
+            }
+        }
+        const chainGroupings = _chainGroupingCache.get(cacheKey);
+        const proteinIndex = row.Protein1 === proteinName ? 0 : 1;
+        const proteinChains = Array.isArray(chainGroupings?.[proteinIndex]) ? chainGroupings[proteinIndex] : [];
+        if (!proteinChains.length) {
+            console.warn(`Promiscuity Plot: No chain mapping found for ${proteinName} in interface ${cacheKey}.`);
+            return;
+        }
         if (row.absolute_location) {
             try {
-                const sanitizedJson = row.absolute_location.replace(/'/g, '"').replace(/None/g, 'null');
-                const absoluteLocation = JSON.parse(sanitizedJson);
-                if (Array.isArray(absoluteLocation?.[key])) {
-                    absoluteLocation[key].forEach(idx => {
-                        if (idx > 0 && idx <= proteinLength) {
+                const absoluteLocation = parseLocation(row.absolute_location);
+                if (!absoluteLocation || typeof absoluteLocation !== 'object') return;
+                proteinChains.forEach(chainName => {
+                    const matchedKey = Object.keys(absoluteLocation).find(key => {
+                        return String(key).trim().toLowerCase().replace(/^chain\s+/, '') === String(chainName).trim().toLowerCase();
+                    }) || null;
+                    if (matchedKey && Array.isArray(absoluteLocation[matchedKey])) {
+                        absoluteLocation[matchedKey].forEach(idx => {
+                        if (Number.isFinite(idx) && idx > 0 && idx <= proteinLength) {
                             coverageArray[idx - 1]++;
                         }
                     });
-                }
+                    }
+                });
             } catch (e) {
                 console.warn('Promiscuity Plot: Failed to parse absolute_location:', row.absolute_location, e);
             }

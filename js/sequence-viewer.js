@@ -19,11 +19,14 @@ export function renderProteinSequenceSection({sequencePlaceholder, proteins, fra
         const hasFragment = fragStartRaw > 0 && fragEndRaw >= fragStartRaw;
         proteinInfo.currentFragmentStart = hasFragment ? Math.max(1, fragStartRaw) : 1;
         proteinInfo.currentFragmentEnd = hasFragment ? Math.min(proteinInfo.sequence.length, fragEndRaw) : proteinInfo.sequence.length;
-        if (structureConfig.f1_loc || structureConfig.f2_loc) {
-            const interaction = idx === 0 ?  structureConfig.f1_loc : structureConfig.f2_loc;
-            const relativeIntLoc = interaction.map(x => parseInt(x)).filter(n => !isNaN(n));
+        proteinInfo.chainIds = _resolveProteinChains(structureConfig, idx);
+        const interactionRaw = Array.isArray(structureConfig?.interactionLocs?.[idx]) ? structureConfig.interactionLocs[idx] : null;
+        if (interactionRaw?.length) {
+            const relativeIntLoc = interactionRaw
+                .map(x => parseInt(x, 10))
+                .filter(n => !isNaN(n));
             proteinInfo.interactionLoc = new Set(relativeIntLoc.map(n => proteinInfo.currentFragmentStart + n - 1));
-            proteinInfo.highlightColor = idx === 0 ? 'red' : 'blue';
+            proteinInfo.highlightColor = structureConfig.interactionColors?.[idx] || (idx === 0 ? 'red' : 'blue');
         } else if (structureConfig.domainRangesArray) {
             proteinInfo.interactionLoc = new Set();
             structureConfig.domainRangesArray.forEach(range => {
@@ -38,7 +41,6 @@ export function renderProteinSequenceSection({sequencePlaceholder, proteins, fra
             proteinInfo.interactionLoc = null;
             proteinInfo.highlightColor = null;
         }
-
         const proteinBlock = _renderSingleProteinSequence({
             proteinInfo, structureConfig,
             activeHighlightsRef: { get: () => activeHighlights, set: (v) => activeHighlights = v },
@@ -100,10 +102,10 @@ function _renderSingleProteinSequence({proteinInfo, structureConfig, activeHighl
         e.stopPropagation();
         proteinSeqDiv.querySelectorAll('span[data-region="mid"]').forEach(s => s.style.backgroundColor = '');
         const { viewer } = structureConfig || {};
-        const chain = proteinInfo.idx === 0 ? 'A' : 'B';
+        const chainSet = new Set((proteinInfo.chainIds || []).map(c => c.toUpperCase()));
         const current = activeHighlightsRef.get() || [];
-        const toRestore = current.filter(r => r.chain === chain);
-        const remaining = current.filter(r => r.chain !== chain);
+        const toRestore = current.filter(r => chainSet.has(r.chain));
+        const remaining = current.filter(r => !chainSet.has(r.chain));
         if (viewer && toRestore.length) restoreStructureViewerHighlightedResidues({ viewer, residues: toRestore });
         activeHighlightsRef.set(remaining);
         if (window.sequenceSelectedRange?.name === name) delete window.sequenceSelectedRange;
@@ -182,6 +184,9 @@ function _renderSequenceRow({proteinSeqDiv, proteinInfo, rowStart, handlers}) {
 function _createSequenceMouseHandlers({proteinInfo, structureConfig, activeHighlightsRef}) {
     const {viewer} = structureConfig;
     const {name, idx, currentFragmentStart, currentFragmentEnd, sequence} = proteinInfo;
+    const chainIds = (proteinInfo.chainIds && proteinInfo.chainIds.length
+        ? proteinInfo.chainIds
+        : _resolveProteinChains(structureConfig, idx)).map(c => c.toUpperCase());
     let selecting = false;
     let anchorRes = null;
     let currentRes = null;
@@ -207,7 +212,10 @@ function _createSequenceMouseHandlers({proteinInfo, structureConfig, activeHighl
     const onMouseDown = (e) => {
         e.preventDefault();
         clearSelection();
-        restoreStructureViewerHighlightedResidues({viewer, residues: activeHighlightsRef.get()});
+        const currentHighlights = activeHighlightsRef.get() || [];
+        if (viewer && currentHighlights.length) {
+            restoreStructureViewerHighlightedResidues({viewer, residues: currentHighlights});
+        }
         activeHighlightsRef.set([]);
         const resi = parseInt(e.currentTarget.dataset.resi);
         selecting = true;
@@ -222,12 +230,14 @@ function _createSequenceMouseHandlers({proteinInfo, structureConfig, activeHighl
             const end = Math.min(currentFragmentEnd, Math.max(anchorRes, currentRes));
             window.sequenceSelectedRange = { name, start, end };
 
-            const chain = idx === 0 ? 'A' : 'B';
+            const chainIdsLocal = chainIds.length ? chainIds : _resolveProteinChains(structureConfig, idx);
             if (viewer) {
                 const residues = [];
-                for (let r = start; r <= end; r++) {
-                    residues.push({chain, resi: r - currentFragmentStart + 1, resn: sequence[r - 1]});
-                }
+                chainIdsLocal.forEach(chainId => {
+                    for (let r = start; r <= end; r++) {
+                        residues.push({chain: chainId.toUpperCase(), resi: r - currentFragmentStart + 1, resn: sequence[r - 1]});
+                    }
+                });
                 activeHighlightsRef.set(residues);
                 highlightStructureViewerResidues({structureConfig, residues, showLabels: false, showHBonds: false});
             }
@@ -245,4 +255,14 @@ function _createSequenceMouseHandlers({proteinInfo, structureConfig, activeHighl
     };
 
     return { onMouseDown, onMouseEnter };
+}
+
+function _resolveProteinChains(structureConfig, proteinIdx) {
+    const explicit = structureConfig?.proteinChains?.[proteinIdx];
+    if (Array.isArray(explicit) && explicit.length) {
+        return explicit.map(c => (c || '').toString().trim().toUpperCase());
+    }
+    const fallback = structureConfig?.defaultChains?.[proteinIdx];
+    if (fallback) return [fallback.toString().trim().toUpperCase()];
+    return [proteinIdx === 0 ? 'A' : 'B'];
 }

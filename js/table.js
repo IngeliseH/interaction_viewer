@@ -1,4 +1,4 @@
-import { loadInteractionData, loadProteinMetadata, parseLocation, indicesToRanges, formatNumber } from './data.js';
+import { loadInteractionData, loadProteinMetadata, parseLocation, indicesToRanges, formatNumber, getChainGroupings } from './data.js';
 import { statColorConfig, getStatColor } from './stats.js';
 import { showColumnFilterPopup, applyFiltersToData, setColumnFilters, updateActiveFilterDisplay, setSelectedProteins } from './filter.js';
 import { initPagination, paginateData } from './pagination.js';
@@ -128,6 +128,7 @@ export function createInteractionLink(row) {
     const protein2Domain = row.Protein2_Domain || "";
     const [p1Name, f1Id] = protein1Domain.split('_F');
     const [p2Name, f2Id] = protein2Domain.split('_F');
+    const chainGrouping = getChainGroupings(row.Protein1, row.Protein2);
 
     let absLoc = {}, relLoc = {};
     if (row.absolute_location) {
@@ -136,14 +137,14 @@ export function createInteractionLink(row) {
     if (row.location) {
         relLoc = parseLocation(row.location);
     }
+    const p1Loc = chainGrouping[0].map(i => indicesToRanges(absLoc[`chain ${i}`]));
+    const p2Loc = chainGrouping[1].map(i => indicesToRanges(absLoc[`chain ${i}`]));
 
-    const p1Loc = indicesToRanges(absLoc.protein1 || absLoc.chainA);
-    const p2Loc = indicesToRanges(absLoc.protein2 || absLoc.chainB);
+    const intStartP1 = absLoc[`chain ${chainGrouping[0][0]}`]?.[0] ?? (chainGrouping[0][1] ? absLoc[`chain ${chainGrouping[0][1]}`]?.[0] : undefined);
+    const intStartF1 = relLoc[`chain ${chainGrouping[0][0]}`]?.[0] ?? (chainGrouping[0][1] ? relLoc[`chain ${chainGrouping[0][1]}`]?.[0] : undefined);
 
-    const intStartP1 = absLoc.protein1?.[0] || absLoc.chainA?.[0];
-    const intStartP2 = absLoc.protein2?.[0] || absLoc.chainB?.[0];
-    const intStartF1 = relLoc.protein1?.[0] || relLoc.chainA?.[0];
-    const intStartF2 = relLoc.protein2?.[0] || relLoc.chainB?.[0];
+    const intStartP2 = absLoc[`chain ${chainGrouping[1][0]}`]?.[0] ?? (chainGrouping[1][1] ? absLoc[`chain ${chainGrouping[1][1]}`]?.[0] : undefined);
+    const intStartF2 = relLoc[`chain ${chainGrouping[1][0]}`]?.[0] ?? (chainGrouping[1][1] ? absLoc[`chain ${chainGrouping[1][1]}`]?.[0] : undefined);
 
     const f1_shift = intStartP1 - intStartF1;
     const f2_shift = intStartP2 - intStartF2;
@@ -152,8 +153,8 @@ export function createInteractionLink(row) {
         `&p2=${encodeURIComponent(p2Name)}` +
         `&f1_id=${encodeURIComponent(f1Id)}` +
         `&f2_id=${encodeURIComponent(f2Id)}` +
-        `&f1_loc=${encodeURIComponent(p1Loc)}` +
-        `&f2_loc=${encodeURIComponent(p2Loc)}` +
+        `&f1_loc=${encodeURIComponent(p1Loc.join('chain'))}` +
+        `&f2_loc=${encodeURIComponent(p2Loc.join('chain'))}` +
         `&iptm=${encodeURIComponent(formatNumber(row.iptm))}` +
         `&min_pae=${encodeURIComponent(formatNumber(row.min_pae))}` +
         `&avg_pae=${encodeURIComponent(formatNumber(row.avg_pae))}` +
@@ -282,6 +283,8 @@ function sortTable(column) {
 
 function renderCellContent(col, row, queryProteinName) {
     let cellHtml = 'N/A';
+    const chainGrouping = getChainGroupings(row['Protein1'], row['Protein2']);
+
     if (col === 'query_fragment') {
         if (queryProteinName) {
             cellHtml = row.Protein1 === queryProteinName
@@ -300,11 +303,11 @@ function renderCellContent(col, row, queryProteinName) {
         const partnerProtein = row.Protein1 === queryProteinName ? row.Protein2 : row.Protein1;
         cellHtml = state.proteinNameToCategoryMap[partnerProtein] || 'N/A';
     } else if (col === 'location') {
-        cellHtml = createLocationCellContent('protein1', row.absolute_location, row.Protein1 || 'Protein 1') +
-            createLocationCellContent('protein2', row.absolute_location, row.Protein2 || 'Protein 2');
+        cellHtml = createLocationCellContent(chainGrouping[0], row.absolute_location, row.Protein1 || 'Protein 1') +
+            createLocationCellContent(chainGrouping[1], row.absolute_location, row.Protein2 || 'Protein 2');
     } else if (col === 'relative_location') {
-        cellHtml = createLocationCellContent('protein1', row.location, row.Protein1_Domain || 'Protein 1 Domain') +
-            createLocationCellContent('protein2', row.location, row.Protein2_Domain || 'Protein 2 Domain');
+        cellHtml = createLocationCellContent(chainGrouping[0], row.location, row.Protein1_Domain || 'Protein 1 Domain') +
+            createLocationCellContent(chainGrouping[1], row.location, row.Protein2_Domain || 'Protein 2 Domain');
     } else if (['min_pae', 'avg_pae', 'iptm', 'pdockq', 'evenness'].includes(col)) {
         cellHtml = formatNumber(row[col]);
     } else if (['max_promiscuity', 'rop', 'size'].includes(col)) {
@@ -315,8 +318,8 @@ function renderCellContent(col, row, queryProteinName) {
     return cellHtml;
 }
 
-function createLocationCellContent(proteinName, locationData, domainName) {
-    let locationVal = 'N/A';
+function createLocationCellContent(chains, locationData, domainName) {
+    let joinedText = 'N/A';
     if (locationData) {
         try {
             const parsedData = parseLocation(locationData);
@@ -324,15 +327,30 @@ function createLocationCellContent(proteinName, locationData, domainName) {
                 acc[k.toLowerCase()] = parsedData[k];
                 return acc;
             }, {});
-            const val = keys[proteinName.toLowerCase()] || keys[`chain${proteinName.toLowerCase()}`];
-            if (Array.isArray(val)) {
-                locationVal = indicesToRanges(val);
-            } else if (typeof val === 'string' && val) {
-                locationVal = val;
+
+            let text = [];
+            chains.forEach(i => {
+                const val = keys[`chain ${i}`] || keys[`protein${i}`];
+                if (val) {
+                    let locationVal = 'N/A';
+                    if (Array.isArray(val)) {
+                        locationVal = indicesToRanges(val);
+                    } else if (typeof val === 'string' && val) {
+                        locationVal = val;
+                    }
+                    text.push(locationVal);
+                }
+            });
+
+            if (text.length > 1) {
+                joinedText = text.map((val, index) => `<i>Chain ${index + 1}</i>: ${val}`).join(" ");
+            } else {
+                joinedText = text[0] || '';
             }
+     
         } catch { }
     }
-    return `<div class="location-cell-content"><div><strong>${domainName}</strong>: ${locationVal}</div></div>`;
+    return `<div class="location-cell-content"><div><strong>${domainName}</strong>: ${joinedText}</div></div>`;
 }
 
 function addInteractionLinksToFirstColumn() {

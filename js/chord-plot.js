@@ -2,7 +2,7 @@ import { displayInfo, createSvgElement, createProteinLabel, createHoverLabel, cr
          createGradient, setupHoverEffect, getArcAngles, createDomainPath, calculateChordAngles,
          createLabelGroup, createChordGroup} from './plot-utility.js';
 import { createInteractionLink } from './table.js';
-import { loadProteinMetadata } from './data.js';
+import { getChainGroupings, loadProteinMetadata, parseLocation } from './data.js';
 
 const palettes = [
   "#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f", "#e5c494", "#b3b3b3",
@@ -24,13 +24,13 @@ export async function initializeChordPlot({
     showDomainsOnArcs = false,
     expandQuery = false
   } = {}) {
-  const container = document.querySelector(containerSelector);
+    const container = document.querySelector(containerSelector);
   if (!container) return;
   const padAngle = 2;
 
   displayInfo(container, "Loading interaction data...");
 
-  try {
+  //try {
     if (!data || data.length === 0) {
       displayInfo(container, "No interaction data available to display chord plot.");
       return;
@@ -67,16 +67,25 @@ export async function initializeChordPlot({
       let absLoc = {};
       if (row.absolute_location && typeof row.absolute_location === 'string') {
         try {
-          absLoc = JSON.parse(row.absolute_location.replace(/'/g, '"'));
+          absLoc = parseLocation(row.absolute_location);
         } catch (e) {
           console.warn("[ChordPlot] Failed to parse absolute_location for:", row, e);
         }
       }
       const absKeys = Object.keys(absLoc).reduce((acc, k) => { acc[k.toLowerCase()] = absLoc[k]; return acc; }, {});
-
-      const arr1 = absKeys['protein1'] || absKeys['chaina'] || absKeys['chain a'] || [];
-      const arr2 = absKeys['protein2'] || absKeys['chainb'] || absKeys['chain b'] || [];
-
+      const chainGrouping = getChainGroupings(p1, p2);
+      const arr1 = [];
+      if (chainGrouping[0]) {
+        for (const i of chainGrouping[0]) {
+          arr1.push(...(absKeys[`protein${i}`] || absKeys[`chain${i}`] || absKeys[`chain ${i}`] || []));
+        }
+      }
+      const arr2 = [];
+      if (chainGrouping[1]) {
+        for (const i of chainGrouping[1]) {
+          arr2.push(...(absKeys[`protein${i}`] || absKeys[`chain${i}`] || absKeys[`chain ${i}`] || []));
+        }
+      }
       const res1 = (Array.isArray(arr1) && arr1.length > 0) ? [Math.min(...arr1), Math.max(...arr1)] : [];
       const res2 = (Array.isArray(arr2) && arr2.length > 0) ? [Math.min(...arr2), Math.max(...arr2)] : [];
       return {
@@ -112,9 +121,9 @@ export async function initializeChordPlot({
 
     drawArcs({ namesOrdered, angles, seqLens, g, arcInner, arcOuter, palettes, showDomainsOnArcs, arcColoringMode }, allProteinLengths, queryProteins);
     drawChords({ ifaceData, data, angles, seqLens, g, arcInner, defs, names, palettes, coloringMode, queryProteins });
-  } catch (error) {
-    displayInfo(container, `Could not load chord plot: ${error.message}`, true);
-  }
+  //} catch (error) {
+  //  displayInfo(container, `Could not load chord plot: ${error.message}`, true);
+  //}
 }
 
 async function drawArcs(config, proteinMetadata, queryProteins) {

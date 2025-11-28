@@ -185,7 +185,7 @@
         import { initializeTable } from './js/table.js';
         import { setOnFiltersChanged, updateActiveFilterDisplay } from './js/filter.js';
         import { updatePageTitle } from './js/page-title.js';
-        import { fetchAndParseCSV, parseLocation2 } from './js/data.js';
+        import { fetchAndParseCSV, parseUrlLocation } from './js/data.js';
         import { initializePromiscuityPlots, updateAllPromiscuityPlots, getPromiscuityFilterState } from './js/promiscuity-plot.js';
         import { loadHTMLIncludes } from './js/header-footer.js';
         import { initCollapsibleSectionsComplex } from './js/collapsible-section.js';
@@ -205,14 +205,15 @@
             initCollapsibleSectionsComplex();
 
             const proteinLengthData = await fetchAndParseCSV('all_fragments_2025.06.04.csv');
-            const interfaceData = await fetchAndParseCSV('all_interface_analysis_2025.06.05_shifted.csv');
+            const interfaceData = await fetchAndParseCSV('all_interface_analysis_2025.11.26_absolute.csv');
 
             updateInteractionStatsFromURL(urlParams);
 
             const interactionRegions = [
-                parseLocation2(urlParams.get('f1_loc')),
-                parseLocation2(urlParams.get('f2_loc'))
+                parseUrlLocation(urlParams.get('f1_loc')),
+                parseUrlLocation(urlParams.get('f2_loc'))
             ];
+            console.log("Parsed interaction regions:", interactionRegions);
 
             await initializeDomainFragmentPlots({
                 proteins: [p1, p2],

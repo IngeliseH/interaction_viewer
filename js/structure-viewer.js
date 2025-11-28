@@ -1,4 +1,4 @@
-import { parseResidueLocations, loadProteinMetadata } from "./data.js";
+import { parseResidueLocations, loadProteinMetadata, getChainGroupings } from "./data.js";
 import { displayInfo } from "./plot-utility.js";
 import { renderProteinSequenceSection } from "./sequence-viewer.js";
 
@@ -32,6 +32,10 @@ export async function _displayStructureInViewer(container, pdbPath, options={}) 
     const initialColorMode = useDomainColoring ? 'alphafold' : 'chain';
 
     const proteinMetadata = await loadProteinMetadata();
+    const chainGrouping = Array.isArray(proteins) && proteins.length
+        ? getChainGroupings(proteins[0], proteins[1])
+        : null;
+    const chainAssignments = _buildChainAssignments(proteins, chainGrouping);
     const p1Data = proteins && proteins[0] ? proteinMetadata.get(proteins[0]) : null;
     const p2Data = proteins && proteins[1] ? proteinMetadata.get(proteins[1]) : null;
     const f1_shift = (p1Data && f1_id) ? p1Data.fragmentIndices[f1_id-1][0] : 0;
@@ -39,16 +43,19 @@ export async function _displayStructureInViewer(container, pdbPath, options={}) 
 
     const structureConfig = {
         viewer,
-        f1_loc,
-        f2_loc,
-        f1_shift,
-        f2_shift,
         modelLoaded: false,
         atomsShown: false,
         surfaceShown: false,
         colorMode: initialColorMode,
         useDomainColoring: useDomainColoring,
-        domainRangesArray: useDomainColoring ? domainRangesArray : []
+        domainRangesArray: useDomainColoring ? domainRangesArray : [],
+        proteinChains: chainAssignments.proteinChains,
+        chainToProtein: chainAssignments.chainToProtein,
+        defaultChains: chainAssignments.defaultChains,
+        fragmentShifts: [f1_shift, f2_shift],
+        interactionLocs: [f1_loc, f2_loc],
+        proteinColors: ['lightcoral', 'lightskyblue', 'mediumseagreen', 'plum'],
+        interactionColors: ['red', 'blue', 'seagreen', 'indigo']
     }
     const callbacks = {
         onReset: () => {
@@ -190,32 +197,36 @@ export async function setUpStructureViewer(urlParams, proteins, proteinData) {
 }
 
 export function highlightStructureViewerResidues({structureConfig, residues, showLabels = true, showHBonds = true}) {
-    const { viewer, atomsShown, f1_loc, f2_loc, f1_shift, f2_shift, styles } = structureConfig;
-    const highlightStyle = {cartoon: { color: 'yellow', thickness: 1.5 }, stick: { color: 'yellow', radius: 0.4 }};
+    const { viewer, atomsShown, styles } = structureConfig;
+    const highlightStyle = { cartoon: { color: 'yellow', thickness: 1.5 }, stick: { color: 'yellow', radius: 0.4 }};
     const appliedLabels = [];
     const hbondLines = [];
     const allAtoms = viewer.selectedAtoms({});
-
     residues.forEach(res => {
-        const { chain, resi } = res;
-        const shift = chain === 'A' ? f1_shift : f2_shift;
+        const chain = String(res.chain || '').toUpperCase();
+        const resi = parseInt(res.resi, 10);
+        if (Number.isNaN(resi)) return;
+        const proteinIdx = chain ? (structureConfig.chainToProtein?.[chain] ?? (chain === 'A' ? 0 : chain === 'B' ? 1 : null)) : null;
+        const fragmentShifts = structureConfig.fragmentShifts || [];
+        const interactionLocs = structureConfig.interactionLocs || [];
+        const shift = proteinIdx != null ? fragmentShifts[proteinIdx] || 0 : 0;
+        const interactionResidues = proteinIdx != null ? interactionLocs[proteinIdx] : null;
         const residueInfo = `${res.resn} ${resi + shift}`;
-
+        res.chain = chain;
+        res.resi = resi;
         res._origSelection = { chain, resi, byres: true };
         res._origAtomsShown = atomsShown;
-        res._origWasInteraction =
-            (f1_loc && chain === 'A' && _hasInteractionResidue(f1_loc, resi)) ||
-            (f2_loc && chain === 'B' && _hasInteractionResidue(f2_loc, resi));
+        res._origWasInteraction = interactionResidues ? _hasInteractionResidue(interactionResidues, resi) : false;
+        if (res._origWasInteraction) {
+            res._origInteractionColor = structureConfig.interactionColors?.[proteinIdx] || 'red';
+        }
         res._origStyle = _cloneStyleShallow(styles);
-
         const atomList = viewer.selectedAtoms({ chain, resi });
         if (atomList.length > 0 && showLabels) {
             const label = viewer.addLabel(residueInfo, {position: atomList[0], fontSize: 14});
             appliedLabels.push(label);
         }
-
         viewer.setStyle(res._origSelection, highlightStyle);
-
         if (showHBonds) {
             atomList.forEach(atom1 => {
                 allAtoms.forEach(atom2 => {
@@ -224,41 +235,36 @@ export function highlightStructureViewerResidues({structureConfig, residues, sho
             });
         }
     });
-
     viewer.render();
     return {labels: appliedLabels, hbonds: hbondLines};
 }
 
 export function restoreStructureViewerHighlightedResidues({viewer, residues, hbonds=[]}) {
     if (!viewer || !residues?.length) return;
-
     residues.forEach(res => {
         const selection = res._origSelection || { chain: res.chain, resi: res.resi, byres: true };
         let restoreStyle;
-
         if (res._origWasInteraction && !res._origAtomsShown) {
+            const color = res._origInteractionColor || 'red';
             restoreStyle = {
-                cartoon: { color: res.chain === 'A' ? 'red' : 'blue', thickness: 1.0 },
-                stick: { color: res.chain === 'A' ? 'red' : 'blue', radius: 0.2 }
+                cartoon: { color, thickness: 1.0 },
+                stick: { color, radius: 0.2 }
             };
         } else {
             restoreStyle = res._origStyle ? _cloneStyleShallow(res._origStyle) : {};
             if (!res._origAtomsShown) delete restoreStyle.stick;
         }
-
         viewer.setStyle(selection, {});
         viewer.setStyle(selection, restoreStyle);
-
         delete res._origSelection;
         delete res._origAtomsShown;
         delete res._origWasInteraction;
         delete res._origStyle;
+        delete res._origInteractionColor;
     });
-
     if (hbonds.length > 0) {
         hbonds.forEach(line => viewer.removeShape(line));
     }
-
     viewer.render();
 }
 
@@ -339,31 +345,32 @@ function _renderHBonds({viewer, atom1, atom2, hbondLines}) {
 }
 
 function _applyViewerState(structureConfig) {
-    const { viewer, modelLoaded, atomsShown, surfaceShown, colorMode, useDomainColoring, domainRangesArray, f1_loc, f2_loc } = structureConfig;
+    const { viewer, modelLoaded, atomsShown, surfaceShown, colorMode, useDomainColoring, domainRangesArray } = structureConfig;
     if (!modelLoaded) return;
     viewer.setStyle({}, {});
     viewer.removeAllSurfaces();
-
     let styles;
     if (colorMode === 'spectrum') {
         styles = { cartoon: { color: 'spectrum' } };
         if (atomsShown) {
             styles.stick = { color: 'spectrum', radius: 0.2 };
         }
-    } else {
-        let colorFunc;
-        if (colorMode === 'alphafold') {
-            colorFunc = atom => _getDomainColor(atom, useDomainColoring, domainRangesArray);
-        } else {
-            function baseChainColorFunc(atom) {
-                if (f1_loc && atom.chain === 'A' && _hasInteractionResidue(f1_loc, atom.resi)) return 'red';
-                if (f2_loc && atom.chain === 'B' && _hasInteractionResidue(f2_loc, atom.resi)) return 'blue';
-                if (atom.chain === 'A') return 'lightcoral';
-                if (atom.chain === 'B') return 'lightskyblue';
-                return 'lightgray';
-            }
-            colorFunc = atom => baseChainColorFunc(atom);
+    } else if (colorMode === 'alphafold') {
+        const colorFunc = atom => _getDomainColor(atom, useDomainColoring, domainRangesArray);
+        styles = { cartoon: { colorfunc: colorFunc } };
+        if (atomsShown) {
+            styles.stick = { colorfunc: colorFunc, radius: 0.2 };
         }
+    } else {
+        const colorFunc = (atom) => {
+            const proteinIdx = atom.chain ? (structureConfig.chainToProtein?.[atom.chain] ?? (atom.chain === 'A' ? 0 : atom.chain === 'B' ? 1 : null)) : null;
+            const baseColor = structureConfig.proteinColors?.[proteinIdx] || 'lightgray';
+            const interactionResidues = proteinIdx != null ? structureConfig.interactionLocs?.[proteinIdx] : null;
+            if (interactionResidues && _hasInteractionResidue(interactionResidues, atom.resi)) {
+                return structureConfig.interactionColors?.[proteinIdx] || baseColor;
+            }
+            return baseColor;
+        };
         styles = { cartoon: { colorfunc: colorFunc } };
         if (atomsShown) {
             styles.stick = { colorfunc: colorFunc, radius: 0.2 };
@@ -371,23 +378,33 @@ function _applyViewerState(structureConfig) {
     }
     viewer.setStyle({}, styles);
     structureConfig.styles = styles;
-
     if (!atomsShown) {
         const highlightStyle = (color) => ({ cartoon: { color, thickness: 1.0 }, stick: { color, radius: 0.2 } });
-        if (f1_loc) viewer.setStyle({ chain: 'A', resi: f1_loc, byres: true }, highlightStyle("red"));
-        if (f2_loc) viewer.setStyle({ chain: 'B', resi: f2_loc, byres: true }, highlightStyle("blue"));
+        (structureConfig.proteinChains || []).forEach((chains = [], idx) => {
+            const residues = structureConfig.interactionLocs?.[idx];
+            if (!residues || !chains.length) return;
+            const color = structureConfig.interactionColors?.[idx] || 'red';
+            chains.forEach(chainId => viewer.setStyle({ chain: String(chainId || '').toUpperCase(), resi: residues, byres: true }, highlightStyle(color)));
+        });
     }
-
     _setupResidueHover(structureConfig);
-  
     if (surfaceShown) {
         if (colorMode === 'chain') {
-            const surfaceColors = [
-                { color: 'lightcoral', sel: { chain: 'A' } },
-                { color: 'lightskyblue', sel: { chain: 'B' } },
-                { color: 'lightgray', sel: { chain: { $ne: 'A', $ne: 'B' } } }
-            ];
-            surfaceColors.forEach(s => viewer.addSurface($3Dmol.SurfaceType.VDW, { opacity: 0.7, color: s.color }, s.sel));
+            const chainsSet = new Set();
+            (structureConfig.proteinChains || []).forEach((chains = [], idx) => {
+                const color = structureConfig.proteinColors?.[idx] || 'lightgray';
+                chains.forEach(chainId => {
+                    chainsSet.add(String(chainId || '').toUpperCase());
+                    viewer.addSurface($3Dmol.SurfaceType.VDW, { opacity: 0.7, color }, { chain: String(chainId || '').toUpperCase() });
+                });
+            });
+            const chains = new Set();
+            viewer.selectedAtoms({}).forEach(atom => chains.add(String(atom.chain || '').toUpperCase()));
+            chains.forEach(chainId => {
+                if (!chainsSet.has(chainId)) {
+                    viewer.addSurface($3Dmol.SurfaceType.VDW, { opacity: 0.7, color: 'lightgray' }, { chain: chainId });
+                }
+            });
         } else {
             viewer.addSurface($3Dmol.SurfaceType.VDW, { opacity: 0.7, color: 'white' });
         }
@@ -618,4 +635,35 @@ function _hasInteractionResidue(list, resi) {
     if (!Array.isArray(list)) return false;
     const r = String(resi);
     return list.includes(resi) || list.includes(r) || list.includes(parseInt(r, 10));
+}
+
+function _buildChainAssignments(proteins = [], grouping) {
+    const size = Array.isArray(proteins) ? proteins.length : 0;
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const defaults = [];
+    for (let i = 0; i < Math.max(size, 2); i++) {
+        defaults.push(alphabet[i] || `X${i}`);
+    }
+    const normalized = [];
+    if (Array.isArray(grouping)) {
+        grouping.forEach((group, idx) => {
+            const entries = Array.isArray(group) ? group : [group];
+            const chains = Array.from(new Set(entries
+                .map(entry => String(entry || '').toUpperCase())
+                .filter(Boolean)));
+            if (chains.length) normalized[idx] = chains;
+        });
+    }
+    for (let i = 0; i < size; i++) {
+        if (!normalized[i] || !normalized[i].length) {
+            normalized[i] = [defaults[i] || defaults[0]];
+        }
+    }
+    const chainToProtein = {};
+    normalized.forEach((chains = [], idx) => chains.forEach(chainId => chainToProtein[chainId] = idx));
+    return {
+        proteinChains: normalized,
+        chainToProtein,
+        defaultChains: defaults
+    };
 }

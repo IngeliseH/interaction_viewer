@@ -44,7 +44,7 @@ export async function loadInteractionData() {
         return dataCache.processedInteractions;
     }
 
-    const data = await fetchAndParseCSV('all_interface_analysis_2025.06.05_shifted.csv');
+    const data = await fetchAndParseCSV('all_interface_analysis_2025.11.26_absolute.csv');
     if (!data) return [];
     
     dataCache.processedInteractions = data.map(row => ({
@@ -197,8 +197,8 @@ export function indicesToRanges(indices) {
     return result.join(', ');
 }
 
-export function parseLocation2(loc) {
-    // Converts a location string from a url like "2, 5-38" into an array of objects [{start: 2, end: 2}, {start: 5, end: 38}]
+export function parseUrlLocation(loc) {
+    // Converts a location string from a url like "2, 5-38+7-10" into an array of objects [{start: 2, end: 2}, {start: 5, end: 38}, {start: 7, end: 10}]
     if (!loc || typeof loc !== 'string') return [];
     return loc.split(',')
         .map(part => part.trim())
@@ -274,4 +274,23 @@ function _parseDomainString(domainsRaw) {
 export function formatNumber(value) {
     const num = parseFloat(value);
     return !isNaN(num) ? num.toFixed(2) : value;
+}
+
+export function getChainGroupings(protein1, protein2) {
+    if (!protein1 || !protein2) return [[], []];
+    let dimer1 = false;
+    let group1;
+    if (protein1.includes('_dimer')) {
+        group1 = ['a', 'b'];
+        dimer1 = true;
+    } else {
+        group1 = ['a'];
+    }
+    let group2;
+    if (protein2.includes('_dimer')) {
+        group2 = dimer1 ? ['c', 'd'] : ['b', 'c'];
+    } else {
+        group2 = dimer1 ? ['c'] : ['b'];
+    }
+    return [group1, group2];
 }
